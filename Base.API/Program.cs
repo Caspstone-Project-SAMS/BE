@@ -1,0 +1,358 @@
+using AutoMapper;
+using Base.API.Mapper;
+using Base.API.Permission;
+using Base.API.Service;
+using Base.Repository.Common;
+using Base.Repository.Identity;
+using Base.Service.Common;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.IdentityModel.Tokens;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Security.Claims;
+using Hangfire;
+using Hangfire.SqlServer;
+using static Base.API.Middleware.GlobalExceptionMiddleware;
+using Base.API.Middleware;
+using Base.Repository;
+using Base.Service;
+using Base.API.Common;
+using CloudinaryDotNet;
+using HttpMethod = System.Net.Http.HttpMethod;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Mvc;
+
+var builder = WebApplication.CreateBuilder(args);
+
+var Configuration = builder.Configuration;
+
+// Add services to the container.
+
+builder.Services.AddRepository(Configuration);
+builder.Services.AddService(Configuration);
+
+builder.Services.Configure<FormOptions>(o =>
+{
+    o.ValueLengthLimit = int.MaxValue;
+    o.MultipartBodyLengthLimit = int.MaxValue;
+    o.MemoryBufferThreshold = int.MaxValue;
+});
+
+#region Cloudinary
+var cloudinaryConfig = Configuration.GetSection("CloudinaryConfig").Get<CloudinaryConfig>();
+Account cloudinaryAccount = new Account
+{
+    Cloud = cloudinaryConfig.CloudName,
+    ApiKey = cloudinaryConfig.ApiKey,
+    ApiSecret = cloudinaryConfig.ApiSecret,
+};
+Cloudinary cloudinary = new Cloudinary(cloudinaryAccount);
+builder.Services.AddSingleton(cloudinary);
+#endregion
+
+#region Email Service
+var emailConfig = Configuration.GetSection("EmailConfig").Get<EmailConfig>();
+builder.Services.AddSingleton(emailConfig);
+builder.Services.AddTransient<IMailService, MailService>();
+#endregion
+
+builder.Services.AddSingleton<IPushNotificationService, PushNotificationService>();
+builder.Services.AddSingleton<IKeyManager, KeyManager>();
+
+builder.Services.AddIdentity<User, Role>(options =>
+{
+    options.SignIn.RequireConfirmedAccount = true;
+
+    // Passord settings
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = false;
+    options.Password.RequireNonAlphanumeric = false;
+    options.Password.RequiredLength = 5;
+    options.Password.RequiredUniqueChars = 0;
+
+    // Lockout settings
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = false;
+
+    //UserName settings
+    options.User.AllowedUserNameCharacters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._@+";
+
+
+    options.Tokens.EmailConfirmationTokenProvider = "UserTokenProvider";
+    options.Tokens.ChangeEmailTokenProvider = "UserTokenProvider";
+    options.Tokens.PasswordResetTokenProvider = "UserTokenProvider";
+})
+    .AddEntityFrameworkStores<ApplicationDbContext>();
+
+builder.Services.AddScoped<IJWTTokenService<IdentityUser<Guid>>, JWTTokenService<IdentityUser<Guid>>>();
+builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+builder.Services.AddSingleton<ICurrentUserService, CurrentUserService>();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, AuthorizationPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, HasScopeHandler>();
+
+builder.Services.AddSingleton(provider => new MapperConfiguration(cfg =>
+{
+    cfg.AddProfile(new RequestToModel(provider.GetService<ICurrentUserService>()!));
+    cfg.AddProfile(new ModelToResponse());
+}).CreateMapper());
+
+builder.Services.AddControllers(options =>
+{
+    // Add Global Exception Filter here
+    //options.Filters.Add<HttpResponseExceptionFilter>();
+})
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = actionContext =>
+        {
+            var errorStrings = new List<string>();
+            var modelState = actionContext.ModelState;
+
+            // values is IEnumerable of ModelStateEntry, we need to take error messages from each ModleStateEntry
+            // error messages of each ModelStateEntry is stored in Errors property, which will return Collection of ModelError
+            var values = modelState.Values;
+
+            foreach (var modelStateEntry in values)
+            {
+                foreach (var modelError in modelStateEntry.Errors)
+                {
+                    errorStrings.Add(modelError.ErrorMessage);
+                }
+            }
+            return new BadRequestObjectResult(new
+            {
+                Status = 400,
+                Title = "One or more validation errors occurred",
+                Errors = errorStrings
+            });
+        };
+    })
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.PropertyNamingPolicy = null;
+        o.JsonSerializerOptions.DictionaryKeyPolicy = null;
+    })
+    .AddNewtonsoftJson(option =>
+    {
+        option.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore;
+    });
+
+builder.Services.AddRazorPages();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddCookie("cookie")
+.AddJwtBearer(x =>
+{
+    var keyManager = new KeyManager();
+    var key = keyManager.RsaKey;
+
+    x.RequireHttpsMetadata = false;
+    x.SaveToken = true;
+    x.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = Configuration["Jwt:Issuer"],
+        ValidateAudience = true,
+        ValidAudience = Configuration["Jwt:Issuer"],
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new RsaSecurityKey(key ?? throw new ArgumentException("Key not found for authentication scheme"))
+    };
+})
+.AddOAuth("google", o =>
+{
+    o.SignInScheme = "cookie";
+
+    o.ClientId = "118248411285-pj96okif8j20j05g78kbhu5lghd5450l.apps.googleusercontent.com";
+    o.ClientSecret = "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";
+
+    o.AuthorizationEndpoint = "https://accounts.google.com/o/oauth2/auth";
+    o.TokenEndpoint = "https://oauth2.googleapis.com/token";
+    o.UserInformationEndpoint = "https://www.googleapis.com/oauth2/v1/userinfo";
+
+    o.CallbackPath = "/oauth/google-cb";
+    o.SaveTokens = true;
+
+    o.Scope.Add("profile");
+    o.Scope.Add("email");
+
+    o.ClaimActions.MapJsonKey("sub", "id");
+    o.ClaimActions.MapJsonKey(ClaimTypes.Email, "email");
+    o.ClaimActions.MapJsonKey(ClaimTypes.Name, "name");
+
+    o.Events.OnCreatingTicket = async ctx =>
+    {
+        // Can get service here
+        // ctx.HttpContext.RequestServices<>();
+        using var request = new HttpRequestMessage(HttpMethod.Get, ctx.Options.UserInformationEndpoint);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", ctx.AccessToken);
+        using var result = ctx.Backchannel.Send(request);
+        var user = await result.Content.ReadFromJsonAsync<JsonElement>();
+        ctx.RunClaimActions(user);
+    };
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy =>
+    {
+        policy.Requirements.Add(new HasScopeRequirement("Admin", Configuration["Jwt:Issuer"]!));
+    });
+
+    options.AddPolicy("Lecturer", policy =>
+    {
+        policy.Requirements.Add(new HasScopeRequirement("Customer", Configuration["Jwt:Issuer"]!));
+    });
+});
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("All", policy =>
+    {
+        policy.AllowAnyMethod().AllowAnyHeader().AllowAnyOrigin();
+    });
+});
+
+builder.Services.AddHangfire(configuration =>
+{
+    configuration
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseSqlServerStorage(Configuration.GetConnectionString("MsSQLConnection"), new SqlServerStorageOptions
+    {
+        CommandBatchMaxTimeout = TimeSpan.FromMinutes(5),
+        SlidingInvisibilityTimeout = TimeSpan.FromMinutes(5),
+        QueuePollInterval = TimeSpan.Zero,
+        UseRecommendedIsolationLevel = true,
+        DisableGlobalLocks = true,
+    });
+});
+
+builder.Services.AddHangfireServer();
+
+builder.Services.AddStackExchangeRedisCache(option =>
+{
+    option.Configuration = Configuration["Redis:RedisURL"];
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "MapPlatform.API", Version = "v1" });
+    c.AddSecurityDefinition("Bearer",
+        new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.Http,
+            BearerFormat = "JWT",
+            Scheme = "Bearer"
+        });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Base.API v1"));
+}
+else
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Base.API v1"));
+}
+
+app.UseStatusCodePages(async context =>
+{
+    if (context.HttpContext.Response.StatusCode == 401)
+    {
+        // Customize the response for 401 Unauthorized status code
+        context.HttpContext.Response.ContentType = "application/json";
+        var error = new ErrorDetails()
+        {
+            StatusCode = context.HttpContext.Response.StatusCode,
+            Title = "Unauthorize: You do not have permission to access this resource."
+        };
+        await context.HttpContext.Response.WriteAsync(error.ToString());
+    }
+
+    if (context.HttpContext.Response.StatusCode == 403)
+    {
+        // Customize the response for 403 Forbidden status code
+        context.HttpContext.Response.ContentType = "application/json";
+        var error = new ErrorDetails()
+        {
+            StatusCode = context.HttpContext.Response.StatusCode,
+            Title = "Forbidden: You do not have sufficient privileges to access this resource."
+        };
+        await context.HttpContext.Response.WriteAsync(error.ToString());
+    }
+});
+
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
+app.UseHttpsRedirection();
+
+app.UseHangfireDashboard("/hangfire");
+
+app.UseStaticFiles();
+// app.UseCookiePolicy();
+
+app.UseRouting();
+// app.UseRateLimiter();
+// app.UseRequestLocalization();
+
+app.UseCors("All");
+
+app.UseAuthentication();
+
+app.UseAuthorization();
+
+app.UseEndpoints(endpoints =>
+{
+    endpoints.MapRazorPages();
+    endpoints.MapControllers();
+
+    endpoints.MapGet("/login-google", context =>
+    {
+        var linkGenerator = context.RequestServices.GetRequiredService<LinkGenerator>();
+        var redirectUri = linkGenerator.GetUriByAction(context, "UserInformation", "TestAuth");
+
+        return AuthenticationHttpContextExtensions
+            .ChallengeAsync(context, "google",
+            new AuthenticationProperties
+            {
+                RedirectUri = redirectUri,
+            });
+    });
+});
+
+app.Run();
