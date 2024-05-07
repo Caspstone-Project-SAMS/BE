@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\FPT\\SAMSystem\\BE\\Base.API\\Base.API.csproj": {}
+    "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.API\\Base.API.csproj": {}
   },
   "projects": {
-    "D:\\FPT\\SAMSystem\\BE\\Base.API\\Base.API.csproj": {
+    "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.API\\Base.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\FPT\\SAMSystem\\BE\\Base.API\\Base.API.csproj",
+        "projectUniqueName": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.API\\Base.API.csproj",
         "projectName": "Base.API",
-        "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.API\\Base.API.csproj",
-        "packagesPath": "C:\\Users\\thaiq\\.nuget\\packages\\",
-        "outputPath": "D:\\FPT\\SAMSystem\\BE\\Base.API\\obj\\",
+        "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.API\\Base.API.csproj",
+        "packagesPath": "C:\\Users\\KHOA\\.nuget\\packages\\",
+        "outputPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.API\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\thaiq\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KHOA\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -28,8 +28,8 @@
           "net6.0": {
             "targetAlias": "net6.0",
             "projectReferences": {
-              "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj": {
-                "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj"
+              "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj": {
+                "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj"
               }
             }
           }
@@ -38,6 +38,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -112,21 +117,21 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.400\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj": {
+    "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj",
+        "projectUniqueName": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj",
         "projectName": "Base.Repository",
-        "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj",
-        "packagesPath": "C:\\Users\\thaiq\\.nuget\\packages\\",
-        "outputPath": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\obj\\",
+        "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj",
+        "packagesPath": "C:\\Users\\KHOA\\.nuget\\packages\\",
+        "outputPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\thaiq\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KHOA\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -146,6 +151,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -185,21 +195,21 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.400\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204\\RuntimeIdentifierGraph.json"
         }
       }
     },
-    "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj": {
+    "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj",
+        "projectUniqueName": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj",
         "projectName": "Base.Service",
-        "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj",
-        "packagesPath": "C:\\Users\\thaiq\\.nuget\\packages\\",
-        "outputPath": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\obj\\",
+        "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj",
+        "packagesPath": "C:\\Users\\KHOA\\.nuget\\packages\\",
+        "outputPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\thaiq\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KHOA\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -213,8 +223,8 @@
           "net6.0": {
             "targetAlias": "net6.0",
             "projectReferences": {
-              "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj": {
-                "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj"
+              "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj": {
+                "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj"
               }
             }
           }
@@ -223,6 +233,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -282,7 +297,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.400\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204\\RuntimeIdentifierGraph.json"
         }
       }
     }
