@@ -15,9 +15,9 @@ public class HelloController : ControllerBase
 
 
     [HttpPost("fingerprint")]
-    public IActionResult AddNew([FromBody] string fingerprintTemplate)
+    public IActionResult AddNew([FromBody] FingerprintTemplateTest fingerprintTemplate)
     {
-        fingerprintTemplates.Add(fingerprintTemplate);
+        fingerprintTemplates.Add(fingerprintTemplate.fingerprintTemplate);
         return Ok("Ok");
     }
 
@@ -25,5 +25,17 @@ public class HelloController : ControllerBase
     public IActionResult GetAllFingerprintTemplates()
     {
         return Ok(fingerprintTemplates);
+    }
+
+    [HttpDelete("fingerprint")]
+    public IActionResult DeleteAll()
+    {
+        fingerprintTemplates = new List<string>();
+        return Ok("Delete all");
+    }
+
+    public class FingerprintTemplateTest
+    {
+        public string fingerprintTemplate { get; set; } = string.Empty;
     }
 }
