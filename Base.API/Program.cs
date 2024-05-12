@@ -211,7 +211,7 @@ builder.Services.AddAuthorization(options =>
 
     options.AddPolicy("Lecturer", policy =>
     {
-        policy.Requirements.Add(new HasScopeRequirement("Customer", Configuration["Jwt:Issuer"]!));
+        policy.Requirements.Add(new HasScopeRequirement("Lecturer", Configuration["Jwt:Issuer"]!));
     });
 });
 

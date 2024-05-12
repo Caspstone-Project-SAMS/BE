@@ -29,3 +29,18 @@ D:\DOCUMENTATION\Capstone Project\BE\Base.Service\obj\Debug\net6.0\Base.Service.
 D:\DOCUMENTATION\Capstone Project\BE\Base.Service\obj\Debug\net6.0\refint\Base.Service.dll
 D:\DOCUMENTATION\Capstone Project\BE\Base.Service\obj\Debug\net6.0\Base.Service.pdb
 D:\DOCUMENTATION\Capstone Project\BE\Base.Service\obj\Debug\net6.0\ref\Base.Service.dll
+D:\FPT\SAMSystem\BE\Base.Service\bin\Debug\net6.0\Base.Service.deps.json
+D:\FPT\SAMSystem\BE\Base.Service\bin\Debug\net6.0\Base.Service.dll
+D:\FPT\SAMSystem\BE\Base.Service\bin\Debug\net6.0\Base.Service.pdb
+D:\FPT\SAMSystem\BE\Base.Service\bin\Debug\net6.0\Base.Repository.dll
+D:\FPT\SAMSystem\BE\Base.Service\bin\Debug\net6.0\Base.Repository.pdb
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.csproj.AssemblyReference.cache
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.GeneratedMSBuildEditorConfig.editorconfig
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.AssemblyInfoInputs.cache
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.AssemblyInfo.cs
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.csproj.CoreCompileInputs.cache
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.csproj.CopyComplete
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.dll
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\refint\Base.Service.dll
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\Base.Service.pdb
+D:\FPT\SAMSystem\BE\Base.Service\obj\Debug\net6.0\ref\Base.Service.dll
