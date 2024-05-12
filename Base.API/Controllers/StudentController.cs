@@ -45,6 +45,41 @@ namespace Base.API.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpGet("export")]
+        public IActionResult ExportExcel()
+        {
+            try
+            {
+                List<Student> students = new List<Student>
+                {
+                    new Student { FullName = "Trần Quốc", StudentCode = "xExx1503" },
+                    new Student { FullName = "Lê Khoa", StudentCode = "xE1xx4x4" },
+                    new Student { FullName = "Nguyễn Đức", StudentCode = "xExx6xx58" }
+                };
+                using (var workbook = new XLWorkbook())
+                {
+                    var worksheet = workbook.Worksheets.Add("Students");
+                    worksheet.Cell(1, 1).Value = "Student Name";
+                    worksheet.Cell(1, 2).Value = "Student ID";
 
+                    for (int i = 0; i < students.Count; i++)
+                    {
+                        worksheet.Cell(i + 2, 1).Value = students[i].FullName;
+                        worksheet.Cell(i + 2, 2).Value = students[i].StudentCode;
+                    }
+
+                    using (var stream = new MemoryStream())
+                    {
+                        workbook.SaveAs(stream);
+                        var content = stream.ToArray();
+                        return File(content, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "students.xlsx");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
