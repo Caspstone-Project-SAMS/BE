@@ -4660,19 +4660,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\KHOA\\.nuget\\packages\\": {}
+    "C:\\Users\\thaiq\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj",
+      "projectUniqueName": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj",
       "projectName": "Base.Service",
-      "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\Base.Service.csproj",
-      "packagesPath": "C:\\Users\\KHOA\\.nuget\\packages\\",
-      "outputPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Service\\obj\\",
+      "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\Base.Service.csproj",
+      "packagesPath": "C:\\Users\\thaiq\\.nuget\\packages\\",
+      "outputPath": "D:\\FPT\\SAMSystem\\BE\\Base.Service\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\KHOA\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\thaiq\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -4686,8 +4686,8 @@
         "net6.0": {
           "targetAlias": "net6.0",
           "projectReferences": {
-            "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj": {
-              "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj"
+            "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj": {
+              "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj"
             }
           }
         }
@@ -4696,11 +4696,6 @@
         "warnAsError": [
           "NU1605"
         ]
-      },
-      "restoreAuditProperties": {
-        "enableAudit": "true",
-        "auditLevel": "low",
-        "auditMode": "direct"
       }
     },
     "frameworks": {
@@ -4760,7 +4755,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.400\\RuntimeIdentifierGraph.json"
       }
     }
   }
