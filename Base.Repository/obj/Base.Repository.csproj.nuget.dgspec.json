@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj": {}
+    "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj": {}
   },
   "projects": {
-    "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj": {
+    "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj",
+        "projectUniqueName": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj",
         "projectName": "Base.Repository",
-        "projectPath": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\Base.Repository.csproj",
-        "packagesPath": "C:\\Users\\thaiq\\.nuget\\packages\\",
-        "outputPath": "D:\\FPT\\SAMSystem\\BE\\Base.Repository\\obj\\",
+        "projectPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\Base.Repository.csproj",
+        "packagesPath": "C:\\Users\\KHOA\\.nuget\\packages\\",
+        "outputPath": "D:\\DOCUMENTATION\\Capstone Project\\BE\\Base.Repository\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\thaiq\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\KHOA\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
@@ -34,6 +34,11 @@
           "warnAsError": [
             "NU1605"
           ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
         }
       },
       "frameworks": {
@@ -68,12 +73,26 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Ref",
+              "version": "[6.0.29, 6.0.29]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Ref",
+              "version": "[6.0.29, 6.0.29]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Ref",
+              "version": "[6.0.29, 6.0.29]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.400\\RuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.204\\RuntimeIdentifierGraph.json"
         }
       }
     }

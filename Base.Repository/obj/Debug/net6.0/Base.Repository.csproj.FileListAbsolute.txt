@@ -1,15 +1,3 @@
-D:\OK\Capstone Project\BE template\Base.Repository\bin\Debug\net6.0\Base.Repository.deps.json
-D:\OK\Capstone Project\BE template\Base.Repository\bin\Debug\net6.0\Base.Repository.dll
-D:\OK\Capstone Project\BE template\Base.Repository\bin\Debug\net6.0\Base.Repository.pdb
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.csproj.AssemblyReference.cache
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.GeneratedMSBuildEditorConfig.editorconfig
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.AssemblyInfoInputs.cache
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.AssemblyInfo.cs
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.csproj.CoreCompileInputs.cache
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.dll
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\refint\Base.Repository.dll
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\Base.Repository.pdb
-D:\OK\Capstone Project\BE template\Base.Repository\obj\Debug\net6.0\ref\Base.Repository.dll
 D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\bin\Debug\net6.0\Base.Repository.deps.json
 D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\bin\Debug\net6.0\Base.Repository.dll
 D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\bin\Debug\net6.0\Base.Repository.pdb
@@ -23,15 +11,3 @@ D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\obj\Debug\net6.0\Base.Repos
 D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\obj\Debug\net6.0\refint\Base.Repository.dll
 D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.pdb
 D:\DOCUMENTATION\Capstone Project\BE\Base.Repository\obj\Debug\net6.0\ref\Base.Repository.dll
-D:\FPT\SAMSystem\BE\Base.Repository\bin\Debug\net6.0\Base.Repository.deps.json
-D:\FPT\SAMSystem\BE\Base.Repository\bin\Debug\net6.0\Base.Repository.dll
-D:\FPT\SAMSystem\BE\Base.Repository\bin\Debug\net6.0\Base.Repository.pdb
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.csproj.AssemblyReference.cache
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.GeneratedMSBuildEditorConfig.editorconfig
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.AssemblyInfoInputs.cache
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.AssemblyInfo.cs
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.csproj.CoreCompileInputs.cache
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.dll
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\refint\Base.Repository.dll
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\Base.Repository.pdb
-D:\FPT\SAMSystem\BE\Base.Repository\obj\Debug\net6.0\ref\Base.Repository.dll
