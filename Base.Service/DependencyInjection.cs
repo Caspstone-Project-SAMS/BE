@@ -28,6 +28,7 @@ public static class DependencyInjection
         #endregion
 
         services.AddScoped<IUploadFile, UploadFile>();
+        services.AddSingleton(typeof(GoogleSheetsHelper));
 
         return services;
     }

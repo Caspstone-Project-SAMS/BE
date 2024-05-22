@@ -29,6 +29,7 @@ namespace Base.API.Controllers
             if (ModelState.IsValid)
             {
                 var result = await _userService.CreateNewUser(resource);
+               
                 if (result.IsSuccess)
                 {
                     return CreatedAtAction(nameof(GetUserById), new
