@@ -25,6 +25,7 @@ using CloudinaryDotNet;
 using HttpMethod = System.Net.Http.HttpMethod;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Mvc;
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +63,9 @@ builder.Services.AddTransient<IMailService, MailService>();
 
 builder.Services.AddSingleton<IPushNotificationService, PushNotificationService>();
 builder.Services.AddSingleton<IKeyManager, KeyManager>();
+
+//Add GoogleSheet Service
+builder.Services.AddSingleton(typeof(Base.API.Common.GoogleSheetsHelper));
 
 builder.Services.AddIdentity<User, Role>(options =>
 {

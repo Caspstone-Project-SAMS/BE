@@ -311,6 +311,23 @@
           }
         }
       },
+      "Google.Apis.Sheets.v4/1.62.0.3148": {
+        "type": "package",
+        "dependencies": {
+          "Google.Apis": "1.62.0",
+          "Google.Apis.Auth": "1.62.0"
+        },
+        "compile": {
+          "lib/netstandard2.0/Google.Apis.Sheets.v4.dll": {
+            "related": ".pdb;.xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/Google.Apis.Sheets.v4.dll": {
+            "related": ".pdb;.xml"
+          }
+        }
+      },
       "Hangfire.AspNetCore/1.8.5": {
         "type": "package",
         "dependencies": {
@@ -2174,6 +2191,28 @@
         "lib/netstandard2.0/Google.Apis.Core.dll",
         "lib/netstandard2.0/Google.Apis.Core.pdb",
         "lib/netstandard2.0/Google.Apis.Core.xml"
+      ]
+    },
+    "Google.Apis.Sheets.v4/1.62.0.3148": {
+      "sha512": "mIjiQXuUaNqllnoffbjyPCH7cvCtUHwg0OxIVSshc/uslgwmxd3nnzeZ0wRvcIUw72y2Lwm9erjUtk9HYKWzqQ==",
+      "type": "package",
+      "path": "google.apis.sheets.v4/1.62.0.3148",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE",
+        "NuGetIcon.png",
+        "google.apis.sheets.v4.1.62.0.3148.nupkg.sha512",
+        "google.apis.sheets.v4.nuspec",
+        "lib/net45/Google.Apis.Sheets.v4.dll",
+        "lib/net45/Google.Apis.Sheets.v4.pdb",
+        "lib/net45/Google.Apis.Sheets.v4.xml",
+        "lib/netstandard1.3/Google.Apis.Sheets.v4.dll",
+        "lib/netstandard1.3/Google.Apis.Sheets.v4.pdb",
+        "lib/netstandard1.3/Google.Apis.Sheets.v4.xml",
+        "lib/netstandard2.0/Google.Apis.Sheets.v4.dll",
+        "lib/netstandard2.0/Google.Apis.Sheets.v4.pdb",
+        "lib/netstandard2.0/Google.Apis.Sheets.v4.xml"
       ]
     },
     "Hangfire.AspNetCore/1.8.5": {
@@ -4652,6 +4691,7 @@
       "EntityFrameworkCore.Exceptions.SqlServer >= 6.0.3.2",
       "FirebaseAdmin >= 2.4.0",
       "Google.Apis.Auth >= 1.62.1",
+      "Google.Apis.Sheets.v4 >= 1.62.0.3148",
       "Hangfire.AspNetCore >= 1.8.5",
       "Hangfire.SqlServer >= 1.8.5",
       "Microsoft.AspNetCore.ApiAuthorization.IdentityServer >= 6.0.22",
@@ -4717,6 +4757,10 @@
           "Google.Apis.Auth": {
             "target": "Package",
             "version": "[1.62.1, )"
+          },
+          "Google.Apis.Sheets.v4": {
+            "target": "Package",
+            "version": "[1.62.0.3148, )"
           },
           "Hangfire.AspNetCore": {
             "target": "Package",
