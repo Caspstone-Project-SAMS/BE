@@ -57,7 +57,7 @@ public class HelloController : ControllerBase
     }
 
     [HttpPut("attendance/{id}")]
-    public IActionResult Attendance(int id)
+    public IActionResult Attendance(int id, [FromQuery] DateTime? dateTime)
     {
         var fingerprint = fingerprintTemplates.Where(f => f.Id == id).FirstOrDefault();
         if(fingerprint is null)
@@ -65,6 +65,14 @@ public class HelloController : ControllerBase
             return NotFound("Fingerprint Id not found");
         }
         fingerprint.IsAuthenticated = true;
+        if(dateTime is null)
+        {
+            fingerprint.ScanningTime = DateTime.UtcNow;
+        }
+        else
+        {
+            fingerprint.ScanningTime = dateTime;
+        }
         return Ok("Attendance");
     }
 
@@ -78,5 +86,6 @@ public class HelloController : ControllerBase
         public int Id { get; set; }
         public string Fingerprint { get; set; } = string.Empty;
         public bool IsAuthenticated { get; set; } = false;
+        public DateTime? ScanningTime { get; set; }
     }
 }
