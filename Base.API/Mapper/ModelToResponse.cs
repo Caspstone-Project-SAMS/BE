@@ -14,7 +14,7 @@ namespace Base.API.Mapper
             CreateMap<ServiceResponseVM<Role>, ServiceResponseVM>();
 
             CreateMap<User, UserInformationResponseVM>()
-                .ForMember(dest => dest.Roles, opt => opt.MapFrom(src => src.Roles.Where(r => !r.Deleted)));
+                .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.GetRole()));
 
             CreateMap<Role, RoleResponseVM>();
         }

@@ -13,7 +13,7 @@ public interface IBaseRepository<T, TKey> where T : class
     Task<T?> FindAsync(TKey id);
     IQueryable<T> FindAll();
     IQueryable<T> Get(Expression<Func<T, bool>> where);
-    IQueryable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object>>[] includes);
+    IQueryable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object?>>[] includes);
     Task AddAsync(T entity);
     Task AddRangeAsync(IEnumerable<T> entities);
     void Update(T entity);
@@ -60,7 +60,7 @@ public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
         return dbSet.Where(where);
     }
 
-    public virtual IQueryable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object>>[] includes)
+    public virtual IQueryable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object?>>[] includes)
     {
         var result = dbSet.Where(where);
         foreach (var include in includes)

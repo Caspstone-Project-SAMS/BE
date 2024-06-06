@@ -9,8 +9,16 @@ public class Module : AuditableEntity
     public int ModuleID { get; set; }
     public int Status { get; set; }
     public int Mode { get; set; }
-    public string Token { get; set; } = string.Empty;
+    public string Key { get; set; } = string.Empty;
 
-    public int? RoomID { get; set; }
-    public Room? Room { get; set; }
+    // Config-Setup
+    public bool AutoPrepare { get; set; } = false;
+    public int? PreparedMinBeforeSlot { get; set; }
+    public TimeOnly? PreparedTime { get; set; }
+    public bool AutoReset { get; set; } = false;
+    public int? ResetMinAfterSlot { get; set; }
+    public TimeOnly? ResetTime { get; set; }
+
+    public Guid EmployeeID { get; set; }
+    public Employee? Employee { get; set; }
 }

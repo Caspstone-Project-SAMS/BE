@@ -14,27 +14,28 @@ public interface IApplicationDbContext : IDisposable
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken());
 }
 
-public class ApplicationDbContext : IdentityDbContext<User, Role, Guid>, IApplicationDbContext
+public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>, IApplicationDbContext
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
     {
     }
 
-    public DbSet<Student> Students { get; set; } = null!;
-    public DbSet<Class> Classes { get; set; } = null!;
-    public DbSet<Course> Courses { get; set; } = null!;
-    public DbSet<AttendanceReport> AttendanceReports { get; set; } = null!;
-    public DbSet<Campus> Campuses { get; set; } = null!;
-    public DbSet<Curriculum> Curricula { get; set; } = null!;
-    public DbSet<FingerprintTemplate> FingerprintTemplates { get; set; } = null!;
-    public DbSet<FingerScanRecord> FingerScanRecords { get; set; } = null!;
-    public DbSet<Module> Modules { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
-    public DbSet<Room> Rooms { get; set; } = null!;
-    public DbSet<ScheduleTable> ScheduleTables { get; set; } = null!;
+    public DbSet<NotificationType> NotificationTypes { get; set; } = null!;
+    public DbSet<Student> Students { get; set; } = null!;
+    public DbSet<Employee> Employees { get; set; } = null!;
+    public DbSet<FingerprintTemplate> FingerprintTemplates { get; set; } = null!;
+    public DbSet<Class> Classes { get; set; } = null!;
+    public DbSet<Subject> Subjects { get; set; } = null!;
     public DbSet<Semester> Semesters { get; set; } = null!;
     public DbSet<Slot> Slots { get; set; } = null!;
-    public DbSet<Subject> Subjects { get; set; } = null!;
+    public DbSet<Room> Rooms { get; set; } = null!;
+    public DbSet<Schedule> Schedules { get; set; } = null!;
+    public DbSet<Attendance> Attendances { get; set; } = null!;
+    public DbSet<Module> Modules { get; set; } = null!;
+    public DbSet<SubstituteTeaching> SubstituteTeachings { get; set; } = null!;
+
+
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
@@ -66,126 +67,178 @@ public class ApplicationDbContext : IdentityDbContext<User, Role, Guid>, IApplic
 
         builder.Entity<User>(entity =>
         {
-            entity.HasMany(u => u.Roles)
-                .WithMany(r => r.Users)
-                .UsingEntity<IdentityUserRole<Guid>>();
+            entity.ToTable("User");
 
-                entity.HasMany(u => u.Classes)
-                    .WithOne(c => c.Lecturer)
-                    .HasForeignKey(c => c.LecturerID)
-                    .OnDelete(DeleteBehavior.NoAction);
+            entity.HasOne(u => u.Role)
+                .WithMany(r => r.Users)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(u => u.Student)
+                .WithOne(s => s.User)
+                .HasForeignKey<User>(u => u.StudentID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(u => u.Employee)
+                .WithOne(e => e.User)
+                .HasForeignKey<User>(u => u.EmployeeID)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // For student
+            entity.HasMany(u => u.EnrolledClasses)
+                .WithMany(c => c.Students)
+                .UsingEntity("StudentClass",
+                    l => l.HasOne(typeof(Class)).WithMany().HasForeignKey("ClassID").OnDelete(DeleteBehavior.Cascade).HasPrincipalKey(nameof(Class.ClassID)),
+                    r => r.HasOne(typeof(User)).WithMany().HasForeignKey("StudentID").OnDelete(DeleteBehavior.Cascade).HasPrincipalKey(nameof(User.Id)),
+                    j =>
+                    {
+                        j.HasKey("StudentID", "ClassID");
+                    }
+                );
+
+            // For lecturer
+            entity.HasMany(u => u.ManagedClasses)
+                .WithOne(c => c.Lecturer)
+                .HasForeignKey(c => c.LecturerID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // For student
+            entity.HasMany(u => u.Attendances)
+                .WithOne(a => a.Student)
+                .HasForeignKey(a => a.StudentID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasMany(u => u.Notifications)
+                .WithOne(n => n.User)
+                .HasForeignKey(n => n.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasMany(u => u.SubstituteTeachings)
+                .WithOne(s => s.SubstituteLecturer)
+                .HasForeignKey(s => s.SubstituteLecturerID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasMany(u => u.AssignedTeachings)
+                .WithOne(s => s.OfficialLecturer)
+                .HasForeignKey(s => s.OfficialLecturerID)
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(u => u.Email).IsUnique();
 
             entity.HasIndex(u => u.PhoneNumber).IsUnique();
         });
 
-        builder.Entity<Campus>(entity => {
-            entity.HasMany(c => c.Rooms)
-                .WithOne(r => r.Campus)
-                .HasForeignKey(r => r.CampusID)
+        builder.Entity<Role>(entity =>
+        {
+            entity.ToTable("Role");
+        });
+
+        builder.Entity<Student>(entity =>
+        {
+            entity.ToTable("Student");
+
+            entity.HasMany(s => s.FingerprintTemplates)
+                .WithOne(f => f.Student)
+                .HasForeignKey(f => f.StudentID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(s => s.StudentCode).IsUnique();
+        });
+
+        builder.Entity<Employee>(entity =>
+        {
+            entity.ToTable("Employee");
+
+            entity.HasMany(u => u.Modules)
+                .WithOne(m => m.Employee)
+                .HasForeignKey(m => m.EmployeeID)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        builder.Entity<Module>(entity => {
+            entity.ToTable("Module");
+
+            entity.HasIndex(m => m.Key).IsUnique();
         });
 
         builder.Entity<Class>( entity => {
-            entity.HasMany(c => c.Students)
-                .WithMany(s => s.Classes)
-                .UsingEntity("StudentClass", 
-                    l => l.HasOne(typeof(Student)).WithMany().HasForeignKey("StudentID").OnDelete(DeleteBehavior.NoAction).HasPrincipalKey(nameof(Student.StudentID)),
-                    r => r.HasOne(typeof(Class)).WithMany().HasForeignKey("ClassID").OnDelete(DeleteBehavior.NoAction).HasPrincipalKey(nameof(Class.ClassID)),
-                    j => 
-                    {
-                        j.HasKey("StudentID", "ClassID");
-                    }
-                );
-                
-            entity.HasMany(c => c.ScheduleTables)
+            entity.ToTable("Class");
+
+            entity.HasMany(c => c.Schedules)
                 .WithOne(s => s.Class)
                 .HasForeignKey(s => s.ClassID)
                 .OnDelete(DeleteBehavior.NoAction);
-        });
 
-        builder.Entity<Course>( entity => {
-            entity.HasMany(c => c.Classes)
-                .WithOne(c => c.Course)
-                .HasForeignKey(c => c.CourseID)
+            entity.HasOne(c => c.Subject)
+                .WithMany(s => s.Classes)
+                .HasForeignKey(c => c.ClassID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(c => c.Room)
+                .WithMany(s => s.Classes)
+                .HasForeignKey(c => c.ClassID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(c => c.Semester)
+                .WithMany(s => s.Classes)
+                .HasForeignKey(c => c.ClassID)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
-        builder.Entity<Curriculum>( entity => {
-            entity.HasMany(c => c.Students)
-                .WithOne(s => s.Curriculum)
-                .HasForeignKey(s => s.CurriculumID)
+        builder.Entity<Schedule>( entity => {
+            entity.ToTable("Schedule");
+
+            entity.HasOne(s => s.Slot)
+                .WithMany(s => s.Schedules)
+                .HasForeignKey(s => s.SlotID)
                 .OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasMany(c => c.Subjects)
-                .WithMany(s => s.Curriculums)
-                .UsingEntity("CurriculumSubject",
-                    l => l.HasOne(typeof(Subject)).WithMany().HasForeignKey("SubjectID").HasPrincipalKey(nameof(Subject.SubjectID)).OnDelete(DeleteBehavior.NoAction), 
-                    r => r.HasOne(typeof(Curriculum)).WithMany().HasForeignKey("CurriculumID").HasPrincipalKey(nameof(Curriculum.CurriculumID)).OnDelete(DeleteBehavior.NoAction),
-                    j => 
-                    {
-                        j.HasKey("SubjectID", "CurriculumID");
-                    }
-                );
-        });
-
-        builder.Entity<Module>( entity => {
-            entity.HasOne(m => m.Room)
-                .WithOne(r => r.Module)
-                .HasForeignKey<Module>(m => m.RoomID)
+            entity.HasOne(s => s.SubstituteTeaching)
+                .WithOne(s => s.Schedule)
+                .HasForeignKey<SubstituteTeaching>(s => s.ScheduleID)
                 .OnDelete(DeleteBehavior.NoAction);
-        });
 
-        builder.Entity<ScheduleTable>( entity => {
-            entity.HasMany(s => s.AttendanceReports)
-                .WithOne(a => a.ScheduleTable)
+            entity.HasMany(s => s.Attendances)
+                .WithOne(a => a.Schedule)
                 .HasForeignKey(a => a.ScheduleID)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            entity.HasMany(s => s.FingerScanRecords)
-                .WithOne(a => a.ScheduleTable)
-                .HasForeignKey(a => a.ScheduleID)
-                .OnDelete(DeleteBehavior.NoAction);
-        });
-
-        builder.Entity<Semester>( entity => {
-            entity.HasMany(s => s.Courses)
-                .WithOne(c => c.Semester)
-                .HasForeignKey(c => c.SemesterID)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
         builder.Entity<Slot>( entity => {
-            entity.HasMany(s => s.ScheduleTables)
-                .WithOne(s => s.Slot)
-                .HasForeignKey(s => s.SlotID)
-                .OnDelete(DeleteBehavior.NoAction);
+            entity.ToTable("Slot");
+
+            entity.HasIndex(s => s.SlotNumber).IsUnique();
         });
 
-        builder.Entity<Student>( entity => {
-            entity.HasMany(s => s.FingerprintTemplates)
-                .WithOne(f => f.Student)
-                .HasForeignKey(f => f.StudentID)
-                .OnDelete(DeleteBehavior.NoAction);
+        builder.Entity<Semester>(entity => {
+            entity.ToTable("Semester");
 
-            entity.HasMany(s => s.AttendanceReports)
-                .WithOne(a => a.Student)
-                .HasForeignKey(a => a.StudentID)
-                .OnDelete(DeleteBehavior.NoAction);
+            entity.HasIndex(s => s.SemesterCode).IsUnique();
         });
 
-        builder.Entity<Subject>( entity => {
-            entity.HasMany(s => s.Courses)
-                .WithOne(c => c.Subject)
-                .HasForeignKey(c => c.SubjectID)
-                .OnDelete(DeleteBehavior.NoAction);
+        builder.Entity<Subject>(entity => {
+            entity.ToTable("Subject");
 
+            entity.HasIndex(s => s.SubjectCode).IsUnique();
         });
+
+        builder.Entity<Notification>().ToTable("Notification");
+
+        builder.Entity<NotificationType>().ToTable("NotificationType");
+
+        builder.Entity<FingerprintTemplate>().ToTable("FingerprintTemplate");
+
+        builder.Entity<Room>().ToTable("Room");
+
+        builder.Entity<SubstituteTeaching>().ToTable("SubstituteTeaching");
+
+        builder.Entity<Attendance>().ToTable("Attendance");
+
 
         builder.Ignore<IdentityUserClaim<Guid>>();
         builder.Ignore<IdentityUserLogin<Guid>>();
         builder.Ignore<IdentityUserToken<Guid>>();
         builder.Ignore<IdentityRoleClaim<Guid>>();
+        builder.Ignore<IdentityRole<Guid>>();
+        builder.Ignore<IdentityUserRole<Guid>>();
     }
 }

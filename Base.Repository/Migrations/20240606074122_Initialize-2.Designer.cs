@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240606074122_Initialize-2")]
+    partial class Initialize2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -58,7 +60,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("Attendance", (string)null);
+                    b.ToTable("Attendances");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Class", b =>
@@ -96,7 +98,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("LecturerID");
 
-                    b.ToTable("Class", (string)null);
+                    b.ToTable("Classes");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Employee", b =>
@@ -111,7 +113,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("EmployeeID");
 
-                    b.ToTable("Employee", (string)null);
+                    b.ToTable("Employees");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.FingerprintTemplate", b =>
@@ -143,7 +145,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("StudentID");
 
-                    b.ToTable("FingerprintTemplate", (string)null);
+                    b.ToTable("FingerprintTemplates");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Module", b =>
@@ -199,7 +201,7 @@ namespace Base.Repository.Migrations
                     b.HasIndex("Key")
                         .IsUnique();
 
-                    b.ToTable("Module", (string)null);
+                    b.ToTable("Modules");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Notification", b =>
@@ -243,7 +245,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("Notification", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.NotificationType", b =>
@@ -263,7 +265,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("NotificationTypeID");
 
-                    b.ToTable("NotificationType", (string)null);
+                    b.ToTable("NotificationTypes");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Room", b =>
@@ -293,7 +295,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("RoomID");
 
-                    b.ToTable("Room", (string)null);
+                    b.ToTable("Rooms");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Schedule", b =>
@@ -332,7 +334,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("SlotID");
 
-                    b.ToTable("Schedule", (string)null);
+                    b.ToTable("Schedules");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Semester", b =>
@@ -368,7 +370,7 @@ namespace Base.Repository.Migrations
                     b.HasIndex("SemesterCode")
                         .IsUnique();
 
-                    b.ToTable("Semester", (string)null);
+                    b.ToTable("Semesters");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Slot", b =>
@@ -406,7 +408,7 @@ namespace Base.Repository.Migrations
                     b.HasIndex("SlotNumber")
                         .IsUnique();
 
-                    b.ToTable("Slot", (string)null);
+                    b.ToTable("Slots");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Student", b =>
@@ -431,7 +433,7 @@ namespace Base.Repository.Migrations
                     b.HasIndex("StudentCode")
                         .IsUnique();
 
-                    b.ToTable("Student", (string)null);
+                    b.ToTable("Students");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Subject", b =>
@@ -465,7 +467,7 @@ namespace Base.Repository.Migrations
                     b.HasIndex("SubjectCode")
                         .IsUnique();
 
-                    b.ToTable("Subject", (string)null);
+                    b.ToTable("Subjects");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.SubstituteTeaching", b =>
@@ -507,7 +509,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("SubstituteLecturerID");
 
-                    b.ToTable("SubstituteTeaching", (string)null);
+                    b.ToTable("SubstituteTeachings");
                 });
 
             modelBuilder.Entity("Base.Repository.Identity.Role", b =>
@@ -542,7 +544,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("RoleId");
 
-                    b.ToTable("Role", (string)null);
+                    b.ToTable("Role");
                 });
 
             modelBuilder.Entity("Base.Repository.Identity.User", b =>
@@ -660,7 +662,20 @@ namespace Base.Repository.Migrations
                         .IsUnique()
                         .HasFilter("[StudentID] IS NOT NULL");
 
-                    b.ToTable("User", (string)null);
+                    b.ToTable("AspNetUsers", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.ToTable("AspNetUserRoles", (string)null);
                 });
 
             modelBuilder.Entity("StudentClass", b =>
@@ -841,6 +856,15 @@ namespace Base.Repository.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+                {
+                    b.HasOne("Base.Repository.Identity.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("StudentClass", b =>

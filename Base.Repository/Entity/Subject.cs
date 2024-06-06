@@ -9,7 +9,9 @@ public class Subject : AuditableEntity
     public int SubjectID { get; set; }
     [Required]
     public string SubjectCode { get; set; } = string.Empty;
+    [Required]
+    public string SubjectName { get; set; } = string.Empty;
+    public int SubjectStatus { get; set; }
 
-    public IEnumerable<Course> Courses { get; set; } = new List<Course>();
-    public IEnumerable<Curriculum> Curriculums { get; set; } = new List<Curriculum>();
+    public IEnumerable<Class> Classes { get; set; } = new List<Class>();
 }
