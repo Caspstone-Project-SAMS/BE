@@ -42,12 +42,12 @@ public class UserInformationResponseVM : Auditable
     public bool LockoutEnabled { get; set; }
     public string? FilePath { get; set; }
     public string? DisplayName { get; set; }
-    public IEnumerable<RoleResponseVM> Roles { get; set; } = new List<RoleResponseVM>();
+    public RoleResponseVM Role { get; set; } = new RoleResponseVM();
 }
 
 public class RoleResponseVM : Auditable
 {
-    public Guid Id { get; set; }
+    public int RoleId { get; set; }
     public string? Name { get; set; }
 }
 

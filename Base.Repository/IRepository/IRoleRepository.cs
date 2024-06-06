@@ -8,6 +8,6 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.IRepository;
 
-public interface IRoleRepository : IBaseRepository<Role, Guid>
+public interface IRoleRepository : IBaseRepository<Role, int>
 {
 }
