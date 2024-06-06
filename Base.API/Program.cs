@@ -67,7 +67,7 @@ builder.Services.AddSingleton<IKeyManager, KeyManager>();
 //Add GoogleSheet Service
 builder.Services.AddSingleton(typeof(Base.API.Common.GoogleSheetsHelper));
 
-builder.Services.AddIdentity<User, Role>(options =>
+builder.Services.AddIdentityCore<User>(options =>
 {
     options.SignIn.RequireConfirmedAccount = true;
 

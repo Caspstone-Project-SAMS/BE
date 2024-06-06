@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Repository;
 
-internal class RoleRepository : BaseRepository<Role, Guid>, IRoleRepository
+internal class RoleRepository : BaseRepository<Role, int>, IRoleRepository
 {
     public RoleRepository(ApplicationDbContext applicationDbContext) : base(applicationDbContext)
     {

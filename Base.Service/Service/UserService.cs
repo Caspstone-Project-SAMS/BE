@@ -89,29 +89,21 @@ public class UserService : IUserService
             CreatedBy = _currentUserService.UserId
         };
 
-        if(newEntity.RoleIds.Count() > 0)
+        if(newEntity.RoleId is not null && newEntity.RoleId != 0)
         {
-            List<Role> roles = new List<Role>();
-            foreach (Guid id in newEntity.RoleIds)
+            var existedRole = await _unitOfWork.RoleRepository.FindAsync(newEntity.RoleId ?? 0);
+            if (existedRole is null)
             {
-                var existedRole = await _unitOfWork.RoleRepository.FindAsync(id);
-                if (existedRole is null)
+                return new ServiceResponseVM<User>
                 {
-                    return new ServiceResponseVM<User>
-                    {
-                        IsSuccess = false,
-                        Title = "Create user failed",
-                        Errors = new List<string>() { $"Role with id:{id} not found" }
-                    };
-                }
-                else
-                {
-                    roles.Add(existedRole);
-                }
+                    IsSuccess = false,
+                    Title = "Create user failed",
+                    Errors = new List<string>() { $"Role with id:{newEntity.RoleId} not found" }
+                };
             }
-            if (roles.Count() > 0)
+            else
             {
-                newUser.Roles = roles;
+                newUser.Role = existedRole;
             }
         }
 
@@ -131,12 +123,12 @@ public class UserService : IUserService
             }
             else
             {
-                newUser.FilePath = uploadResult.SecureUrl.ToString();
+                newUser.Avatar = uploadResult.SecureUrl.ToString();
             }
         }
         else if (newEntity.FilePath is not null)
         {
-            newUser.FilePath = newEntity.FilePath;
+            newUser.Avatar = newEntity.FilePath;
         }
 
         try
@@ -183,9 +175,9 @@ public class UserService : IUserService
 
     public async Task<User?> GetUserById(Guid id)
     {
-        var include = new Expression<Func<User, object>>[]
+        var include = new Expression<Func<User, object?>>[]
         {
-            u => u.Roles
+            u => u.Role
         };
         return await _unitOfWork
             .UserRepository
@@ -227,14 +219,17 @@ public class UserService : IUserService
         }
         else
         {
-            var roles = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.Users.Contains(existedUser)).ToArrayAsync();
-            existedUser.Roles = roles;
+            var role = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.RoleId.Equals(existedUser.RoleID)).FirstOrDefaultAsync();
+            if(role is not null)
+            {
+                existedUser.Role = role;
+            }
             return new LoginUserManagement
             {
                 Title = "Login Successfully",
                 IsSuccess = true,
                 LoginUser = existedUser,
-                RoleNames = roles.Select(r => r.Name)
+                RoleNames = new string[1] { role?.Name ?? "" }
             };
         }
 
@@ -280,16 +275,19 @@ public class UserService : IUserService
                 };
             }
 
-            var roles = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.Users.Contains(existedUser)).ToArrayAsync();
-            existedUser.Roles = roles;
+            var role = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.RoleId.Equals(existedUser.RoleID)).FirstOrDefaultAsync();
+            if(role is not null)
+            {
+                existedUser.Role = role;
+            }
             return new LoginUserManagement
             {
                 IsSuccess = true,
                 Title = "Login Successfully",
                 LoginUser = existedUser,
-                RoleNames = roles.Select(r => r.Name)
+                RoleNames = new string[1] { role?.Name ?? "" }
             };
-        }
+        };
 
         User newUser = new User
         {
@@ -302,7 +300,7 @@ public class UserService : IUserService
             TwoFactorEnabled = false,
             CreatedAt = DateTime.Now,
             CreatedBy = _currentUserService.UserId,
-            FilePath = claims.FirstOrDefault(c => c.Type == "picture")?.Value
+            Avatar = claims.FirstOrDefault(c => c.Type == "picture")?.Value
         };
 
         try

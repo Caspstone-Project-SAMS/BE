@@ -10,15 +10,26 @@ public class Class : AuditableEntity
     public int ClassID { get; set; }
     [Required]
     public string ClassCode { get; set; } = string.Empty;
-    public int Status { get; set; }
+    public int ClassStatus { get; set; }
 
+    public int SemesterID { get; set; }
+    public Semester? Semester { get; set; }
+
+    public int RoomID { get; set; }
+    public Room? Room { get; set; }
+
+    public int SubjectID { get; set; }
+    public Subject? Subject { get; set; }
+
+
+    // A class is managed by a lecturer
     public Guid LecturerID { get; set; }
     public User? Lecturer { get; set; }
 
-    public int CourseID { get; set; }
-    public Course? Course { get; set; }
 
-    public IEnumerable<Student> Students { get; set; } = new List<Student>();
+    // A class have many students
+    public IEnumerable<User> Students { get; set; } = new List<User>();
 
-    public IEnumerable<ScheduleTable> ScheduleTables { get; set; } = new List<ScheduleTable>();
+
+    public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();
 }

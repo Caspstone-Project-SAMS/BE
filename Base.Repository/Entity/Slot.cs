@@ -9,8 +9,9 @@ public class Slot : AuditableEntity
     public int SlotID { get; set; }
     public int SlotNumber { get; set; }
     public int Status { get; set; }
+    public int Order { get; set; }
     public TimeOnly StartTime { get; set; }
     public TimeOnly Endtime { get; set; }
 
-    public IEnumerable<ScheduleTable> ScheduleTables { get; set; } = new List<ScheduleTable>();
+    public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();
 }

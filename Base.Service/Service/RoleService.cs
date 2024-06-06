@@ -20,14 +20,14 @@ namespace Base.Service.Service;
 
 public class RoleService : IRoleService
 {
-    private readonly RoleManager<Role> _roleManager;
+    //private readonly RoleManager<Role> _roleManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IValidateGet _validateGet;
     private readonly ICurrentUserService _currentUserService;
 
-    public RoleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService, RoleManager<Role> roleManager)
+    public RoleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService) //RoleManager<Role> roleManager
     {
-        _roleManager = roleManager;
+        //_roleManager = roleManager;
         _unitOfWork = unitOfWork;
         _validateGet = validateGet;
         _currentUserService = currentUserService;
@@ -35,7 +35,7 @@ public class RoleService : IRoleService
 
     public async Task<ServiceResponseVM<Role>> Create(Role newRole)
     {
-        var existedRoleName = (await _roleManager.FindByNameAsync(newRole.Name)) != null;
+        var existedRoleName = (await _unitOfWork.RoleRepository.Get(r => r.Name.Equals(newRole.Name)).FirstOrDefaultAsync()) != null;
         if (existedRoleName)
         {
             return new ServiceResponseVM<Role>
@@ -51,8 +51,9 @@ public class RoleService : IRoleService
 
         try
         {
-            var result = await _roleManager.CreateAsync(newRole);
-            if (result.Succeeded)
+            await _unitOfWork.RoleRepository.AddAsync(newRole);
+            var result = await _unitOfWork.SaveChangesAsync();
+            if (result)
             {
                 return new ServiceResponseVM<Role>
                 {
@@ -67,7 +68,6 @@ public class RoleService : IRoleService
                 {
                     IsSuccess = false,
                     Title = "Create role failed",
-                    Errors = result.Errors.Select(e => e.Description)
                 };
             }
         }
@@ -91,9 +91,9 @@ public class RoleService : IRoleService
         }
     }
 
-    public async Task<ServiceResponseVM> Delete(Guid id)
+    public async Task<ServiceResponseVM> Delete(int id)
     {
-        var existedRole = await _unitOfWork.RoleRepository.Get(r => r.Id == id && !r.Deleted).FirstOrDefaultAsync();
+        var existedRole = await _unitOfWork.RoleRepository.Get(r => r.RoleId == id && !r.Deleted).FirstOrDefaultAsync();
         if(existedRole is null)
         {
             return new ServiceResponseVM
@@ -182,14 +182,14 @@ public class RoleService : IRoleService
             .ToArrayAsync();
     }
 
-    public async Task<Role?> GetById(Guid id)
+    public async Task<Role?> GetById(int id)
     {
-        return await _unitOfWork.RoleRepository.Get(r => r.Id == id && !r.Deleted).FirstOrDefaultAsync();
+        return await _unitOfWork.RoleRepository.Get(r => r.RoleId == id && !r.Deleted).FirstOrDefaultAsync();
     }
 
-    public async Task<ServiceResponseVM<Role>> Update(Role updateRole, Guid id)
+    public async Task<ServiceResponseVM<Role>> Update(Role updateRole, int id)
     {
-        var existedRole = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.Id == id).FirstOrDefaultAsync();
+        var existedRole = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.RoleId == id).FirstOrDefaultAsync();
         if(existedRole is null)
         {
             return new ServiceResponseVM<Role>
@@ -202,7 +202,7 @@ public class RoleService : IRoleService
 
         if(updateRole.Name != null)
         {
-            var checkRoleName = _unitOfWork.RoleRepository.Get(r => r.Id != id && r.Name.Equals(updateRole.Name)).FirstOrDefault() is not null;
+            var checkRoleName = _unitOfWork.RoleRepository.Get(r => r.RoleId != id && r.Name.Equals(updateRole.Name)).FirstOrDefault() is not null;
             if (checkRoleName)
             {
                 return new ServiceResponseVM<Role>
@@ -215,8 +215,9 @@ public class RoleService : IRoleService
             existedRole.Name = updateRole.Name;
         }
 
-        var result = await _roleManager.UpdateAsync(existedRole);
-        if (result.Succeeded)
+        _unitOfWork.RoleRepository.Update(existedRole);
+        var result = await _unitOfWork.SaveChangesAsync();
+        if (result)
         {
             return new ServiceResponseVM<Role>
             {
@@ -230,8 +231,7 @@ public class RoleService : IRoleService
             return new ServiceResponseVM<Role>
             {
                 IsSuccess = false,
-                Title = "Update role failed",
-                Errors = result.Errors.Select(e => e.Description) 
+                Title = "Update role failed"
             };
         }
     }

@@ -21,7 +21,7 @@ namespace Base.API.Controllers
         }
 
         [HttpGet("{id}", Name = nameof(GetRoleById))]
-        public async Task<IActionResult> GetRoleById(Guid id)
+        public async Task<IActionResult> GetRoleById(int id)
         {
             if (ModelState.IsValid)
             {
@@ -75,7 +75,7 @@ namespace Base.API.Controllers
                 {
                     return CreatedAtAction(nameof(GetRoleById), new
                     {
-                        id = result.Result!.Id,
+                        id = result.Result!.RoleId,
                     }, _mapper.Map<RoleResponseVM>(result.Result!));
                 }
 
@@ -90,7 +90,7 @@ namespace Base.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateRole([FromBody] UpdateRoleVM resource, Guid id)
+        public async Task<IActionResult> UpdateRole([FromBody] UpdateRoleVM resource, int id)
         {
             if (ModelState.IsValid)
             {
@@ -115,7 +115,7 @@ namespace Base.API.Controllers
         }
 
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRole(Guid id)
+        public async Task<IActionResult> DeleteRole(int id)
         {
             if (ModelState.IsValid)
             {

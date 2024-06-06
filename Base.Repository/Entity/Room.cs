@@ -9,9 +9,8 @@ public class Room : AuditableEntity
     public int RoomID { get; set; }
     [Required]
     public string RoomName { get; set; } = string.Empty;
+    public string? RoomDescription { get; set; }
+    public int RoomStatus { get; set; }
 
-    public int CampusID { get; set; }
-    public Campus? Campus { get; set; }
-
-    public Module? Module { get; set; }
+    public IEnumerable<Class> Classes { get; set; } = new List<Class>();
 }

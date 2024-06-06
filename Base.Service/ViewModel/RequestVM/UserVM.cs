@@ -18,7 +18,7 @@ public class UserVM
     [EmailAddress]
     [AllowNull]
     public string? Email { get; set; }
-    public IEnumerable<Guid> RoleIds { get; set; } = new List<Guid>();
+    public int? RoleId { get; set; }
     public IFormFile? Avatar { get; set; }
     public string? FilePath { get; set; }
 }

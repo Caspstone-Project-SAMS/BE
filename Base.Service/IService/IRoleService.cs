@@ -12,9 +12,9 @@ namespace Base.Service.IService;
 
 public interface IRoleService
 {
-    Task<Role?> GetById(Guid id);
+    Task<Role?> GetById(int id);
     Task<IEnumerable<Role>> Get(int startPage, int endPage, int? quantity, string? roleName);
     Task<ServiceResponseVM<Role>> Create(Role newEntity);
-    Task<ServiceResponseVM> Delete(Guid id);
-    Task<ServiceResponseVM<Role>> Update(Role updateRole, Guid id);
+    Task<ServiceResponseVM> Delete(int id);
+    Task<ServiceResponseVM<Role>> Update(Role updateRole, int id);
 }
