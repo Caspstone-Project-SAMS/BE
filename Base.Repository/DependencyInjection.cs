@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddTransient<IApplicationDbContext, ApplicationDbContext>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IScheduleRepository, ScheduleRepository>();
 
         #region Repository
         services.AddScoped<IUserRepository, UserRepository>();

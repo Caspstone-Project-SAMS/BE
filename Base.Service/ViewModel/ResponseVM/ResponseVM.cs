@@ -51,6 +51,19 @@ public class RoleResponseVM : Auditable
     public string? Name { get; set; }
 }
 
+public class ScheduleResponse
+{
+    public int ScheduleID { get; set; }
+    public DateOnly Date { get; set; }
+    public int SlotNumber { get; set; }
+    public string? ClassCode { get; set; }
+    public string? SubjectCode { get; set; }
+    public string? RoomName { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly EndTime { get; set; }
+
+}
+
 public abstract class Auditable
 {
     public string CreatedBy { get; set; } = "Undefined";
