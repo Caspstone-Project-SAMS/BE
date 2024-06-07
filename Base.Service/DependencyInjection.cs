@@ -20,6 +20,7 @@ public static class DependencyInjection
         #region Services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
+        services.AddScoped<IScheduleService, ScheduleService>();
         #endregion
 
         #region Validation
