@@ -166,22 +166,19 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             entity.HasMany(c => c.Schedules)
                 .WithOne(s => s.Class)
                 .HasForeignKey(s => s.ClassID)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(c => c.Subject)
                 .WithMany(s => s.Classes)
-                .HasForeignKey(c => c.ClassID)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(c => c.Room)
                 .WithMany(s => s.Classes)
-                .HasForeignKey(c => c.ClassID)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasOne(c => c.Semester)
                 .WithMany(s => s.Classes)
-                .HasForeignKey(c => c.ClassID)
-                .OnDelete(DeleteBehavior.NoAction);
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Schedule>( entity => {
