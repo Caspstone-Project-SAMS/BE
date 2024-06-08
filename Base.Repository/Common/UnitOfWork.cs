@@ -13,6 +13,11 @@ public interface IUnitOfWork
     IRoleRepository RoleRepository { get; }
 
     IScheduleRepository ScheduleRepository { get; }
+
+    ISemesterRepository SemesterRepository { get; }
+    IStudentRepository StudentRepository { get; }
+
+    IClassRepository ClassRepository { get; }
     Task<bool> SaveChangesAsync();
 }
 
@@ -25,15 +30,27 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IScheduleRepository ScheduleRepository { get; private set; }
 
+    public ISemesterRepository SemesterRepository { get; private set; }
+
+    public IStudentRepository StudentRepository { get; private set; }
+
+    public IClassRepository ClassRepository { get; private set; }
+
     public UnitOfWork(ApplicationDbContext applicationDbContext, 
         IUserRepository userRepository,
         IRoleRepository roleRepository,
-        IScheduleRepository scheduleRepository)
+        IScheduleRepository scheduleRepository,
+        ISemesterRepository semesterRepository,
+        IStudentRepository studentRepository,
+        IClassRepository classRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
         RoleRepository = roleRepository;
         ScheduleRepository = scheduleRepository;
+        SemesterRepository = semesterRepository;
+        StudentRepository = studentRepository;
+        ClassRepository = classRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

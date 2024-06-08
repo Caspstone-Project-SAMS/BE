@@ -1,4 +1,5 @@
-﻿using Base.Service.Common;
+﻿using Base.IService.IService;
+using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.Service;
 using Base.Service.Validation;
@@ -21,6 +22,9 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IScheduleService, ScheduleService>();
+        services.AddScoped<ISemesterService, SemesterService>();
+        services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IClassService, ClassService>();
         #endregion
 
         #region Validation
