@@ -17,6 +17,7 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Role, opt => opt.MapFrom(src => src.GetRole()));
 
             CreateMap<Role, RoleResponseVM>();
+            CreateMap<Semester, SemesterResponse>();
 
             CreateMap<Schedule, ScheduleResponse>()
                 .ForMember(dest => dest.SlotNumber, opt => opt.MapFrom(src => src.Slot!.SlotNumber))
@@ -25,6 +26,20 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.Slot!.StartTime))
                 .ForMember(dest => dest.EndTime, opt => opt.MapFrom(src => src.Slot!.Endtime))
                 .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src!.Class!.Subject!.SubjectCode));
+
+            CreateMap<Student, StudentResponse>()
+                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
+                 .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.User!.Avatar))
+                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates!.First().FingerprintTemplateData));
+            CreateMap<Class, ClassResponse>()
+                .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room!.RoomName))
+                .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedules!.First().Date))
+                .ForMember(dest => dest.LecturerName, opt => opt.MapFrom(src => src.Lecturer!.DisplayName))
+                .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject!.SubjectCode))
+                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject!.SubjectName))
+                .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students));
+                //.Select(s => new StudentResponse { StudentName = s.DisplayName })));
+                
         }
     }
 }

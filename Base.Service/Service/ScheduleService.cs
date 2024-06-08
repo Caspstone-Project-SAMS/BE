@@ -32,7 +32,7 @@ namespace Base.Service.Service
             }
 
              
-            var schedules = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId)
+            var schedules = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId && s.Class.SemesterID == semesterId)
                 .Include(s => s.Class)
                 .Include(s => s.Class!.Semester)
                 .Include(s => s.Class!.Room)

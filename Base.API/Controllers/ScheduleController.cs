@@ -20,6 +20,9 @@ namespace Base.API.Controllers
         }
 
         [HttpGet]
+        [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ScheduleResponse))]
+        [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ScheduleResponse))]
+        [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(string))]
         public async Task<IActionResult> Get([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] Guid lecturerId, [FromQuery] int quantity, [FromQuery] int semesterId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate) 
         { 
             if(ModelState.IsValid)
