@@ -92,9 +92,11 @@ public class ClassResponse
 public class StudentResponse
 {
     public string? StudentName { get; set; }
+    public Guid? UserID { get; set; }
     public string? Image { get; set; }
     public string? StudentCode { get; set; }
     public string FingerprintTemplateData { get; set; } = string.Empty;
+    public bool IsAuthenticated { get; set; } = false;
 }
 public abstract class Auditable
 {

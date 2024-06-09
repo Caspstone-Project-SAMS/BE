@@ -26,7 +26,7 @@ namespace Base.API.Controllers
             {
                 return NotFound();
             }
-            return Ok(_mapper.Map<ClassResponse>(classDetail));
+            return Ok(classDetail);
         }
     }
 }
