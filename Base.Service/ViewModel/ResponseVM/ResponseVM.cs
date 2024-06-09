@@ -86,7 +86,6 @@ public class ClassResponse
     public string? LecturerName { get; set; }
     public string? SubjectCode { get; set; }
     public string? SubjectName { get; set; }
-    public IEnumerable<User> Students { get; set; } = new List<User>();
 }
 
 public class StudentResponse
@@ -95,9 +94,27 @@ public class StudentResponse
     public Guid? UserID { get; set; }
     public string? Image { get; set; }
     public string? StudentCode { get; set; }
-    public string FingerprintTemplateData { get; set; } = string.Empty;
     public bool IsAuthenticated { get; set; } = false;
 }
+public class StudentModuleResponse
+{
+    public string? StudentName { get; set; }
+    public Guid? UserID { get; set; }
+    public string? StudentCode { get; set; }
+    public string FingerprintTemplateData { get; set; } = string.Empty;
+}
+
+public class AttendanceResponse 
+{
+    public int AttendanceStatus { get; set; }
+    public string? Comments { get; set; }
+    public Guid? StudentID { get; set; }
+    public string? StudentCode { get; set; }
+    public string? StudentName { get; set; }
+    public string? Email { get; set; }
+    public bool IsAuthenticated { get; set; } = false;
+}
+
 public abstract class Auditable
 {
     public string CreatedBy { get; set; } = "Undefined";

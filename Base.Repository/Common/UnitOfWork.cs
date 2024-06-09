@@ -18,6 +18,7 @@ public interface IUnitOfWork
     IStudentRepository StudentRepository { get; }
 
     IClassRepository ClassRepository { get; }
+    IAttendanceRepository AttendanceRepository { get; }
     Task<bool> SaveChangesAsync();
 }
 
@@ -36,13 +37,16 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IClassRepository ClassRepository { get; private set; }
 
-    public UnitOfWork(ApplicationDbContext applicationDbContext, 
+    public IAttendanceRepository AttendanceRepository { get; private set; }
+
+public UnitOfWork(ApplicationDbContext applicationDbContext, 
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         IScheduleRepository scheduleRepository,
         ISemesterRepository semesterRepository,
         IStudentRepository studentRepository,
-        IClassRepository classRepository)
+        IClassRepository classRepository,
+        IAttendanceRepository attendanceRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -51,6 +55,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         SemesterRepository = semesterRepository;
         StudentRepository = studentRepository;
         ClassRepository = classRepository;
+        AttendanceRepository = attendanceRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

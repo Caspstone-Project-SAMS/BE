@@ -30,19 +30,29 @@ namespace Base.API.Mapper
             CreateMap<Student, StudentResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
                  .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.User!.Avatar))
-                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates!.First().FingerprintTemplateData))
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id))
                  .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.IsAuthenticated()));
+
+            CreateMap<Student, StudentModuleResponse>()
+                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
+                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates!.First().FingerprintTemplateData))
+                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id));
 
             CreateMap<Class, ClassResponse>()
                 .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room!.RoomName))
                 .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedules!.First().Date))
                 .ForMember(dest => dest.LecturerName, opt => opt.MapFrom(src => src.Lecturer!.DisplayName))
                 .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject!.SubjectCode))
-                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject!.SubjectName))
-                .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students));
-                //.Select(s => new StudentResponse { StudentName = s.DisplayName })));
-                
+                .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject!.SubjectName));
+            //.Select(s => new StudentResponse { StudentName = s.DisplayName })));
+
+            CreateMap<Attendance, AttendanceResponse>()
+                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.Student!.StudentCode))
+                .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student!.DisplayName))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Student!.Email))
+                .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.Student!.Student!.IsAuthenticated()));
+
+
         }
     }
 }
