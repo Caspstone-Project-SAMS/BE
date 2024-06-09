@@ -228,7 +228,10 @@ namespace Base.API.Controllers
             if (ModelState.IsValid)
             {
                 var students = await _studentService.GetStudents(startPage, endPage, quantity, studentID,studentCode);
-                
+                if(isModule)
+                {
+                    return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
+                }
                 return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
             }
             

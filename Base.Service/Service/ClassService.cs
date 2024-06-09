@@ -24,13 +24,12 @@ namespace Base.Service.Service
         {
             var includes = new Expression<Func<Class, object?>>[]
         {
-            c => c.Students,
             c => c.Lecturer,
             c => c.Subject,
             c => c.Schedules,
             c => c.Room,
         };
-            var classDetail = await _unitOfWork.ClassRepository.Get(cl => cl.Schedules.Any(c => c.ScheduleID == scheduleID),includes: includes).Include(nameof(Class.Schedules) + "." + nameof(Schedule.Attendances)).SingleOrDefaultAsync();
+            var classDetail = await _unitOfWork.ClassRepository.Get(cl => cl.Schedules.Any(c => c.ScheduleID == scheduleID),includes: includes).SingleOrDefaultAsync();
             if(classDetail == null)
             {
                 throw new Exception($"Not Found Class With ScheduleID = {scheduleID}");

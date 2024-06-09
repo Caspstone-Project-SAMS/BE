@@ -25,6 +25,7 @@ public static class DependencyInjection
         services.AddScoped<ISemesterService, SemesterService>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IClassService, ClassService>();
+        services.AddScoped<IAttendanceService, AttendanceService>();
         #endregion
 
         #region Validation
