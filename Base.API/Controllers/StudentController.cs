@@ -223,7 +223,7 @@ namespace Base.API.Controllers
         //}
 
         [HttpGet]
-        public async Task<IActionResult> GetAllStudents([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] Guid? studentID, [FromQuery] string? studentCode)
+        public async Task<IActionResult> GetAllStudents([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] Guid? studentID, [FromQuery] string? studentCode, [FromQuery] bool isModule = false)
         {
             if (ModelState.IsValid)
             {
@@ -231,6 +231,7 @@ namespace Base.API.Controllers
                 
                 return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
             }
+            
             return BadRequest(new
             {
                 Title = "Get Students information failed",

@@ -14,4 +14,8 @@ public class Student : AuditableEntity
     public User? User { get; set; }
 
     public IEnumerable<FingerprintTemplate> FingerprintTemplates { get; set; } = new List<FingerprintTemplate>();
+    public bool IsAuthenticated()
+    {
+        return this.FingerprintTemplates.Any();
+    }
 }

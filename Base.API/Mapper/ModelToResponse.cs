@@ -30,7 +30,10 @@ namespace Base.API.Mapper
             CreateMap<Student, StudentResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
                  .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.User!.Avatar))
-                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates!.First().FingerprintTemplateData));
+                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates!.First().FingerprintTemplateData))
+                 .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id))
+                 .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.IsAuthenticated()));
+
             CreateMap<Class, ClassResponse>()
                 .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room!.RoomName))
                 .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedules!.First().Date))
