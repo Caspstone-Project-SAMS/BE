@@ -48,9 +48,9 @@ namespace Base.Service.Service
             .ToArrayAsync();
         }
 
-        public async Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus(int attendanceID, int attendanceStatus, DateTime? attendanceTime, Guid studentID)
+        public async Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus(int scheduleID, int attendanceStatus, DateTime? attendanceTime, Guid studentID)
         {
-            var existedAttendance = await _unitOfWork.AttendanceRepository.Get(a => a.AttendanceID == attendanceID && a.StudentID.Equals(studentID)).FirstOrDefaultAsync();
+            var existedAttendance = await _unitOfWork.AttendanceRepository.Get(a => a.ScheduleID == scheduleID && a.StudentID.Equals(studentID)).FirstOrDefaultAsync();
             if (existedAttendance is null)
             {
                 return new ServiceResponseVM<Attendance>

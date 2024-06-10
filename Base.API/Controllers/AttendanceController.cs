@@ -37,11 +37,11 @@ namespace Base.API.Controllers
         }
 
         [HttpPut("update-attendance-status")]
-        public async Task<IActionResult> UpdateAttendanceStatus([FromQuery] int attendanceID, [FromQuery] int attendanceStatus, [FromQuery] DateTime? attendanceTime, [FromQuery] Guid studentID)
+        public async Task<IActionResult> UpdateAttendanceStatus([FromQuery]  int scheduleID, [FromQuery] int attendanceStatus, [FromQuery] DateTime? attendanceTime, [FromQuery] Guid studentID)
         {
             if (ModelState.IsValid)
             {
-                var result = await _attendanceService.UpdateAttendanceStatus(attendanceID, attendanceStatus, attendanceTime, studentID);
+                var result = await _attendanceService.UpdateAttendanceStatus(scheduleID, attendanceStatus, attendanceTime, studentID);
                 if (result.IsSuccess)
                 {
                     return Ok(new

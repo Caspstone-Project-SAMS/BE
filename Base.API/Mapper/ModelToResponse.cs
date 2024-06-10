@@ -21,6 +21,7 @@ namespace Base.API.Mapper
 
             CreateMap<Schedule, ScheduleResponse>()
                 .ForMember(dest => dest.SlotNumber, opt => opt.MapFrom(src => src.Slot!.SlotNumber))
+                .ForMember(dest => dest.ClassID, opt => opt.MapFrom(src => src.Class!.ClassID))
                 .ForMember(dest => dest.ClassCode, opt => opt.MapFrom(src => src.Class!.ClassCode))
                 .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Class!.Room!.RoomName))
                 .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.Slot!.StartTime))

@@ -28,7 +28,7 @@ namespace Base.API.Controllers
             if(ModelState.IsValid)
             {
                 var schedule = await _scheduleService.GetSchedules(startPage,endPage, lecturerId,quantity, semesterId, startDate, endDate);
-                var result = _mapper.Map <IEnumerable<ScheduleResponse>>(schedule);
+                var result = _mapper.Map<IEnumerable<ScheduleResponse>>(schedule);
                 if(result.Count() <= 0)
                 {
                     return NotFound("Lecturer not have any Schedule");
