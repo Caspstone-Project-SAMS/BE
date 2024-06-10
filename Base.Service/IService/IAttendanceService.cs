@@ -11,6 +11,6 @@ namespace Base.Service.IService
     public interface IAttendanceService
     {
         Task<IEnumerable<Attendance>> GetAttendances(int startPage, int endPage, int? quantity,int scheduleID);
-        Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus(int attendanceID,int attendanceStatus,DateTime? attendanceTime,Guid studentID);
+        Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus( int scheduleID, int attendanceStatus,DateTime? attendanceTime,Guid studentID);
     }
 }

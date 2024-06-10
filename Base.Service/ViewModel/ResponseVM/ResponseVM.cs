@@ -1,10 +1,13 @@
 ﻿using Base.Repository.Identity;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Linq;
 using System.Security.AccessControl;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Base.Service.ViewModel.ResponseVM;
@@ -56,6 +59,7 @@ public class RoleResponseVM : Auditable
 public class ScheduleResponse
 {
     public int ScheduleID { get; set; }
+    public int ClassID { get; set; }
     public DateOnly Date { get; set; }
     public int SlotNumber { get; set; }
     public string? ClassCode { get; set; }
@@ -87,6 +91,7 @@ public class ClassResponse
     public string? SubjectCode { get; set; }
     public string? SubjectName { get; set; }
 }
+
 
 public class StudentResponse
 {

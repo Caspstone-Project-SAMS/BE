@@ -253,5 +253,25 @@ namespace Base.API.Controllers
 
                 return BadRequest(result);
         }
+
+        [HttpGet("get-students-by-classId")]
+        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] bool isModule = false)
+        {
+            if (ModelState.IsValid)
+            {
+                var students = await _studentService.GetStudentsByClassID(classID);
+                if (isModule)
+                {
+                    return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
+                }
+                return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
+            }
+
+            return BadRequest(new
+            {
+                Title = "Get Students information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

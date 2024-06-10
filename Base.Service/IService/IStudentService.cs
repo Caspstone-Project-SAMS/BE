@@ -12,6 +12,7 @@ namespace Base.IService.IService
     public interface IStudentService
     {
         Task<IEnumerable<Student>> GetStudents(int startPage,int endPage,int? quantity,Guid? studentID,string? studentCode);
+        Task<IEnumerable<Student>> GetStudentsByClassID(int classID);
         Task<ServiceResponseVM<Student>> CreateStudent(StudentVM newEntity);
     }
 }

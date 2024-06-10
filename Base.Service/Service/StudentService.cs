@@ -116,7 +116,7 @@ namespace Base.Service.Service
             {
                 expressions.Add(Expression.Call(Expression.Property(pe, nameof(Student.StudentID)), containsMethod, Expression.Constant(studentID)));
             }
-
+           
             Expression combined = null!;
 
             if (expressions.Count > 0)
@@ -131,7 +131,7 @@ namespace Base.Service.Service
             var includes = new Expression<Func<Student, object?>>[]
             {
                 s => s.FingerprintTemplates,
-                s => s.User
+                s => s.User,
             };
             return await _unitOfWork.StudentRepository
             .Get(where,includes: includes)
@@ -139,6 +139,20 @@ namespace Base.Service.Service
             .Skip((startPage - 1) * quantityResult)
             .Take((endPage - startPage + 1) * quantityResult)
             .ToArrayAsync();
+        }
+
+        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID)
+        {
+            var includes = new Expression<Func<Student, object?>>[]
+            {
+                s => s.FingerprintTemplates,
+                s => s.User,
+                s => s.User!.EnrolledClasses
+            };
+
+            return await _unitOfWork.StudentRepository
+            .Get(s => s.User != null && s.User.EnrolledClasses.Any(c => c.ClassID == classID), includes: includes)
+    .ToArrayAsync();
         }
     }
 }
