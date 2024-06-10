@@ -1,4 +1,6 @@
 ﻿using Base.Repository.Identity;
+using Base.Service.CustomJsonConverter;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -56,6 +58,7 @@ public class RoleResponseVM : Auditable
 public class ScheduleResponse
 {
     public int ScheduleID { get; set; }
+    [JsonConverter(typeof(DateOnlyJsonConverter))]
     public DateOnly Date { get; set; }
     public int SlotNumber { get; set; }
     public string? ClassCode { get; set; }
