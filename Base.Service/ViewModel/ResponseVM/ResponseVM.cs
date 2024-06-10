@@ -1,4 +1,5 @@
 ﻿using Base.Repository.Identity;
+using Base.Service.CustomJsonConverter;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -60,6 +61,7 @@ public class ScheduleResponse
 {
     public int ScheduleID { get; set; }
     public int ClassID { get; set; }
+    [JsonConverter(typeof(DateOnlyJsonConverter))]
     public DateOnly Date { get; set; }
     public int SlotNumber { get; set; }
     public string? ClassCode { get; set; }
