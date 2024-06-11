@@ -36,7 +36,9 @@ namespace Base.API.Mapper
 
             CreateMap<Student, StudentModuleResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
-                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates!.First().FingerprintTemplateData))
+                 .ForMember(dest => dest.FingerprintTemplateData,
+                            opt => opt.MapFrom(src => src.FingerprintTemplates != null && src.FingerprintTemplates.Any()
+                            ? src.FingerprintTemplates.First().FingerprintTemplateData : null))
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id));
 
             CreateMap<Class, ClassResponse>()
@@ -45,7 +47,6 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.LecturerName, opt => opt.MapFrom(src => src.Lecturer!.DisplayName))
                 .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject!.SubjectCode))
                 .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject!.SubjectName));
-            //.Select(s => new StudentResponse { StudentName = s.DisplayName })));
 
             CreateMap<Attendance, AttendanceResponse>()
                 .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.Student!.StudentCode))

@@ -2,6 +2,7 @@
 using Base.API.Common;
 using Base.Service.IService;
 using Base.Service.Service;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.RequestVM.Role;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.AspNetCore.Http;
@@ -82,5 +83,19 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+        [HttpPut("update-list-student-status")]
+        public async Task<IActionResult> UpdateListStudentStatus([FromBody] StudentListUpdateVM[] studentArr)
+        {
+            var result = await _attendanceService.UpdateListStudentStatus(studentArr);
+            if (result.IsSuccess)
+            {
+                return Ok(new
+                {
+                    Title = result.Title,
+                });
+            }
+            return BadRequest(result.Errors);
+        }
+
     }
 }
