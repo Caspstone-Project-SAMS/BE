@@ -1,7 +1,9 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.Validation;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -62,7 +64,7 @@ namespace Base.Service.Service
             }
 
             existedAttendance.AttendanceStatus = attendanceStatus;
-            existedAttendance.AttendanceTime = attendanceTime ?? DateTime.Now;
+            existedAttendance.AttendanceTime = attendanceTime ?? ServerDateTime.GetVnDateTime();
 
             _unitOfWork.AttendanceRepository.Update(existedAttendance);
             var result = await _unitOfWork.SaveChangesAsync();
@@ -83,6 +85,62 @@ namespace Base.Service.Service
                     Title = "Update Status failed"
                 };
             }
+
+        }
+
+        public async Task<ServiceResponseVM<List<StudentListUpdateVM>>> UpdateListStudentStatus(StudentListUpdateVM[] studentArr)
+        {
+           
+                var responseList = new List<StudentListUpdateVM>();
+                var errors = new List<string>();
+
+                foreach (var student in studentArr)
+                {
+                    try
+                    {
+                        var existedAttendance = await _unitOfWork.AttendanceRepository
+                            .Get(a => a.ScheduleID == student.ScheduleID && a.StudentID == student.StudentID)
+                            .FirstOrDefaultAsync();
+
+                        if (existedAttendance == null)
+                        {
+                            errors.Add($"Attendance not found for student ID {student.StudentID} in schedule ID {student.ScheduleID}");
+                            continue;
+                        }
+
+                        existedAttendance.AttendanceStatus = student.AttendanceStatus;
+                        existedAttendance.AttendanceTime = student.AttendanceTime ?? ServerDateTime.GetVnDateTime();
+
+                        _unitOfWork.AttendanceRepository.Update(existedAttendance);
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"Error updating attendance for student ID {student.StudentID} in schedule ID {student.ScheduleID}: {ex.Message}");
+                        continue;
+                    }
+                }
+
+                var result = await _unitOfWork.SaveChangesAsync();
+
+                if (result)
+                {
+                    return new ServiceResponseVM<List<StudentListUpdateVM>>
+                    {
+                        IsSuccess = true,
+                        Title = "Update Status successfully",
+                        Result = responseList
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM<List<StudentListUpdateVM>>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Status failed",
+                        Errors = errors.ToArray()
+                    };
+                }
+            
 
         }
     }

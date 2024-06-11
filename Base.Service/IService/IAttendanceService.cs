@@ -1,4 +1,5 @@
 ﻿using Base.Repository.Entity;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using System;
 using System.Collections.Generic;
@@ -12,5 +13,7 @@ namespace Base.Service.IService
     {
         Task<IEnumerable<Attendance>> GetAttendances(int startPage, int endPage, int? quantity,int scheduleID);
         Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus( int scheduleID, int attendanceStatus,DateTime? attendanceTime,Guid studentID);
+
+        Task<ServiceResponseVM<List<StudentListUpdateVM>>> UpdateListStudentStatus(StudentListUpdateVM[] studentArr);
     }
 }
