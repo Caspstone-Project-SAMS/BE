@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
+using Base.API.Common;
 using Base.Service.IService;
 using Base.Service.Service;
 using Base.Service.ViewModel.RequestVM.Role;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace Base.API.Controllers
 {
@@ -14,9 +16,11 @@ namespace Base.API.Controllers
     {
         private readonly IAttendanceService _attendanceService;
         private readonly IMapper _mapper;
-        public AttendanceController(IAttendanceService attendanceService, IMapper mapper)
+        private readonly WebSocketConnectionManager _webSocketConnectionManager;
+        public AttendanceController(IAttendanceService attendanceService, IMapper mapper, WebSocketConnectionManager webSocketConnectionManager)
         {
             _attendanceService = attendanceService;
+            _webSocketConnectionManager = webSocketConnectionManager;
             _mapper = mapper;
         }
 
@@ -44,6 +48,25 @@ namespace Base.API.Controllers
                 var result = await _attendanceService.UpdateAttendanceStatus(scheduleID, attendanceStatus, attendanceTime, studentID);
                 if (result.IsSuccess)
                 {
+
+                    // Make a real-time update using websocket here
+                    var dataSend = new DataSend
+                    {
+                        studentID = studentID.ToString(),
+                        status = 1
+                    };
+                    var dataSendString = JsonSerializer.Serialize(dataSend);
+                    var messageSend = new MessageSend
+                    {
+                        Event = "statusChange",
+                        Data = dataSendString
+                    };
+                    var messageSendString = JsonSerializer.Serialize(messageSend);
+                    _webSocketConnectionManager.SendMessagesToAll(messageSendString);
+                    //=======================================
+
+
+
                     return Ok(new
                     {
                         Title = result.Title,

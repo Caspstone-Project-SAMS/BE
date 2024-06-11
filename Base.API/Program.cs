@@ -280,7 +280,15 @@ builder.Services.AddSwaggerGen(c =>
                 });
 });
 
+builder.Services.AddSingleton<WebSocketConnectionManager>();
+
 var app = builder.Build();
+
+// <snippet_UseWebSocket>
+var webSocketOptions = new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromMinutes(10)
+};
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -293,6 +301,8 @@ else
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Base.API v1"));
 }
+
+app.UseWebSockets(webSocketOptions);
 
 app.UseStatusCodePages(async context =>
 {
