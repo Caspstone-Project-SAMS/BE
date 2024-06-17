@@ -108,7 +108,7 @@ public class StudentModuleResponse
     public string? StudentName { get; set; }
     public Guid? UserID { get; set; }
     public string? StudentCode { get; set; }
-    public string FingerprintTemplateData { get; set; } = string.Empty;
+    public IEnumerable<string>? FingerprintTemplateData { get; set; }
 }
 
 public class AttendanceResponse 
