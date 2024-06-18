@@ -99,6 +99,13 @@ public class HelloController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("Close-all-web-socket")]
+    public async Task<IActionResult> CloseAllWebSocket()
+    {
+        await _webSocketConnectionManager.CloseAllSocket();
+        return Ok();
+    }
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;

@@ -95,6 +95,18 @@ public class WebSocketConnectionManager
         );
     }
 
+    public async Task CloseAllSocket()
+    {
+        var websockets = _sockets.Select(s => s.Socket);
+        foreach (var ws in websockets)
+        {
+            if(ws is not null)
+            {
+                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            }
+        }
+    }
+
 
 
     private class WebsocketClass
