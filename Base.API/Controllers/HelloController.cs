@@ -106,6 +106,13 @@ public class HelloController : ControllerBase
         return Ok();
     }
 
+    [HttpGet("get-all-web-socket")]
+    public IActionResult GetAllSocket()
+    {
+        var sockets = _webSocketConnectionManager.GetAllWebSockets().Where(s => s != null);
+        return Ok(sockets);
+    }
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;
