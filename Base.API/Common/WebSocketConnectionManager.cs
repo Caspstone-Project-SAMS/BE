@@ -48,7 +48,6 @@ public class WebSocketConnectionManager
                 CancellationToken.None
             );
         }
-
     }
 
     public IList<WebSocket?> GetAllWebSockets()
