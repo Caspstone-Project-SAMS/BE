@@ -2,6 +2,7 @@
 using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Repository.Identity;
+using Base.Service.Common;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
@@ -43,7 +44,7 @@ namespace Base.Service.Service
             {
                 StudentCode = newEntity.StudentCode,
                 CreatedBy = newEntity.CreateBy!,
-                CreatedAt = DateTime.Now,
+                CreatedAt = ServerDateTime.GetVnDateTime(),
             };
 
             try
