@@ -120,6 +120,7 @@ public class AttendanceResponse
     public string? StudentName { get; set; }
     public string? Email { get; set; }
     public bool IsAuthenticated { get; set; } = false;
+    public string? Image {  get; set; } = string.Empty;
 }
 
 public abstract class Auditable
