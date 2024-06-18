@@ -1,3 +1,4 @@
+using Base.API.Common;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.ObjectModel;
@@ -8,6 +9,13 @@ namespace Base.API.Controllers;
 [Route("api/[controller]")]
 public class HelloController : ControllerBase
 {
+    private readonly WebSocketConnectionManager _webSocketConnectionManager;
+
+    public HelloController(WebSocketConnectionManager webSocketConnectionManager)
+    {
+        _webSocketConnectionManager = webSocketConnectionManager;
+    }
+
     private static IList<FingerprintTemplate> fingerprintTemplates = new List<FingerprintTemplate>();
     [HttpGet]
     public IActionResult Hello()
@@ -28,7 +36,8 @@ public class HelloController : ControllerBase
         {
             Id = largestId + 1,
             Fingerprint = fingerprintTemplate.fingerprintTemplate,
-            IsAuthenticated = false
+            IsAuthenticated = false,
+            Content = fingerprintTemplate.Content
         });
         return Ok("Ok");
     }
@@ -76,9 +85,17 @@ public class HelloController : ControllerBase
         return Ok("Attendance");
     }
 
+    [HttpPost("activate-module")]
+    public IActionResult ActivateRegisterFingerprint([FromQuery] string content, [FromQuery] string moduleId)
+    {
+        _webSocketConnectionManager.SendMessageToModule(content, moduleId);
+        return Ok();
+    }
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty;
     }
 
     public class FingerprintTemplate
@@ -87,5 +104,6 @@ public class HelloController : ControllerBase
         public string Fingerprint { get; set; } = string.Empty;
         public bool IsAuthenticated { get; set; } = false;
         public DateTime? ScanningTime { get; set; }
+        public string Content { get; set; } = string.Empty;
     }
 }

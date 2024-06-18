@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Base.API.Common;
+using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.Service;
 using Base.Service.ViewModel.RequestVM;
@@ -89,6 +90,24 @@ namespace Base.API.Controllers
             var result = await _attendanceService.UpdateListStudentStatus(studentArr);
             if (result.IsSuccess)
             {
+                // real-time websocket
+                foreach (var item in studentArr)
+                {
+                    var dataSend = new DataSend
+                    {
+                        studentID = item.StudentID.ToString() ?? "",
+                        status = 1
+                    };
+                    var dataSendString = JsonSerializer.Serialize(dataSend);
+                    var messageSend = new MessageSend
+                    {
+                        Event = "statusChange",
+                        Data = dataSendString
+                    };
+                    var messageSendString = JsonSerializer.Serialize(messageSend);
+                    _webSocketConnectionManager.SendMessagesToAll(messageSendString);
+                }
+
                 return Ok(new
                 {
                     Title = result.Title,

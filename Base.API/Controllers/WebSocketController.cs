@@ -15,13 +15,13 @@ public class WebSocketController : ControllerBase
     }
 
     [HttpGet("/ws")]
-    public async Task Get()
+    public async Task Get([FromQuery] bool isRegisterModule = false)
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
         {
             //var connId = HttpContext.Connection.Id;
             using var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync();
-            _websocketConnectionManager.AddSocket(webSocket);
+            await _websocketConnectionManager.AddSocket(webSocket, isRegisterModule);
 
             var buffer = new byte[1024 * 4];
             var receiveResult = await webSocket.ReceiveAsync(
