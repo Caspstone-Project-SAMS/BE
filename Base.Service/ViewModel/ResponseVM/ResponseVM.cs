@@ -99,7 +99,7 @@ public class StudentResponse
 {
     public string? StudentName { get; set; }
     public Guid? UserID { get; set; }
-    public string? Image { get; set; }
+    public string? Avatar { get; set; }
     public string? StudentCode { get; set; }
     public bool IsAuthenticated { get; set; } = false;
 }
@@ -120,7 +120,7 @@ public class AttendanceResponse
     public string? StudentName { get; set; }
     public string? Email { get; set; }
     public bool IsAuthenticated { get; set; } = false;
-    public string? Image {  get; set; } = string.Empty;
+    public string? Avatar {  get; set; } = string.Empty;
 }
 
 public abstract class Auditable

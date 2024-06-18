@@ -30,7 +30,7 @@ namespace Base.API.Mapper
 
             CreateMap<Student, StudentResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
-                 .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.User!.Avatar))
+                 .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id))
                  .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.IsAuthenticated()));
 
@@ -50,7 +50,7 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.Student!.StudentCode))
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student!.DisplayName))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Student!.Email))
-                .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.Student!.Avatar))
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.Student!.Avatar))
                 .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.Student!.Student!.IsAuthenticated()));
 
 
