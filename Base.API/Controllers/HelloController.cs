@@ -113,6 +113,13 @@ public class HelloController : ControllerBase
         return Ok(sockets);
     }
 
+    [HttpGet("get-all-web-socket-class")]
+    public IActionResult GetAllSocketClass()
+    {
+        var sockets = _webSocketConnectionManager.GetAllWebSocketsClass();
+        return Ok(sockets);
+    }
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;

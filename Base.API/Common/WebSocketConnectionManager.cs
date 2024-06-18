@@ -24,19 +24,6 @@ public class WebSocketConnectionManager
                     break;
                 }
             }
-            var messageSend = new MessageSend
-            {
-                Event = "GetModuleID",
-                Data = moduleId
-            };
-            var jsonPayload = JsonSerializer.Serialize(messageSend);
-            var buffer = Encoding.UTF8.GetBytes(jsonPayload);
-            await socket.SendAsync(
-                new ArraySegment<byte>(buffer, 0, moduleId.Length),
-                WebSocketMessageType.Text,
-                true,
-                CancellationToken.None
-        );
         }
         _sockets.Add(new WebsocketClass
         {
@@ -45,11 +32,33 @@ public class WebSocketConnectionManager
             ModuleId = moduleId
         });
 
+        if (isRegisterModule)
+        {
+            var messageSend = new MessageSend
+            {
+                Event = "GetModuleID",
+                Data = moduleId ?? ""
+            };
+            var jsonPayload = JsonSerializer.Serialize(messageSend);
+            var buffer = Encoding.UTF8.GetBytes(jsonPayload);
+            await socket.SendAsync(
+                new ArraySegment<byte>(buffer, 0, moduleId?.Length ?? 0),
+                WebSocketMessageType.Text,
+                true,
+                CancellationToken.None
+            );
+        }
+
     }
 
     public IList<WebSocket?> GetAllWebSockets()
     {
         return _sockets.Select(s => s.Socket).ToList();
+    }
+
+    public IList<WebsocketClass> GetAllWebSocketsClass()
+    {
+        return _sockets.ToList();
     }
 
     public async void SendMessagesToAll(string? message)
@@ -97,19 +106,21 @@ public class WebSocketConnectionManager
 
     public async Task CloseAllSocket()
     {
-        var websockets = _sockets.Select(s => s.Socket);
-        foreach (var ws in websockets)
+        var websocketsClass = _sockets;
+        foreach (var ws in websocketsClass)
         {
-            if(ws is not null)
+            if(ws.Socket is not null)
             {
-                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                await ws.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                _sockets.Remove(ws);
             }
         }
+
     }
 
 
 
-    private class WebsocketClass
+    public class WebsocketClass
     {
         public WebSocket? Socket { get; set; }
         public bool IsRegisteredModule { get; set; } = false;
@@ -122,9 +133,9 @@ public class WebSocketConnectionManager
         Random r = new Random();
         for (int i = 0; i < 7; i++)
         {
-            int n = r.Next(0, 25);
+            int n = r.Next(0, 26);
             char c = Convert.ToChar(n + 65);
-            moduleId.Append(c);
+            moduleId += c;
         }
         return moduleId;
     }
