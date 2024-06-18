@@ -12,5 +12,6 @@ namespace Base.Service.ViewModel.RequestVM
         public int AttendanceStatus { get; set; }
         public DateTime? AttendanceTime { get; set; }
         public Guid? StudentID { get; set; }
+        public string Comments { get; set; } = string.Empty;
     }
 }

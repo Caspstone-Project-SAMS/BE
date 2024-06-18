@@ -50,6 +50,7 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.Student!.StudentCode))
                 .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.Student!.DisplayName))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.Student!.Email))
+                .ForMember(dest => dest.Image, opt => opt.MapFrom(src => src.Student!.Avatar))
                 .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.Student!.Student!.IsAuthenticated()));
 
 
