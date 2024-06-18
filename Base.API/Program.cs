@@ -287,7 +287,7 @@ var app = builder.Build();
 // <snippet_UseWebSocket>
 var webSocketOptions = new WebSocketOptions
 {
-    KeepAliveInterval = TimeSpan.FromMinutes(10)
+    KeepAliveInterval = TimeSpan.FromMinutes(2)
 };
 
 // Configure the HTTP request pipeline.

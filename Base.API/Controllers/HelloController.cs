@@ -2,6 +2,7 @@ using Base.API.Common;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 namespace Base.API.Controllers;
 
@@ -88,7 +89,13 @@ public class HelloController : ControllerBase
     [HttpPost("activate-module")]
     public IActionResult ActivateRegisterFingerprint([FromQuery] string content, [FromQuery] string moduleId)
     {
-        _webSocketConnectionManager.SendMessageToModule(content, moduleId);
+        var messageSend = new MessageSend
+        {
+            Event = "RegisterFingerprint",
+            Data = content
+        };
+        var jsonPayload = JsonSerializer.Serialize(messageSend);
+        _webSocketConnectionManager.SendMessageToModule(jsonPayload, moduleId);
         return Ok();
     }
 

@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Duende.IdentityServer.Events;
+using System;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Json;
 
 namespace Base.API.Common;
 
@@ -22,7 +24,13 @@ public class WebSocketConnectionManager
                     break;
                 }
             }
-            var buffer = Encoding.UTF8.GetBytes(moduleId);
+            var messageSend = new MessageSend
+            {
+                Event = "GetModuleID",
+                Data = moduleId
+            };
+            var jsonPayload = JsonSerializer.Serialize(messageSend);
+            var buffer = Encoding.UTF8.GetBytes(jsonPayload);
             await socket.SendAsync(
                 new ArraySegment<byte>(buffer, 0, moduleId.Length),
                 WebSocketMessageType.Text,
