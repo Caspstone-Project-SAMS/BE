@@ -120,6 +120,12 @@ public class HelloController : ControllerBase
         return Ok(sockets);
     }
 
+    [HttpGet("alooeoweiofrjwof")]
+    public IActionResult GetGet()
+    {
+        return Ok();
+    }
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;
