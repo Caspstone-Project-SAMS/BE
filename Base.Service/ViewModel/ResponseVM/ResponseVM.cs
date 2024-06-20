@@ -123,6 +123,13 @@ public class AttendanceResponse
     public string? Avatar {  get; set; } = string.Empty;
 }
 
+public class RoomResponse
+{
+    public string RoomName { get; set; } = string.Empty;
+    public string? RoomDescription { get; set; }
+    public int RoomStatus { get; set; }
+}
+
 public abstract class Auditable
 {
     public string CreatedBy { get; set; } = "Undefined";
