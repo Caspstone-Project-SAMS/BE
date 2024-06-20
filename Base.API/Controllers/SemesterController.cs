@@ -1,6 +1,9 @@
 ﻿using AutoMapper;
 using Base.IService.IService;
+using Base.Repository.Entity;
 using Base.Service.IService;
+using Base.Service.Service;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -29,6 +32,31 @@ namespace Base.API.Controllers
             }
             var result = _mapper.Map<IEnumerable<SemesterResponse>>(semesters);
             return Ok(result);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateNewSemester(SemesterVM resource)
+        {
+            var result = await _semesterService.Create(resource);
+            if (result.IsSuccess)
+            {
+                return Ok("Create Semester Successfully");
+            }
+
+            return BadRequest(result);
+        }
+
+
+        [HttpPut]
+        public async Task<IActionResult> UpdateSemester(SemesterVM resource,int id)
+        {
+            var result = await _semesterService.Update(resource,id);
+            if (result.IsSuccess)
+            {
+                return Ok("Update Semester Successfully");
+            }
+
+            return BadRequest(result);
         }
     }
 }
