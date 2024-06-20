@@ -129,7 +129,7 @@ namespace Base.Service.Service
                 };
             }
 
-            if (updateSemester.SemesterCode != null)
+            if (updateSemester.SemesterCode != existedSemester.SemesterCode)
             {
                 var checkSemesterCode =  _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == updateSemester.SemesterCode).FirstOrDefault() is not null;
                 if (checkSemesterCode)
