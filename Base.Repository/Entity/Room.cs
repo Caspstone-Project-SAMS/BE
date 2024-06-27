@@ -13,4 +13,6 @@ public class Room : AuditableEntity
     public int RoomStatus { get; set; }
 
     public IEnumerable<Class> Classes { get; set; } = new List<Class>();
+
+    public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();
 }

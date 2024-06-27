@@ -1,4 +1,5 @@
-﻿using Base.Repository.Identity;
+﻿using Base.Repository.Common;
+using Base.Repository.Identity;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -8,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Entity;
 
-public class Employee
+public class Employee : AuditableEntity
 {
     [Key]
     public Guid EmployeeID { get; set; }

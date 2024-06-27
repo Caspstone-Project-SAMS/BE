@@ -10,4 +10,5 @@ public class AuditableEntity
 {
     public string CreatedBy { get; set; } = "Undefined";
     public DateTime CreatedAt { get; set; }
+    public bool IsDeleted { get; set; } = false;
 }

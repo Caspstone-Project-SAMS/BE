@@ -194,6 +194,11 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
                 .HasForeignKey<SubstituteTeaching>(s => s.ScheduleID)
                 .OnDelete(DeleteBehavior.NoAction);
 
+            entity.HasOne(s => s.Room)
+                .WithMany(r => r.Schedules)
+                .HasForeignKey(s => s.RoomID)
+                .OnDelete(DeleteBehavior.NoAction);
+
             entity.HasMany(s => s.Attendances)
                 .WithOne(a => a.Schedule)
                 .HasForeignKey(a => a.ScheduleID)

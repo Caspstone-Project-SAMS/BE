@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Base.Repository.Common;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Entity;
 
-public class NotificationType
+public class NotificationType : AuditableEntity
 {
     [Key]
     public int NotificationTypeID { get; set; }

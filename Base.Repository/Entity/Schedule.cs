@@ -17,6 +17,9 @@ public class Schedule : AuditableEntity
     public int ClassID { get; set; }
     public Class? Class { get; set; }
 
+    public int? RoomID { get; set; }
+    public Room? Room { get; set; }
+
     public SubstituteTeaching? SubstituteTeaching { get; set; }
 
     public IEnumerable<Attendance> Attendances { get; set; } = new List<Attendance>();
