@@ -117,7 +117,7 @@ namespace Base.Service.Service
             {
                 expressions.Add(Expression.Call(Expression.Property(pe, nameof(Student.StudentID)), containsMethod, Expression.Constant(studentID)));
             }
-           
+            expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Student.IsDeleted)), Expression.Constant(false)));
             Expression combined = null!;
 
             if (expressions.Count > 0)
@@ -152,7 +152,7 @@ namespace Base.Service.Service
             };
 
             return await _unitOfWork.StudentRepository
-            .Get(s => s.User != null && s.User.EnrolledClasses.Any(c => c.ClassID == classID), includes: includes)
+            .Get(s => s.User != null && s.User.EnrolledClasses.Any(c => c.ClassID == classID), includes: includes).Where(c => c.IsDeleted == false)
     .ToArrayAsync();
         }
     }

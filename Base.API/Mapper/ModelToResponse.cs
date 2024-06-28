@@ -19,6 +19,7 @@ namespace Base.API.Mapper
             CreateMap<Role, RoleResponseVM>();
             CreateMap<Semester, SemesterResponse>();
             CreateMap<Room, RoomResponse>();
+            CreateMap<Subject, SubjectResponse>();
 
             CreateMap<Schedule, ScheduleResponse>()
                 .ForMember(dest => dest.SlotNumber, opt => opt.MapFrom(src => src.Slot!.SlotNumber))

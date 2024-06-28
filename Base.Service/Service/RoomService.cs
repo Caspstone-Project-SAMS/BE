@@ -87,14 +87,64 @@ namespace Base.Service.Service
             }
         }
 
-        public Task<ServiceResponseVM> Delete(int id)
+        public async Task<ServiceResponseVM> Delete(int id)
         {
-            throw new NotImplementedException();
+            var existedRoom = await _unitOfWork.RoomRepository.Get(r => r.RoomID == id && !r.IsDeleted).FirstOrDefaultAsync();
+            if (existedRoom is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete room failed",
+                    Errors = new string[1] { "Room not found" }
+                };
+            }
+
+            existedRoom.IsDeleted = true;
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete room successfully"
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = false,
+                        Title = "Delete room failed",
+                        Errors = new string[1] { "Save changes failed" }
+                    };
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete room failed",
+                    Errors = new string[1] { ex.Message }
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete room failed",
+                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                };
+            }
         }
 
         public async Task<IEnumerable<Room>> GetAll()
         {
-            return await _unitOfWork.RoomRepository.FindAll().ToArrayAsync();
+            return await _unitOfWork.RoomRepository.Get(r => r.IsDeleted == false).ToArrayAsync();
         }
 
         public async Task<Room> GetByID(int id)
