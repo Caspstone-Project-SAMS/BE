@@ -49,5 +49,26 @@ namespace Base.API.Controllers
 
             return BadRequest(result);
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteRoom(int id)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _roomService.Delete(id);
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            return BadRequest(new
+            {
+                Title = "Delete room failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

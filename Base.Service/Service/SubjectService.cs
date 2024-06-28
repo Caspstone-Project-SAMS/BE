@@ -87,19 +87,69 @@ namespace Base.Service.Service
             }
         }
 
-        public Task<ServiceResponseVM> Delete(int id)
+        public async Task<ServiceResponseVM> Delete(int id)
         {
-            throw new NotImplementedException();
+            var existedSubject = await _unitOfWork.SubjectRepository.Get(r => r.SubjectID == id && !r.IsDeleted).FirstOrDefaultAsync();
+            if (existedSubject is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete subject failed",
+                    Errors = new string[1] { "Subject not found" }
+                };
+            }
+
+            existedSubject.IsDeleted = true;
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete subject successfully"
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = false,
+                        Title = "Delete subject failed",
+                        Errors = new string[1] { "Save changes failed" }
+                    };
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete subject failed",
+                    Errors = new string[1] { ex.Message }
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete subject failed",
+                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                };
+            }
         }
 
         public async Task<IEnumerable<Subject>> Get()
         {
-            return await _unitOfWork.SubjectRepository.FindAll().ToArrayAsync();
+            return await _unitOfWork.SubjectRepository.Get(s => s.IsDeleted == false).ToArrayAsync();
         }
 
         public async Task<Subject?> GetById(int id)
         {
-            return await _unitOfWork.SubjectRepository.Get(s => s.SubjectID == id).FirstOrDefaultAsync();
+            return await _unitOfWork.SubjectRepository.Get(s => s.SubjectID == id && s.IsDeleted == false).FirstOrDefaultAsync();
         }
 
         public async Task<ServiceResponseVM<Subject>> Update(SubjectVM updateEntity, int id)
@@ -115,7 +165,7 @@ namespace Base.Service.Service
                 };
             }
 
-            if (updateEntity.SubjectCode != updateEntity.SubjectCode)
+            if (updateEntity.SubjectCode != null||updateEntity.SubjectCode != updateEntity.SubjectCode)
             {
                 var checkSubjectCode = _unitOfWork.SubjectRepository.Get(s => s.SubjectCode == updateEntity.SubjectCode).FirstOrDefault() is not null;
                 if (checkSubjectCode)
@@ -128,7 +178,7 @@ namespace Base.Service.Service
                     };
                 }
                 
-                existedSubject.SubjectCode = updateEntity.SubjectCode;
+                existedSubject.SubjectCode = updateEntity.SubjectCode!;
                 existedSubject.SubjectName = updateEntity.SubjectName;
                 existedSubject.SubjectStatus = updateEntity.SubjectStatus;
 

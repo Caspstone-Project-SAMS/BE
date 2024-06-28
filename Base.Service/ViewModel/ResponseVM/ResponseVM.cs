@@ -125,11 +125,18 @@ public class AttendanceResponse
 
 public class RoomResponse
 {
+    public int RoomID { get; set; }
     public string RoomName { get; set; } = string.Empty;
     public string? RoomDescription { get; set; }
     public int RoomStatus { get; set; }
 }
 
+public class SubjectResponse
+{
+    public int SubjectID { get; set; }
+    public string SubjectCode { get; set; } = string.Empty;
+    public string SubjectName { get; set; } = string.Empty;
+}
 public abstract class Auditable
 {
     public string CreatedBy { get; set; } = "Undefined";
