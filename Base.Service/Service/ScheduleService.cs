@@ -31,17 +31,28 @@ namespace Base.Service.Service
                 throw new ArgumentException("Error when get quantity per page");
             }
 
-             
-            var schedules = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId && s.Class.SemesterID == semesterId)
+            var query = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId && s.Class.SemesterID == semesterId)
                 .Include(s => s.Class)
                 .Include(s => s.Class!.Semester)
                 .Include(s => s.Class!.Room)
                 .Include(s => s.Slot)
-                .Include(s => s.Class!.Subject)
-                //.Where(s => s.Class!.SemesterID == semesterId && s.Date.ToDateTime(TimeOnly.MinValue) >= startDate && s.Date.ToDateTime(TimeOnly.MinValue) <= endDate).AsNoTracking()
+                .Include(s => s.Class!.Subject).ToArrayAsync();
+
+            if (startDate.HasValue)
+            {
+                var startDateOnly = DateOnly.FromDateTime(startDate.Value);
+                query = query.Where(s => s.Date >= startDateOnly).ToArray();
+
+            }
+            if (endDate.HasValue)
+            {
+                var endDateOnly = DateOnly.FromDateTime(endDate.Value);
+                query = query.Where(s => s.Date <= endDateOnly).ToArray();
+            }
+
+            var schedules = query
                 .Skip((startPage - 1) * quantityResult)
-                .Take((endPage - startPage + 1) * quantityResult)
-                .ToArrayAsync();
+                .Take((endPage - startPage + 1) * quantityResult);
 
             return schedules;
         }
