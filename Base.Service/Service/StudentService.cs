@@ -64,10 +64,11 @@ namespace Base.Service.Service
 
                         User newUser = new User
                         {
-                            UserName = newEntity.StudentCode, 
+                            UserName = newEntity.StudentCode,
                             StudentID = studentId,
                             Email = newEntity.Email,
                             DisplayName = newEntity.DisplayName,
+                            RoleID = 3,
                             CreatedBy = newEntity.CreateBy!,
                             CreatedAt = ServerDateTime.GetVnDateTime(),
                         };
