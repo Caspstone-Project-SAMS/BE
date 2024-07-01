@@ -6,6 +6,7 @@ using Base.Service.Common;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -21,74 +22,128 @@ namespace Base.Service.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IValidateGet _validateGet;
-        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet)
+        private readonly UserManager<User> _userManager;
+        private readonly IMailService _mailService;
+        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet, UserManager<User> userManager, IMailService mailService)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
+            _userManager = userManager;
+            _mailService = mailService;
         }
-        public async Task<ServiceResponseVM<Student>> CreateStudent(StudentVM newEntity)
+        public async Task<ServiceResponseVM<List<Student>>> CreateStudent(List<StudentVM> newEntities)
         {
-            var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).SingleOrDefaultAsync();
-            if (existedStudent is not null)
+            List<Student> createdStudents = new List<Student>();
+            List<string> errors = new List<string>();
+
+            foreach (var newEntity in newEntities)
             {
-                return new ServiceResponseVM<Student>
+                var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).SingleOrDefaultAsync();
+                if (existedStudent is not null)
                 {
-                    IsSuccess = false,
-                    Title = "Create Student failed",
-                    Errors = new string[1] { "StudentCode is already taken" }
-                };
-
-            }
-
-            Student newStudent = new Student
-            {
-                StudentCode = newEntity.StudentCode,
-                CreatedBy = newEntity.CreateBy!,
-                CreatedAt = ServerDateTime.GetVnDateTime(),
-            };
-
-            try
-            {
-                await _unitOfWork.StudentRepository.AddAsync(newStudent);
-
-                var result = await _unitOfWork.SaveChangesAsync();
-
-                if (result)
-                {
-                    return new ServiceResponseVM<Student>
-                    {
-                        IsSuccess = true,
-                        Title = "Create Student successfully",
-                        Result = newStudent
-                    };
+                    errors.Add($"StudentCode {newEntity.StudentCode} is already taken");
+                    continue;
                 }
-                else
+
+                Student newStudent = new Student
                 {
-                    return new ServiceResponseVM<Student>
+                    StudentCode = newEntity.StudentCode,                 
+                    CreatedBy = newEntity.CreateBy!,
+                    CreatedAt = ServerDateTime.GetVnDateTime(),
+                };
+
+                try
+                {
+                    await _unitOfWork.StudentRepository.AddAsync(newStudent);
+
+                    var result = await _unitOfWork.SaveChangesAsync();
+
+                    if (result)
                     {
-                        IsSuccess = false,
-                        Title = "Create Student failed",
-                    };
+                        var studentId = newStudent.StudentID;
+
+                        User newUser = new User
+                        {
+                            UserName = newEntity.StudentCode, 
+                            StudentID = studentId,
+                            Email = newEntity.Email,
+                            DisplayName = newEntity.DisplayName,
+                            CreatedBy = newEntity.CreateBy!,
+                            CreatedAt = ServerDateTime.GetVnDateTime(),
+                        };
+                        var password = GenerateRandomPassword(6);
+                        var identityResult = await _userManager.CreateAsync(newUser, password);
+
+                        if (identityResult.Succeeded)
+                        {
+                            createdStudents.Add(newStudent);
+                            var emailMessage = new Message
+                            {
+                                To = newEntity.Email,
+                                Subject = "Your account has been created",
+                                Content = $@"<html>
+                                <body>
+                                <p>Dear Student,</p>
+                                <p>Your account has been created successfully. Here are your login details:</p>
+                                <ul>
+                                     <li><strong>Username:</strong> {newEntity.StudentCode}</li>
+                                      <li><strong>Password:</strong> {password}</li>
+                                </ul>
+                                <p>Best regards,<br>SAMS Team</p>
+                                </body>
+                                </html>"
+                            };
+                            await _mailService.SendMailAsync(emailMessage);
+                        }
+                        else
+                        {
+                            errors.Add($"Failed to create User for StudentCode {newEntity.StudentCode}");
+                        }
+                    }
+                    else
+                    {
+                        errors.Add($"Failed to save Student with StudentCode {newEntity.StudentCode}");
+                    }
+                }
+                catch (DbUpdateException ex)
+                {
+                    errors.Add($"DbUpdateException for StudentCode {newEntity.StudentCode}: {ex.Message}");
+                }
+                catch (OperationCanceledException ex)
+                {
+                    errors.Add($"OperationCanceledException for StudentCode {newEntity.StudentCode}: {ex.Message}");
                 }
             }
-            catch (DbUpdateException ex)
+
+            if (createdStudents.Count > 0)
             {
-                return new ServiceResponseVM<Student>
+                return new ServiceResponseVM<List<Student>>
                 {
-                    IsSuccess = false,
-                    Title = "Create student failed",
-                    Errors = new string[1] { ex.Message }
+                    IsSuccess = true,
+                    Title = "Create Students successfully",
+                    Result = createdStudents
                 };
             }
-            catch (OperationCanceledException ex)
+            else
             {
-                return new ServiceResponseVM<Student>
+                return new ServiceResponseVM<List<Student>>
                 {
                     IsSuccess = false,
-                    Title = "Create student failed",
-                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                    Title = "Create Students failed",
+                    Errors = errors.ToArray()
                 };
             }
+        }
+        private string GenerateRandomPassword(int length)
+        {
+            const string validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            StringBuilder result = new StringBuilder();
+            Random random = new Random();
+            for (int i = 0; i < length; i++)
+            {
+                result.Append(validChars[random.Next(validChars.Length)]);
+            }
+            return result.ToString();
         }
 
         public async Task<IEnumerable<Student>> GetStudents(int startPage, int endPage, int? quantity, Guid? studentID, string? studentCode)

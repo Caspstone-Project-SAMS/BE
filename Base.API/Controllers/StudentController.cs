@@ -243,9 +243,9 @@ namespace Base.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateNewStudent(StudentVM resource)
+        public async Task<IActionResult> CreateNewStudent(List<StudentVM> resources)
         {    
-                var result = await _studentService.CreateStudent(resource);
+                var result = await _studentService.CreateStudent(resources);
                 if (result.IsSuccess)
                 {
                     return Ok("Create Student Successfully");

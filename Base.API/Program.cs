@@ -26,6 +26,8 @@ using HttpMethod = System.Net.Http.HttpMethod;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
+using IMailService = Base.Service.Common.IMailService;
+using MailService = Base.Service.Common.MailService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,7 +58,7 @@ builder.Services.AddSingleton(cloudinary);
 #endregion
 
 #region Email Service
-var emailConfig = Configuration.GetSection("EmailConfig").Get<EmailConfig>();
+var emailConfig = Configuration.GetSection("EmailConfig").Get<Base.Service.Common.EmailConfig>();
 builder.Services.AddSingleton(emailConfig);
 builder.Services.AddTransient<IMailService, MailService>();
 #endregion
