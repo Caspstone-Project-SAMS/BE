@@ -33,6 +33,7 @@ public class User : IdentityUser<Guid>
 
     // A list of classes that the student participate in
     public IEnumerable<Class> EnrolledClasses { get; set; } = new List<Class>();
+    public IEnumerable<StudentClass> StudentClasses { get; set; } = new List<StudentClass>();
 
 
     // ==================================== For teacher======================= //

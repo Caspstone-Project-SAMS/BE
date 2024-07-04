@@ -29,6 +29,7 @@ public class Class : AuditableEntity
 
     // A class have many students
     public IEnumerable<User> Students { get; set; } = new List<User>();
+    public IEnumerable<StudentClass> StudentClasses { get; set; } = new List<StudentClass>();
 
 
     public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();

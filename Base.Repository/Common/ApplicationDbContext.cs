@@ -86,11 +86,12 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             // For student
             entity.HasMany(u => u.EnrolledClasses)
                 .WithMany(c => c.Students)
-                .UsingEntity("StudentClass",
-                    l => l.HasOne(typeof(Class)).WithMany().HasForeignKey("ClassID").OnDelete(DeleteBehavior.Cascade).HasPrincipalKey(nameof(Class.ClassID)),
-                    r => r.HasOne(typeof(User)).WithMany().HasForeignKey("StudentID").OnDelete(DeleteBehavior.Cascade).HasPrincipalKey(nameof(User.Id)),
+                .UsingEntity<StudentClass>("StudentClass",
+                    l => l.HasOne<Class>().WithMany(c => c.StudentClasses).HasForeignKey(e => e.ClassID).OnDelete(DeleteBehavior.Cascade),
+                    r => r.HasOne<User>().WithMany(c => c.StudentClasses).HasForeignKey(e => e.StudentID).OnDelete(DeleteBehavior.Cascade),
                     j =>
                     {
+                        j.Property<int>("AbsencePercentage").HasDefaultValue(0);
                         j.HasKey("StudentID", "ClassID");
                     }
                 );
