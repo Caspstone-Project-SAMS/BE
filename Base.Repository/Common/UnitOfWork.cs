@@ -1,4 +1,6 @@
 ﻿using Base.Repository.IRepository;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,13 +25,16 @@ public interface IUnitOfWork
     IRoomRepository RoomRepository { get; }
 
     ISubjectRepository SubjectRepository { get; }
+
+    ISlotRepository SlotRepository { get; }
     Task<bool> SaveChangesAsync();
 }
 
 public class UnitOfWork : IUnitOfWork, IDisposable
 {
     private readonly ApplicationDbContext _applicationDbContext;
-    
+    private readonly IDbContextTransaction _transaction;
+
     public IUserRepository UserRepository { get; private set; }
     public IRoleRepository RoleRepository { get; private set; }
 
@@ -47,7 +52,9 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public ISubjectRepository SubjectRepository { get; private set; }
 
-    public UnitOfWork(ApplicationDbContext applicationDbContext, 
+    public ISlotRepository SlotRepository { get; private set; }
+
+    public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
         IRoleRepository roleRepository,
         IScheduleRepository scheduleRepository,
@@ -56,7 +63,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         IClassRepository classRepository,
         IAttendanceRepository attendanceRepository,
         IRoomRepository roomRepository,
-        ISubjectRepository subjectRepository)
+        ISubjectRepository subjectRepository,
+        ISlotRepository slotRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -68,6 +76,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         AttendanceRepository = attendanceRepository;
         RoomRepository = roomRepository;
         SubjectRepository = subjectRepository;
+        SlotRepository = slotRepository;
     }
 
     public async Task<bool> SaveChangesAsync()
