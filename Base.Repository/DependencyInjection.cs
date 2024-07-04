@@ -2,6 +2,7 @@
 using Base.Repository.IRepository;
 using Base.Repository.Repository;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -30,7 +31,7 @@ public static class DependencyInjection
         services.AddTransient<IApplicationDbContext, ApplicationDbContext>();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
-        
+
 
         #region Repository
         services.AddScoped<IUserRepository, UserRepository>();
@@ -42,6 +43,7 @@ public static class DependencyInjection
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<IRoomRepository, RoomRepository>();
         services.AddScoped<ISubjectRepository, SubjectRepository>();
+        services.AddScoped<ISlotRepository, SlotRepository>();
         #endregion
 
         return services;

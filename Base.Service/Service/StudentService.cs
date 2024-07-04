@@ -31,9 +31,9 @@ namespace Base.Service.Service
             _userManager = userManager;
             _mailService = mailService;
         }
-        public async Task<ServiceResponseVM<List<Student>>> CreateStudent(List<StudentVM> newEntities)
+        public async Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities)
         {
-            List<Student> createdStudents = new List<Student>();
+            List<StudentVM> createdStudents = new List<StudentVM>();
             List<string> errors = new List<string>();
 
             foreach (var newEntity in newEntities)
@@ -45,9 +45,16 @@ namespace Base.Service.Service
                     continue;
                 }
 
+                var existingUserEmail = await _unitOfWork.UserRepository.Get(u => u.Email == newEntity.Email).SingleOrDefaultAsync();
+                if (existingUserEmail != null)
+                {
+                    errors.Add($"User with email {newEntity.Email} already exists.");
+                    continue;
+                }
+
                 Student newStudent = new Student
                 {
-                    StudentCode = newEntity.StudentCode,                 
+                    StudentCode = newEntity.StudentCode,
                     CreatedBy = newEntity.CreateBy!,
                     CreatedAt = ServerDateTime.GetVnDateTime(),
                 };
@@ -77,7 +84,7 @@ namespace Base.Service.Service
 
                         if (identityResult.Succeeded)
                         {
-                            createdStudents.Add(newStudent);
+                            createdStudents.Add(newEntity);
                             var emailMessage = new Message
                             {
                                 To = newEntity.Email,
@@ -116,28 +123,19 @@ namespace Base.Service.Service
                 }
             }
 
-            if (createdStudents.Count > 0)
+            return new ServiceResponseVM<List<StudentVM>>
             {
-                return new ServiceResponseVM<List<Student>>
-                {
-                    IsSuccess = true,
-                    Title = "Create Students successfully",
-                    Result = createdStudents
-                };
-            }
-            else
-            {
-                return new ServiceResponseVM<List<Student>>
-                {
-                    IsSuccess = false,
-                    Title = "Create Students failed",
-                    Errors = errors.ToArray()
-                };
-            }
+                IsSuccess = createdStudents.Count > 0,
+                Title = createdStudents.Count > 0 ? "Create Students Result" : "Create Students failed",
+                Result = createdStudents,
+                Errors = errors.ToArray()
+            };
         }
+
+
         private string GenerateRandomPassword(int length)
         {
-            const string validChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            const string validChars = "abcdefghijklmnopqrstuvwxyz0123456789";
             StringBuilder result = new StringBuilder();
             Random random = new Random();
             for (int i = 0; i < length; i++)
@@ -198,8 +196,14 @@ namespace Base.Service.Service
             .ToArrayAsync();
         }
 
-        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID)
+        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID, int startPage, int endPage, int? quantity)
         {
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                throw new ArgumentException("Error when get quantity per page");
+            }
             var includes = new Expression<Func<Student, object?>>[]
             {
                 s => s.FingerprintTemplates,
@@ -208,8 +212,68 @@ namespace Base.Service.Service
             };
 
             return await _unitOfWork.StudentRepository
-            .Get(s => s.User != null && s.User.EnrolledClasses.Any(c => c.ClassID == classID), includes: includes).Where(c => c.IsDeleted == false)
-    .ToArrayAsync();
+            .Get(s => s.User != null && s.User.EnrolledClasses
+            .Any(c => c.ClassID == classID), includes: includes)
+            .Where(c => c.IsDeleted == false)
+            .AsNoTracking()
+            .Skip((startPage - 1) * quantityResult)
+            .Take((endPage - startPage + 1) * quantityResult)
+            .ToArrayAsync();
+        }
+
+        public async Task<ServiceResponseVM> Delete(Guid id)
+        {
+            var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentID == id && !st.IsDeleted).FirstOrDefaultAsync();
+            if (existedStudent is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete student failed",
+                    Errors = new string[1] { "Student not found" }
+                };
+            }
+
+            existedStudent.IsDeleted = true;
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete student successfully"
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = false,
+                        Title = "Delete student failed",
+                        Errors = new string[1] { "Save changes failed" }
+                    };
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete student failed",
+                    Errors = new string[1] { ex.Message }
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete student failed",
+                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                };
+            }
         }
     }
 }
