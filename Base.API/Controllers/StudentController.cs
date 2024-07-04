@@ -13,6 +13,7 @@ using Base.Service.ViewModel.RequestVM;
 using Base.IService.IService;
 using AutoMapper;
 using Base.Service.ViewModel.ResponseVM;
+using Base.Service.Service;
 
 namespace Base.API.Controllers
 {
@@ -243,23 +244,23 @@ namespace Base.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateNewStudent(StudentVM resource)
+        public async Task<IActionResult> CreateNewStudent(List<StudentVM> resources)
         {    
-                var result = await _studentService.CreateStudent(resource);
+                var result = await _studentService.CreateStudent(resources);
                 if (result.IsSuccess)
                 {
-                    return Ok("Create Student Successfully");
+                    return Ok(result);
                 }
 
                 return BadRequest(result);
         }
 
         [HttpGet("get-students-by-classId")]
-        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] bool isModule = false)
+        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] bool isModule = false)
         {
             if (ModelState.IsValid)
             {
-                var students = await _studentService.GetStudentsByClassID(classID);
+                var students = await _studentService.GetStudentsByClassID(classID,startPage,endPage,quantity);
                 if (isModule)
                 {
                     return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
@@ -270,6 +271,26 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Get Students information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteStudent(Guid id)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _studentService.Delete(id);
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                return BadRequest(result);
+            }
+
+            return BadRequest(new
+            {
+                Title = "Delete student failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }

@@ -7,13 +7,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Base.IService.IService
+namespace Base.Service.IService
 {
-    public interface ISemesterService
+    public interface ISlotService
     {
-        Task<IEnumerable<Semester>> GetSemester();
-        Task<ServiceResponseVM<Semester>> Create(SemesterVM newEntity);
+        Task<IEnumerable<Slot>> Get();
+        Task<ServiceResponseVM<Slot>> Create(SlotVM newEntity);
         Task<ServiceResponseVM> Delete(int id);
-        Task<ServiceResponseVM<Semester>> Update(SemesterVM updateSemester, int id);
+        Task<ServiceResponseVM<Slot>> Update(SlotVM updateEntity, int id);
     }
 }

@@ -9,8 +9,8 @@ public interface ICheckQuantityTaken
 internal class CheckQuantityTaken : ICheckQuantityTaken
 {
     private static readonly int MAX_QUANTITY = 50;
-    private static readonly int MIN_QUANTITY = 10;
-    private static readonly int QUANTITY_PER_PAGE = 20;
+    private static readonly int MIN_QUANTITY = 5;
+    private static readonly int QUANTITY_PER_PAGE = 5;
     public int CheckQuantity(int? quantity)
     {
         if(quantity is null)

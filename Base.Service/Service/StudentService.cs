@@ -6,6 +6,7 @@ using Base.Service.Common;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -21,74 +22,127 @@ namespace Base.Service.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IValidateGet _validateGet;
-        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet)
+        private readonly UserManager<User> _userManager;
+        private readonly IMailService _mailService;
+        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet, UserManager<User> userManager, IMailService mailService)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
+            _userManager = userManager;
+            _mailService = mailService;
         }
-        public async Task<ServiceResponseVM<Student>> CreateStudent(StudentVM newEntity)
+        public async Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities)
         {
-            var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).SingleOrDefaultAsync();
-            if (existedStudent is not null)
+            List<StudentVM> createdStudents = new List<StudentVM>();
+            List<string> errors = new List<string>();
+
+            foreach (var newEntity in newEntities)
             {
-                return new ServiceResponseVM<Student>
+                var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).SingleOrDefaultAsync();
+                if (existedStudent is not null)
                 {
-                    IsSuccess = false,
-                    Title = "Create Student failed",
-                    Errors = new string[1] { "StudentCode is already taken" }
+                    errors.Add($"StudentCode {newEntity.StudentCode} is already taken");
+                    continue;
+                }
+
+                var existingUserEmail = await _unitOfWork.UserRepository.Get(u => u.Email == newEntity.Email).SingleOrDefaultAsync();
+                if (existingUserEmail != null)
+                {
+                    errors.Add($"User with email {newEntity.Email} already exists.");
+                    continue;
+                }
+
+                Student newStudent = new Student
+                {
+                    StudentCode = newEntity.StudentCode,
+                    CreatedBy = newEntity.CreateBy!,
+                    CreatedAt = ServerDateTime.GetVnDateTime(),
                 };
 
+                try
+                {
+                    await _unitOfWork.StudentRepository.AddAsync(newStudent);
+
+                    var result = await _unitOfWork.SaveChangesAsync();
+
+                    if (result)
+                    {
+                        var studentId = newStudent.StudentID;
+
+                        User newUser = new User
+                        {
+                            UserName = newEntity.StudentCode,
+                            StudentID = studentId,
+                            Email = newEntity.Email,
+                            DisplayName = newEntity.DisplayName,
+                            RoleID = 3,
+                            CreatedBy = newEntity.CreateBy!,
+                            CreatedAt = ServerDateTime.GetVnDateTime(),
+                        };
+                        var password = GenerateRandomPassword(6);
+                        var identityResult = await _userManager.CreateAsync(newUser, password);
+
+                        if (identityResult.Succeeded)
+                        {
+                            createdStudents.Add(newEntity);
+                            var emailMessage = new Message
+                            {
+                                To = newEntity.Email,
+                                Subject = "Your account has been created",
+                                Content = $@"<html>
+                                <body>
+                                <p>Dear Student,</p>
+                                <p>Your account has been created successfully. Here are your login details:</p>
+                                <ul>
+                                     <li><strong>Username:</strong> {newEntity.StudentCode}</li>
+                                      <li><strong>Password:</strong> {password}</li>
+                                </ul>
+                                <p>Best regards,<br>SAMS Team</p>
+                                </body>
+                                </html>"
+                            };
+                            await _mailService.SendMailAsync(emailMessage);
+                        }
+                        else
+                        {
+                            errors.Add($"Failed to create User for StudentCode {newEntity.StudentCode}");
+                        }
+                    }
+                    else
+                    {
+                        errors.Add($"Failed to save Student with StudentCode {newEntity.StudentCode}");
+                    }
+                }
+                catch (DbUpdateException ex)
+                {
+                    errors.Add($"DbUpdateException for StudentCode {newEntity.StudentCode}: {ex.Message}");
+                }
+                catch (OperationCanceledException ex)
+                {
+                    errors.Add($"OperationCanceledException for StudentCode {newEntity.StudentCode}: {ex.Message}");
+                }
             }
 
-            Student newStudent = new Student
+            return new ServiceResponseVM<List<StudentVM>>
             {
-                StudentCode = newEntity.StudentCode,
-                CreatedBy = newEntity.CreateBy!,
-                CreatedAt = ServerDateTime.GetVnDateTime(),
+                IsSuccess = createdStudents.Count > 0,
+                Title = createdStudents.Count > 0 ? "Create Students Result" : "Create Students failed",
+                Result = createdStudents,
+                Errors = errors.ToArray()
             };
+        }
 
-            try
-            {
-                await _unitOfWork.StudentRepository.AddAsync(newStudent);
 
-                var result = await _unitOfWork.SaveChangesAsync();
-
-                if (result)
-                {
-                    return new ServiceResponseVM<Student>
-                    {
-                        IsSuccess = true,
-                        Title = "Create Student successfully",
-                        Result = newStudent
-                    };
-                }
-                else
-                {
-                    return new ServiceResponseVM<Student>
-                    {
-                        IsSuccess = false,
-                        Title = "Create Student failed",
-                    };
-                }
-            }
-            catch (DbUpdateException ex)
+        private string GenerateRandomPassword(int length)
+        {
+            const string validChars = "abcdefghijklmnopqrstuvwxyz0123456789";
+            StringBuilder result = new StringBuilder();
+            Random random = new Random();
+            for (int i = 0; i < length; i++)
             {
-                return new ServiceResponseVM<Student>
-                {
-                    IsSuccess = false,
-                    Title = "Create student failed",
-                    Errors = new string[1] { ex.Message }
-                };
+                result.Append(validChars[random.Next(validChars.Length)]);
             }
-            catch (OperationCanceledException ex)
-            {
-                return new ServiceResponseVM<Student>
-                {
-                    IsSuccess = false,
-                    Title = "Create student failed",
-                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
-                };
-            }
+            return result.ToString();
         }
 
         public async Task<IEnumerable<Student>> GetStudents(int startPage, int endPage, int? quantity, Guid? studentID, string? studentCode)
@@ -142,8 +196,14 @@ namespace Base.Service.Service
             .ToArrayAsync();
         }
 
-        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID)
+        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID, int startPage, int endPage, int? quantity)
         {
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                throw new ArgumentException("Error when get quantity per page");
+            }
             var includes = new Expression<Func<Student, object?>>[]
             {
                 s => s.FingerprintTemplates,
@@ -152,8 +212,68 @@ namespace Base.Service.Service
             };
 
             return await _unitOfWork.StudentRepository
-            .Get(s => s.User != null && s.User.EnrolledClasses.Any(c => c.ClassID == classID), includes: includes).Where(c => c.IsDeleted == false)
-    .ToArrayAsync();
+            .Get(s => s.User != null && s.User.EnrolledClasses
+            .Any(c => c.ClassID == classID), includes: includes)
+            .Where(c => c.IsDeleted == false)
+            .AsNoTracking()
+            .Skip((startPage - 1) * quantityResult)
+            .Take((endPage - startPage + 1) * quantityResult)
+            .ToArrayAsync();
+        }
+
+        public async Task<ServiceResponseVM> Delete(Guid id)
+        {
+            var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentID == id && !st.IsDeleted).FirstOrDefaultAsync();
+            if (existedStudent is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete student failed",
+                    Errors = new string[1] { "Student not found" }
+                };
+            }
+
+            existedStudent.IsDeleted = true;
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete student successfully"
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = false,
+                        Title = "Delete student failed",
+                        Errors = new string[1] { "Save changes failed" }
+                    };
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete student failed",
+                    Errors = new string[1] { ex.Message }
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete student failed",
+                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                };
+            }
         }
     }
 }
