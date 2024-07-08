@@ -20,6 +20,7 @@ namespace Base.API.Mapper
             CreateMap<Semester, SemesterResponse>();
             CreateMap<Room, RoomResponse>();
             CreateMap<Subject, SubjectResponse>();
+            CreateMap<Slot, SlotResponse>();
 
             CreateMap<Schedule, ScheduleResponse>()
                 .ForMember(dest => dest.SlotNumber, opt => opt.MapFrom(src => src.Slot!.SlotNumber))
@@ -34,6 +35,7 @@ namespace Base.API.Mapper
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
                  .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id))
+                 .ForMember(dest => dest.AbsencePercentage, opt => opt.MapFrom(src => src.User!.StudentClasses.FirstOrDefault(sc => sc.AbsencePercentage >=0)!.AbsencePercentage))
                  .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.IsAuthenticated()));
 
             CreateMap<Student, StudentModuleResponse>()

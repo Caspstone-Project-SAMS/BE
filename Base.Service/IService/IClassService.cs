@@ -11,5 +11,6 @@ namespace Base.Service.IService
     public interface IClassService
     {
         Task<Class> GetClassDetail(int scheduleID);
+        Task<ServiceResponseVM<Class>> Add();
     }
 }

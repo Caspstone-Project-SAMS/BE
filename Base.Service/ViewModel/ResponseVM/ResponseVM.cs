@@ -101,6 +101,7 @@ public class StudentResponse
     public Guid? UserID { get; set; }
     public string? Avatar { get; set; }
     public string? StudentCode { get; set; }
+    public int AbsencePercentage { get; set; }
     public bool IsAuthenticated { get; set; } = false;
 }
 public class StudentModuleResponse
@@ -136,6 +137,16 @@ public class SubjectResponse
     public int SubjectID { get; set; }
     public string SubjectCode { get; set; } = string.Empty;
     public string SubjectName { get; set; } = string.Empty;
+}
+
+public class SlotResponse
+{
+    public int SlotID { get; set; }
+    public int SlotNumber { get; set; }
+    public int Status { get; set; }
+    public int Order { get; set; }
+    public TimeOnly StartTime { get; set; }
+    public TimeOnly Endtime { get; set; }
 }
 public abstract class Auditable
 {

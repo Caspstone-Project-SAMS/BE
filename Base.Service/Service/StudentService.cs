@@ -95,7 +95,7 @@ namespace Base.Service.Service
                                 <p>Your account has been created successfully. Here are your login details:</p>
                                 <ul>
                                      <li><strong>Username:</strong> {newEntity.StudentCode}</li>
-                                      <li><strong>Password:</strong> {password}</li>
+                                     <li><strong>Password:</strong> {password}</li>
                                 </ul>
                                 <p>Best regards,<br>SAMS Team</p>
                                 </body>
@@ -208,7 +208,9 @@ namespace Base.Service.Service
             {
                 s => s.FingerprintTemplates,
                 s => s.User,
-                s => s.User!.EnrolledClasses
+                s => s.User!.EnrolledClasses,
+                s => s.User!.StudentClasses
+                
             };
 
             return await _unitOfWork.StudentRepository
