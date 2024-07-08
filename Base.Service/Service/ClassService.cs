@@ -20,6 +20,12 @@ namespace Base.Service.Service
         {
             _unitOfWork = unitOfWork;
         }
+
+        public Task<ServiceResponseVM<Class>> Add()
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task<Class> GetClassDetail(int scheduleID)
         {
             var includes = new Expression<Func<Class, object?>>[]

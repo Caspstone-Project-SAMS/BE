@@ -165,7 +165,7 @@ namespace Base.Service.Service
                 };
             }
 
-            if (updateEntity.SubjectCode != null||updateEntity.SubjectCode != updateEntity.SubjectCode)
+            if (updateEntity.SubjectCode != null||updateEntity.SubjectCode != existedSubject.SubjectCode)
             {
                 var checkSubjectCode = _unitOfWork.SubjectRepository.Get(s => s.SubjectCode == updateEntity.SubjectCode).FirstOrDefault() is not null;
                 if (checkSubjectCode)
