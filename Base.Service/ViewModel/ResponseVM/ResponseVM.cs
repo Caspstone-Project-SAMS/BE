@@ -46,7 +46,7 @@ public class UserInformationResponseVM : Auditable
     public bool TwoFactorEnabled { get; set; }
     public DateTimeOffset? LockoutEnd { get; set; }
     public bool LockoutEnabled { get; set; }
-    public string? FilePath { get; set; }
+    public string? Avatar { get; set; }
     public string? DisplayName { get; set; }
     public RoleResponseVM Role { get; set; } = new RoleResponseVM();
 }
