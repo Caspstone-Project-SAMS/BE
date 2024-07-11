@@ -277,5 +277,75 @@ namespace Base.Service.Service
                 };
             }
         }
+
+        public async Task<ServiceResponseVM<List<StudentClassVM>>> AddStudentToClass(List<StudentClassVM> newEntities)
+        {
+            List<StudentClassVM> responseList = new List<StudentClassVM>();
+            List<string> errors = new List<string>();
+            foreach(var newEntity in newEntities)
+            {
+                try
+                {
+                    var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode), includes: u => u.User).SingleOrDefaultAsync();
+                    if (existedStudent is null)
+                    {
+                        errors.Add($"Student with code {newEntity.StudentCode} not existed");
+                        continue;
+                    }
+
+                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode)).SingleOrDefaultAsync();
+                    if (existedClass is null)
+                    {
+                        errors.Add($"Class with code {newEntity.ClassCode} not existed");
+                        continue;
+                    }
+
+                    StudentClass newStudentClass = new StudentClass()
+                    {
+                        StudentID = existedStudent.User!.Id,
+                        ClassID = existedClass.ClassID,
+                        AbsencePercentage = 0,
+                        CreatedBy = "",
+                        CreatedAt = ServerDateTime.GetVnDateTime(),
+                        IsDeleted = false
+                    };
+                    
+                    await _unitOfWork.StudentClassRepository.AddAsync(newStudentClass);
+                    responseList.Add(newEntity);
+                }
+                catch (DbUpdateException ex)
+                {
+                    errors.Add($"DbUpdateException for ClassCode {newEntity.ClassCode} and StudentCode {newEntity.StudentCode}: {ex.Message}");
+                    continue;
+                }
+                catch (OperationCanceledException ex)
+                {
+                    errors.Add($"OperationCanceledException for ClassCode {newEntity.ClassCode} and StudentCode {newEntity.StudentCode}: {ex.Message}");
+                    continue;
+                }
+            }
+            var result = await _unitOfWork.SaveChangesAsync();
+
+            if (result)
+            {
+                return new ServiceResponseVM<List<StudentClassVM>>
+                {
+                    IsSuccess = errors.Count == 0,
+                    Title = errors.Count == 0 ? "Add new student to class successfully" : "Partial success in adding new students to class",
+                    Result = responseList,
+                    Errors = errors.ToArray()
+                };
+            }
+            else
+            {
+                return new ServiceResponseVM<List<StudentClassVM>>
+                {
+                    IsSuccess = false,
+                    Title = "Add new student to class failed",
+                    Errors = errors.ToArray()
+                };
+            }
+
+        }
     }
 }

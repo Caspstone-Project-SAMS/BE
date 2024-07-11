@@ -15,5 +15,6 @@ namespace Base.IService.IService
         Task<IEnumerable<Student>> GetStudentsByClassID(int classID, int startPage, int endPage, int? quantity);
         Task<ServiceResponseVM> Delete(Guid id);
         Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities);
+        Task<ServiceResponseVM<List<StudentClassVM>>> AddStudentToClass(List<StudentClassVM> newEntities);
     }
 }

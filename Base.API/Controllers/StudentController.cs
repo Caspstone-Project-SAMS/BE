@@ -14,6 +14,7 @@ using Base.IService.IService;
 using AutoMapper;
 using Base.Service.ViewModel.ResponseVM;
 using Base.Service.Service;
+using Microsoft.Extensions.Hosting.Internal;
 
 namespace Base.API.Controllers
 {
@@ -21,17 +22,19 @@ namespace Base.API.Controllers
     [ApiController]
     public class StudentController : ControllerBase
     {
-        const string SPREADSHEET_ID = "1euZpP6axqFteYbSY6qFhiWoYCobtMQ4qX1QO_OL9u2w";
-        const string SHEET_NAME = "Student";
-        SpreadsheetsResource.ValuesResource _googleSheetValues;
+        //const string SPREADSHEET_ID = "1euZpP6axqFteYbSY6qFhiWoYCobtMQ4qX1QO_OL9u2w";
+        //const string SHEET_NAME = "Student";
+        //SpreadsheetsResource.ValuesResource _googleSheetValues;
         private readonly IStudentService _studentService;
         private readonly IMapper _mapper;
+        private readonly IWebHostEnvironment _hostingEnvironment;
 
-        public StudentController(GoogleSheetsHelper googleSheetsHelper, IStudentService studentService, IMapper mapper)
+        public StudentController(IStudentService studentService, IMapper mapper, IWebHostEnvironment hostingEnvironment)
         {
-            _googleSheetValues = googleSheetsHelper.Service.Spreadsheets.Values;
+            //_googleSheetValues = googleSheetsHelper.Service.Spreadsheets.Values;
             _studentService = studentService;
             _mapper = mapper;
+            _hostingEnvironment = hostingEnvironment;
         }
         //public class Student
         //{
@@ -295,6 +298,37 @@ namespace Base.API.Controllers
             });
         }
 
+        [HttpPost("add-students-to-class")]
+        public async Task<IActionResult> AddStudentsToClass([FromBody] List<StudentClassVM> newEntities)
+        {
+            if (newEntities == null || newEntities.Count == 0)
+            {
+                return BadRequest("No student-class entities provided.");
+            }
 
+            var result = await _studentService.AddStudentToClass(newEntities);
+
+            if (result.IsSuccess)
+            {
+                return Ok(result);
+            }
+            else
+            {
+                return BadRequest(result);
+            }
+        }
+        [HttpGet("download-excel-template")]
+        public IActionResult DownloadExcel()
+        {
+            var filePath = Path.Combine(_hostingEnvironment.WebRootPath, "template_student.xlsx");
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_student.xlsx");
+        }
     }
 }
