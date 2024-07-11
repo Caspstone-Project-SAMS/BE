@@ -62,7 +62,7 @@ namespace Base.Service.Service
                         ScheduleStatus = 1,
                         SlotID = existedSlot.SlotID,
                         ClassID = existedClass.ClassID,
-                        CreatedBy = newEntity.CreatedBy,
+                        CreatedBy = existedClass.LecturerID.ToString(),
                         CreatedAt = ServerDateTime.GetVnDateTime(),
                         IsDeleted = false
                     };

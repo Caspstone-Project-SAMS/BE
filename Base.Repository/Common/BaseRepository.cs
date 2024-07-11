@@ -14,7 +14,9 @@ public interface IBaseRepository<T, TKey> where T : class
     IQueryable<T> FindAll();
     IQueryable<T> Get(Expression<Func<T, bool>> where);
     IQueryable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object?>>[] includes);
+    IQueryable<T> Get(string entityTypeName, Expression<Func<T, bool>> where);
     Task AddAsync(T entity);
+    Task AddAsync(T entity, string entityTypeName);
     Task AddRangeAsync(IEnumerable<T> entities);
     void Update(T entity);
     void Remove(T entity);
@@ -45,6 +47,11 @@ public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
         await dbSet.AddRangeAsync(entities);
     }
 
+    public virtual async Task AddAsync(T entity, string entityTypeName)
+    {
+        await _applicationDbContext.Set<T>(entityTypeName).AddAsync(entity);
+    }
+
     public virtual IQueryable<T> FindAll()
     {
         return dbSet.AsNoTracking();
@@ -68,6 +75,11 @@ public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
             result = result.Include(include);
         }
         return result;
+    }
+
+    public virtual IQueryable<T> Get( string entityTypeName,Expression<Func<T, bool>> where)
+    {     
+        return _applicationDbContext.Set<T>(entityTypeName).Where(where);
     }
 
     public virtual void Remove(T entity)

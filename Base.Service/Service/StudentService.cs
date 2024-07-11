@@ -286,6 +286,7 @@ namespace Base.Service.Service
             {
                 try
                 {
+                    
                     var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode), includes: u => u.User).SingleOrDefaultAsync();
                     if (existedStudent is null)
                     {
@@ -300,12 +301,19 @@ namespace Base.Service.Service
                         continue;
                     }
 
+                    var check = await _unitOfWork.StudentClassRepository.Get("StudentClass",s => s.StudentID.Equals(existedStudent.User!.Id) && s.ClassID == existedClass.ClassID).SingleOrDefaultAsync();
+                    if (check is not null)
+                    {
+                        errors.Add($"Student with code {newEntity.StudentCode} already existed in Class {newEntity.ClassCode}");
+                        continue;
+                    }
+
                     StudentClass newStudentClass = new StudentClass()
                     {
                         StudentID = existedStudent.User!.Id,
                         ClassID = existedClass.ClassID,
                         AbsencePercentage = 0,
-                        CreatedBy = "",
+                        CreatedBy = existedClass.LecturerID.ToString(),
                         CreatedAt = ServerDateTime.GetVnDateTime(),
                         IsDeleted = false
                     };
