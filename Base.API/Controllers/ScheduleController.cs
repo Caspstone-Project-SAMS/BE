@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using Base.Repository.Entity;
 using Base.Service.IService;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using DocumentFormat.OpenXml.Wordprocessing;
 using Microsoft.AspNetCore.Http;
@@ -38,6 +40,19 @@ namespace Base.API.Controllers
                 return Ok(result);
             }
             return BadRequest();
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateSchedules(List<ScheduleVM> resources)
+        {
+            var response = await _scheduleService.Create(resources);
+            if(response.IsSuccess)
+            {
+                return Ok(response);
+            }
+
+            return BadRequest(response);
+
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Base.Repository.Entity;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using System;
 using System.Collections.Generic;
@@ -11,6 +12,6 @@ namespace Base.Service.IService
     public interface IClassService
     {
         Task<Class> GetClassDetail(int scheduleID);
-        Task<ServiceResponseVM<Class>> Add();
+        Task<ServiceResponseVM<Class>> Create(ClassVM newEntity);
     }
 }

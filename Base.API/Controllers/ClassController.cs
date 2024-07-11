@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Base.Service.IService;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -27,6 +28,17 @@ namespace Base.API.Controllers
                 return NotFound();
             }
             return Ok(_mapper.Map<ClassResponse>(classDetail));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateClass(ClassVM resource)
+        {
+            var response = await _classService.Create(resource);
+            if (response.IsSuccess)
+            {
+                return Ok(response.Title);
+            }
+            return BadRequest(response);
         }
     }
 }
