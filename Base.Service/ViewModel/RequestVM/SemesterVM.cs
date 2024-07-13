@@ -12,6 +12,5 @@ namespace Base.Service.ViewModel.RequestVM
         public int SemesterStatus { get; set; }
         public DateOnly StartDate { get; set; }
         public DateOnly EndDate { get; set; }
-        public string CreatedBy { get; set; } = "Undefined";
     }
 }

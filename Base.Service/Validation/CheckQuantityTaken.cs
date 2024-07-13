@@ -13,7 +13,7 @@ internal class CheckQuantityTaken : ICheckQuantityTaken
     private static readonly int QUANTITY_PER_PAGE = 10;
     public int CheckQuantity(int? quantity)
     {
-        if(quantity is null)
+        if(quantity is null || quantity == 0)
         {
             return QUANTITY_PER_PAGE;
         }
