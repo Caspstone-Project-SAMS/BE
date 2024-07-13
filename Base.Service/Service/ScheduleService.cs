@@ -5,6 +5,7 @@ using Base.Service.IService;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using Google.Api.Gax;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -20,10 +21,12 @@ namespace Base.Service.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IValidateGet _validateGet;
-        public ScheduleService(IUnitOfWork unitOfWork, IValidateGet validateGet)
+        private readonly ICurrentUserService _currentUserService;
+        public ScheduleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
+            _currentUserService = currentUserService;
         }
 
         public async Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities)
@@ -34,26 +37,34 @@ namespace Base.Service.Service
             {
                 try
                 {
-                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode)).SingleOrDefaultAsync();
+                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode) && !c.IsDeleted).SingleOrDefaultAsync();
                     if (existedClass is null)
                     {
                         errors.Add($"Class with Class Code: {newEntity.ClassCode} not existed");
                         continue;
                     }
 
-                    var existedSlot = await _unitOfWork.SlotRepository.Get(s => s.SlotNumber == newEntity.SlotNumber).SingleOrDefaultAsync();
+                    var existedSlot = await _unitOfWork.SlotRepository.Get(s => s.SlotNumber == newEntity.SlotNumber && !s.IsDeleted).SingleOrDefaultAsync();
                     if( existedSlot is null)
                     {
                         errors.Add($"Slot {newEntity.SlotNumber} not existed");
                         continue;
                     }
 
-                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID).SingleOrDefaultAsync();
+                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID == existedClass.ClassID && !s.IsDeleted).SingleOrDefaultAsync();
                     if(existedSchedule is not null)
                     {
-                        errors.Add($"Class with Class Code: {newEntity.ClassCode} can not create schedule because on {newEntity.Date}, in slot {newEntity.SlotNumber} is already occupied by another class");
+                        errors.Add($"A schedule already exists for class {newEntity.ClassCode} at slot {newEntity.SlotNumber} on date {newEntity.Date}");
                         continue;
                     }
+
+                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID && !s.IsDeleted).ToListAsync();
+                    if( conflictingSchedule is not null)
+                    {
+                        errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date}'.");
+                        continue;
+                    }
+
                     DayOfWeek dayOfWeek = newEntity.Date.DayOfWeek;
                     Schedule newSchedule = new Schedule()
                     {
@@ -62,7 +73,7 @@ namespace Base.Service.Service
                         ScheduleStatus = 1,
                         SlotID = existedSlot.SlotID,
                         ClassID = existedClass.ClassID,
-                        CreatedBy = existedClass.LecturerID.ToString(),
+                        CreatedBy = _currentUserService.UserId,
                         CreatedAt = ServerDateTime.GetVnDateTime(),
                         IsDeleted = false
                     };

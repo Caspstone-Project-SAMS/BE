@@ -45,13 +45,20 @@ namespace Base.API.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateSchedules(List<ScheduleVM> resources)
         {
-            var response = await _scheduleService.Create(resources);
-            if(response.IsSuccess)
+            try
             {
-                return Ok(response);
-            }
+                var response = await _scheduleService.Create(resources);
+                if (response.IsSuccess)
+                {
+                    return Ok(response);
+                }
 
-            return BadRequest(response);
+                return BadRequest(response);
+            }
+            catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
 
         }
     }

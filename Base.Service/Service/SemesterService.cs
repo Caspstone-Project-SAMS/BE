@@ -18,9 +18,11 @@ namespace Base.Service.Service
     public class SemesterService : ISemesterService
     {
         private readonly IUnitOfWork _unitOfWork;
-        public SemesterService(IUnitOfWork unitOfWork)
+        private readonly ICurrentUserService _currentUserService;
+        public SemesterService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
+            _currentUserService = currentUserService;
         }
 
         public async Task<ServiceResponseVM<Semester>> Create(SemesterVM newEntity)
@@ -58,7 +60,7 @@ namespace Base.Service.Service
                 SemesterStatus = newEntity.SemesterStatus,
                 StartDate = newEntity.StartDate,
                 EndDate = newEntity.EndDate,
-                CreatedBy = newEntity.CreatedBy,
+                CreatedBy = _currentUserService.UserId,
                 CreatedAt = ServerDateTime.GetVnDateTime(),
             };
 

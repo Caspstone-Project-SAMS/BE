@@ -12,6 +12,5 @@ namespace Base.Service.ViewModel.RequestVM
         public string RoomName { get; set; } = string.Empty;
         public string? RoomDescription { get; set; }
         public int RoomStatus { get; set; }
-        public string CreatedBy { get; set; } = "Undefined";
     }
 }

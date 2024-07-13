@@ -13,8 +13,6 @@ namespace Base.Service.ViewModel.RequestVM
         public string StudentCode { get; set; } = string.Empty;
         public string? DisplayName { get; set; } = "Undefined";
         public string? Email { get; set; }
-        [Required]
-        public string? CreateBy { get; set; }
         //public string normalizedemail { get; set; } = string.empty;
         //public bool emailconfirmed { get; set; } = false;
         //[required]

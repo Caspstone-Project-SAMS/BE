@@ -16,9 +16,11 @@ namespace Base.Service.Service
     public class RoomService : IRoomService
     {
         private readonly IUnitOfWork _unitOfWork;
-        public RoomService(IUnitOfWork unitOfWork)
+        private readonly ICurrentUserService _currentUserService;
+        public RoomService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
+            _currentUserService = currentUserService;
         }
         public async Task<ServiceResponseVM<Room>> Create(RoomVM newEntity)
         {
@@ -39,7 +41,7 @@ namespace Base.Service.Service
                 RoomName = newEntity.RoomName,
                 RoomDescription = newEntity.RoomDescription,
                 RoomStatus = newEntity.RoomStatus,
-                CreatedBy = newEntity.CreatedBy,
+                CreatedBy = _currentUserService.UserId,
                 CreatedAt = ServerDateTime.GetVnDateTime(),
             };
 

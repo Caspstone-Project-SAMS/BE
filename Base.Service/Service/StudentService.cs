@@ -24,12 +24,14 @@ namespace Base.Service.Service
         private readonly IValidateGet _validateGet;
         private readonly UserManager<User> _userManager;
         private readonly IMailService _mailService;
-        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet, UserManager<User> userManager, IMailService mailService)
+        private readonly ICurrentUserService _currentUserService;
+        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet, UserManager<User> userManager, IMailService mailService, ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
             _userManager = userManager;
             _mailService = mailService;
+            _currentUserService = currentUserService;
         }
         public async Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities)
         {
@@ -55,7 +57,7 @@ namespace Base.Service.Service
                 Student newStudent = new Student
                 {
                     StudentCode = newEntity.StudentCode,
-                    CreatedBy = newEntity.CreateBy!,
+                    CreatedBy = _currentUserService.UserId,
                     CreatedAt = ServerDateTime.GetVnDateTime(),
                 };
 
@@ -76,7 +78,7 @@ namespace Base.Service.Service
                             Email = newEntity.Email,
                             DisplayName = newEntity.DisplayName,
                             RoleID = 3,
-                            CreatedBy = newEntity.CreateBy!,
+                            CreatedBy = _currentUserService.UserId,
                             CreatedAt = ServerDateTime.GetVnDateTime(),
                         };
                         var password = GenerateRandomPassword(6);
@@ -208,19 +210,19 @@ namespace Base.Service.Service
             {
                 s => s.FingerprintTemplates,
                 s => s.User,
-                s => s.User!.EnrolledClasses,
                 s => s.User!.StudentClasses
                 
             };
 
-            return await _unitOfWork.StudentRepository
-            .Get(s => s.User != null && s.User.EnrolledClasses
-            .Any(c => c.ClassID == classID), includes: includes)
+            var result = await _unitOfWork.StudentRepository
+            .Get(s => s.User != null && s.User.StudentClasses
+                .Any(c => c.ClassID == classID), includes: includes)
             .Where(c => c.IsDeleted == false)
-            .AsNoTracking()
+            //.AsNoTracking()
             .Skip((startPage - 1) * quantityResult)
             .Take((endPage - startPage + 1) * quantityResult)
             .ToArrayAsync();
+            return result;
         }
 
         public async Task<ServiceResponseVM> Delete(Guid id)

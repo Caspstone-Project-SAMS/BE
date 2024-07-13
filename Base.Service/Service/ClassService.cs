@@ -18,9 +18,11 @@ namespace Base.Service.Service
     public class ClassService : IClassService
     {
         private readonly IUnitOfWork _unitOfWork;
-        public ClassService(IUnitOfWork unitOfWork)
+        private readonly ICurrentUserService _currentUserService;
+        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
+            _currentUserService = currentUserService;
         }
 
         public async Task<ServiceResponseVM<Class>> Create(ClassVM newEntity)
@@ -79,7 +81,7 @@ namespace Base.Service.Service
                 RoomID = existedRoom.RoomID,
                 SubjectID = existedSubject.SubjectID,
                 LecturerID = newEntity.LecturerID,
-                CreatedBy = newEntity.CreatedBy,
+                CreatedBy = _currentUserService.UserId,
                 CreatedAt = ServerDateTime.GetVnDateTime(),
                 IsDeleted = false
             };
