@@ -144,5 +144,20 @@ namespace Base.Service.Service
             
 
         }
+
+        public async Task<Attendance?> GetAttendanceById(int attendanceID)
+        {
+            var includes = new Expression<Func<Attendance, object?>>[]
+            {
+                a => a.Schedule,
+                a => a.Schedule!.Class,
+                a => a.Schedule!.Slot,
+                a => a.Student!.Student
+            };
+            return await _unitOfWork.AttendanceRepository
+                .Get(a => a.AttendanceID == attendanceID, includes)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
     }
 }

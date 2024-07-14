@@ -357,5 +357,20 @@ namespace Base.Service.Service
             }
 
         }
+
+        public async Task<User?> GetById(Guid id)
+        {
+            var includes = new Expression<Func<User, object?>>[]
+            {
+                u => u.Student,
+                u => u.Student!.FingerprintTemplates,
+                u => u.EnrolledClasses,
+            };
+            return await _unitOfWork.UserRepository
+                .Get(s => s.StudentID == id, includes)
+                .Include(nameof(User.EnrolledClasses) + "." + nameof(Class.StudentClasses))
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
     }
 }

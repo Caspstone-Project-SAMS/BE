@@ -29,7 +29,13 @@ public interface IUnitOfWork
     ISlotRepository SlotRepository { get; }
 
     IStudentClassRepository StudentClassRepository { get; }
+    
+    IModuleRepository ModuleRepository { get; }
+
+    IEmployeeRepository EmployeeRepository { get; }
+
     Task<bool> SaveChangesAsync();
+    void Dispose();
 }
 
 public class UnitOfWork : IUnitOfWork, IDisposable
@@ -57,6 +63,10 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IStudentClassRepository StudentClassRepository { get; private set; }
 
+    public IModuleRepository ModuleRepository { get; private set; }
+
+    public IEmployeeRepository EmployeeRepository { get; private set; }
+
     public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
         IRoleRepository roleRepository,
@@ -68,7 +78,9 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         IRoomRepository roomRepository,
         ISubjectRepository subjectRepository,
         ISlotRepository slotRepository,
-        IStudentClassRepository studentClassRepository)
+        IStudentClassRepository studentClassRepository,
+        IModuleRepository moduleRepository,
+        IEmployeeRepository employeeRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -82,6 +94,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         SubjectRepository = subjectRepository;
         SlotRepository = slotRepository;
         StudentClassRepository = studentClassRepository;
+        ModuleRepository = moduleRepository;
+        EmployeeRepository = employeeRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

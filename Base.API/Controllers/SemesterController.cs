@@ -79,5 +79,30 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetSemesterById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var existedSemester = await _semesterService.GetById(id);
+                if(existedSemester is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Semester not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<SemesterResponseVM>(existedSemester)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get semester information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

@@ -19,10 +19,12 @@ namespace Base.Service.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
-        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
+        private readonly IServiceProvider _serviceProvider;
+        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IServiceProvider serviceProvider)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task<ServiceResponseVM<Class>> Create(ClassVM newEntity)
@@ -145,6 +147,61 @@ namespace Base.Service.Service
                 throw new Exception($"Not Found Class With ScheduleID = {scheduleID}");
             }
             return classDetail;
+        }
+
+        public async Task<Class?> GetById(int classId)
+        {
+            DbContextFactory dbFactory = new DbContextFactory();
+
+            var studentIncludes = new Expression<Func<User, object?>>[]
+            {
+                s => s.StudentClasses.Where(sc => sc.ClassID == classId),
+                s => s.Student
+            };
+            
+            var classIncludes = new Expression<Func<Class, object?>>[]
+            {
+                c => c.Semester,
+                c => c.Room,
+                c => c.Subject,
+                c => c.Lecturer!.Employee,
+                c => c.Schedules,
+            };
+
+            var dbContext1 = dbFactory.CreateDbContext(Array.Empty<string>());
+            var dbContext2 = dbFactory.CreateDbContext(Array.Empty<string>());
+
+            var students = dbContext1
+                .Set<User>()
+                .Where(u => u.StudentClasses.Any(c => c.ClassID == classId))
+                .Include(s => s.StudentClasses.Where(sc => sc.ClassID == classId))
+                .Include(s => s.Student)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var existedClass = dbContext2
+                .Set<Class>()
+                .Where(c => c.ClassID == classId)
+                .Include(c => c.Semester)
+                .Include(c => c.Room)
+                .Include(c => c.Subject)
+                .Include(c => c.Lecturer!.Employee)
+                .Include(c => c.Schedules)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            await Task.WhenAll(students, existedClass);
+
+            var result = existedClass.Result;
+            if(result != null)
+            {
+                result.Students = students.Result;
+            }
+
+            dbContext1.Dispose();
+            dbContext2.Dispose();
+
+            return result;
         }
     }
 }

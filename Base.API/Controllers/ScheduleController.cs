@@ -61,5 +61,30 @@ namespace Base.API.Controllers
             }
 
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetScheduleById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var existedSchedule = await _scheduleService.GetById(id);
+                if(existedSchedule is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Schedule not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<ScheduleResponseVM>(existedSchedule)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get schedule information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

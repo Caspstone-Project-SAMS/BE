@@ -116,5 +116,30 @@ namespace Base.API.Controllers
             return BadRequest(result.Errors);
         }
 
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetAttendanceById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var attedance = await _attendanceService.GetAttendanceById(id);
+                if(attedance is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Attendance not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<AttendanceResponseVM>(attedance)
+                });
+            }
+
+            return BadRequest(new
+            {
+                Title = "Get attendance information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }
