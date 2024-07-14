@@ -58,8 +58,8 @@ namespace Base.Service.Service
                         continue;
                     }
 
-                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID && !s.IsDeleted).ToListAsync();
-                    if( conflictingSchedule is not null)
+                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID && !s.IsDeleted).ToArrayAsync();
+                    if( conflictingSchedule.Count() > 0)
                     {
                         errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date}'.");
                         continue;
