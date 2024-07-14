@@ -1,4 +1,5 @@
 ﻿using Base.Repository.Entity;
+using Base.Repository.Identity;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using System;
@@ -16,5 +17,6 @@ namespace Base.IService.IService
         Task<ServiceResponseVM> Delete(Guid id);
         Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities);
         Task<ServiceResponseVM<List<StudentClassVM>>> AddStudentToClass(List<StudentClassVM> newEntities);
+        Task<User?> GetById(Guid id);
     }
 }

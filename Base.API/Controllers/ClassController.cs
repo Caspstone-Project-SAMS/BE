@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
@@ -39,6 +40,31 @@ namespace Base.API.Controllers
                 return Ok(response.Title);
             }
             return BadRequest(response);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetClasById(int id)
+        {
+            if(ModelState.IsValid && id > 0) 
+            { 
+                var existedClass = await _classService.GetById(id); 
+                if(existedClass is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Class not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<ClassResponseVM>(existedClass)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get class information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
     }
 }

@@ -25,6 +25,29 @@ namespace Base.API.Controllers
             return Ok(_mapper.Map<IEnumerable<SlotResponse>>(slots));
         }
 
-
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetSlotById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var existedSlot = await _slotService.GetById(id);
+                if(existedSlot is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Slot not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<SlotResponseVM>(existedSlot)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get slot information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

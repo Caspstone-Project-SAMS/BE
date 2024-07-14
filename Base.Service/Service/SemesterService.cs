@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -237,6 +238,18 @@ namespace Base.Service.Service
                     Title = "Update Semester failed"
                 };
             }
+        }
+
+        public async Task<Semester?> GetById(int id)
+        {
+            var includes = new Expression<Func<Semester, object?>>[]
+            {
+                s => s.Classes
+            };
+            return await _unitOfWork.SemesterRepository
+                .Get(s => s.SemesterID == id, includes)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
         }
     }
 }

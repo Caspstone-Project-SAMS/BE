@@ -330,5 +330,30 @@ namespace Base.API.Controllers
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_student.xlsx");
         }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetStudentById(Guid id)
+        {
+            if(ModelState.IsValid)
+            {
+                var existedStudent = await _studentService.GetById(id);
+                if (existedStudent is null) 
+                {
+                    return NotFound(new
+                    {
+                        Title = "Student not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<StudentResponseVM>(existedStudent)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get student information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }
