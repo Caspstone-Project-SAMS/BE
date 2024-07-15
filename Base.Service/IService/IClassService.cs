@@ -13,5 +13,7 @@ namespace Base.Service.IService
     {
         Task<Class> GetClassDetail(int scheduleID);
         Task<ServiceResponseVM<Class>> Create(ClassVM newEntity);
+
+        Task<IEnumerable<Class>> Get(int startPage, int endPage, Guid? lecturerId, int quantity, int? semesterId,string? classCode);
     }
 }

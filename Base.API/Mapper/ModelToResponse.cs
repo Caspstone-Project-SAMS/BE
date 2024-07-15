@@ -33,6 +33,7 @@ namespace Base.API.Mapper
 
             CreateMap<Student, StudentResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
+                 .ForMember(dest => dest.StudentID, opt => opt.MapFrom(src => src.StudentID))
                  .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id))
                  .ForMember(dest => dest.AbsencePercentage, opt => opt.MapFrom(src => src.User!.StudentClasses.FirstOrDefault(sc => sc.AbsencePercentage >=0)!.AbsencePercentage))
@@ -40,6 +41,7 @@ namespace Base.API.Mapper
 
             CreateMap<Student, StudentModuleResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
+                 .ForMember(dest => dest.StudentID, opt => opt.MapFrom(src => src.StudentID))
                  .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates.Select(ft => ft.FingerprintTemplateData)))       
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id));
 

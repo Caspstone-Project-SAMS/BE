@@ -13,10 +13,12 @@ namespace Base.API.Controllers
     {
         private readonly IClassService _classService;
         private readonly IMapper _mapper;
-        public ClassController(IClassService classService, IMapper mapper)
+        private readonly IWebHostEnvironment _hostingEnvironment;
+        public ClassController(IClassService classService, IMapper mapper, IWebHostEnvironment hostingEnvironment)
         {
             _classService = classService;
             _mapper = mapper;
+            _hostingEnvironment = hostingEnvironment;
         }
 
         [HttpGet]
@@ -39,6 +41,32 @@ namespace Base.API.Controllers
                 return Ok(response.Title);
             }
             return BadRequest(response);
+        }
+
+        [HttpGet("get-all-class")]
+        public async Task<IActionResult> GetAllClasses([FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] Guid? lecturerId, [FromQuery] int quantity, [FromQuery] int? semesterId, [FromQuery] string? classCode)
+        {
+            var classes = await _classService.Get(startPage, endPage, lecturerId, quantity,semesterId,classCode);
+            if(classes == null)
+            {
+                return NotFound();  
+            }
+
+            return Ok(_mapper.Map<IEnumerable<ClassResponse>>(classes));
+        }
+
+        [HttpGet("download-excel-template")]
+        public IActionResult DownloadExcel()
+        {
+            var filePath = Path.Combine(_hostingEnvironment.WebRootPath, "template_class.xlsx");
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_class.xlsx");
         }
     }
 }

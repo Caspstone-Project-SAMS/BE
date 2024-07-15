@@ -99,6 +99,7 @@ public class StudentResponse
 {
     public string? StudentName { get; set; }
     public Guid? UserID { get; set; }
+    public Guid? StudentID { get; set; }
     public string? Avatar { get; set; }
     public string? StudentCode { get; set; }
     public int AbsencePercentage { get; set; }
@@ -108,6 +109,7 @@ public class StudentModuleResponse
 {
     public string? StudentName { get; set; }
     public Guid? UserID { get; set; }
+    public Guid? StudentID { get; set; }
     public string? StudentCode { get; set; }
     public IEnumerable<string>? FingerprintTemplateData { get; set; }
 }

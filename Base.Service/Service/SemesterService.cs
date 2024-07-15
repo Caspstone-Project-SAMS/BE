@@ -170,38 +170,44 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Semester>> Update(SemesterVM updateSemester, int id)
         {
-            var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == id).SingleOrDefaultAsync();
-            if (existedSemester is null)
-            {
-                return new ServiceResponseVM<Semester>
-                {
-                    IsSuccess = false,
-                    Title = "Update Semester failed",
-                    Errors = new string[1] { "Semester not found" }
-                };
-            }
-
-            if (updateSemester.SemesterCode != existedSemester.SemesterCode)
-            {
-                var checkSemesterCode =  _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == updateSemester.SemesterCode).FirstOrDefault() is not null;
-                if (checkSemesterCode)
+                var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == id && !s.IsDeleted).SingleOrDefaultAsync();
+                if (existedSemester is null)
                 {
                     return new ServiceResponseVM<Semester>
                     {
                         IsSuccess = false,
                         Title = "Update Semester failed",
-                        Errors = new string[1] { $"Semester Code {updateSemester.SemesterCode} is already taken" }
+                        Errors = new string[1] { "Semester not found" }
                     };
                 }
+
+                if (updateSemester.SemesterCode != existedSemester.SemesterCode)
+                {
+                    var checkSemesterCode = _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == updateSemester.SemesterCode && !s.IsDeleted).FirstOrDefault() is not null;
+                    if (checkSemesterCode)
+                    {
+                        return new ServiceResponseVM<Semester>
+                        {
+                            IsSuccess = false,
+                            Title = "Update Semester failed",
+                            Errors = new string[1] { $"Semester Code {updateSemester.SemesterCode} is already taken" }
+                        };
+                    }
+                }
+
                 if (updateSemester.StartDate != existedSemester.StartDate || updateSemester.EndDate != existedSemester.EndDate)
                 {
-                    var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
-                (updateSemester.StartDate >= s.StartDate && updateSemester.StartDate <= s.EndDate) ||
-                (updateSemester.EndDate >= s.StartDate && updateSemester.EndDate <= s.EndDate) ||
-                (s.StartDate >= updateSemester.StartDate && s.StartDate <= updateSemester.EndDate) ||
-                (s.EndDate >= updateSemester.StartDate && s.EndDate <= updateSemester.EndDate)).AnyAsync();
+                var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
+                !s.IsDeleted &&
+                (
+                    (updateSemester.StartDate >= s.StartDate && updateSemester.StartDate <= s.EndDate) ||
+                    (updateSemester.EndDate >= s.StartDate && updateSemester.EndDate <= s.EndDate) ||
+                    (s.StartDate >= updateSemester.StartDate && s.StartDate <= updateSemester.EndDate) ||
+                    (s.EndDate >= updateSemester.StartDate && s.EndDate <= updateSemester.EndDate)
+                )
+                ).AnyAsync();
 
-                    if (overlappingSemester)
+                if (overlappingSemester)
                     {
                         return new ServiceResponseVM<Semester>
                         {
@@ -211,32 +217,32 @@ namespace Base.Service.Service
                         };
                     }
                 }
+                
+                
+            
                 existedSemester.SemesterStatus = updateSemester.SemesterStatus;
                 existedSemester.SemesterCode = updateSemester.SemesterCode;
                 existedSemester.StartDate = updateSemester.StartDate;
                 existedSemester.EndDate = updateSemester.EndDate;
-                
-            }
-
-            _unitOfWork.SemesterRepository.Update(existedSemester);
-            var result = await _unitOfWork.SaveChangesAsync();
-            if (result)
-            {
-                return new ServiceResponseVM<Semester>
+                _unitOfWork.SemesterRepository.Update(existedSemester);
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
                 {
-                    IsSuccess = true,
-                    Title = "Update Semester successfully",
-                    Result = existedSemester
-                };
-            }
-            else
-            {
-                return new ServiceResponseVM<Semester>
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = true,
+                        Title = "Update Semester successfully",
+                        Result = existedSemester
+                    };
+                }
+                else
                 {
-                    IsSuccess = false,
-                    Title = "Update Semester failed"
-                };
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Semester failed"
+                    };
+                }
             }
         }
     }
-}

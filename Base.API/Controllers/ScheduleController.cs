@@ -16,18 +16,20 @@ namespace Base.API.Controllers
     {
         private readonly IScheduleService _scheduleService;
         private readonly IMapper _mapper;
+        private readonly IWebHostEnvironment _hostingEnvironment;
 
-        public ScheduleController(IScheduleService scheduleService, IMapper mapper)
+        public ScheduleController(IScheduleService scheduleService, IMapper mapper, IWebHostEnvironment hostingEnvironment)
         {
             _scheduleService = scheduleService;
             _mapper = mapper;
+            _hostingEnvironment = hostingEnvironment;
         }
 
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ScheduleResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ScheduleResponse))]
         [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(string))]
-        public async Task<IActionResult> Get([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] Guid lecturerId, [FromQuery] int quantity, [FromQuery] int semesterId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate) 
+        public async Task<IActionResult> Get([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] Guid lecturerId, [FromQuery] int quantity, [FromQuery] int? semesterId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate) 
         { 
             if(ModelState.IsValid)
             {
@@ -60,6 +62,20 @@ namespace Base.API.Controllers
                 return BadRequest(ex.Message);
             }
 
+        }
+
+        [HttpGet("download-excel-template")]
+        public IActionResult DownloadExcel()
+        {
+            var filePath = Path.Combine(_hostingEnvironment.WebRootPath, "template_schedule.xlsx");
+
+            if (!System.IO.File.Exists(filePath))
+            {
+                return NotFound();
+            }
+
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_schedule.xlsx");
         }
     }
 }
