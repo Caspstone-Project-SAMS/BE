@@ -60,6 +60,73 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.Student!.Student!.IsAuthenticated()));
 
 
+            // For attendance detail
+            CreateMap<User, Student_AttendanceResponseVM>()
+                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode));
+            CreateMap<Slot, Slot_AttendanceResponseVM>();
+            CreateMap<Class, Class_AttendanceResponseVM>();
+            CreateMap<Room, Room_AttendanceResponseVM>();
+            CreateMap<Schedule, Schedule_AttendanceResponseVM>();
+            CreateMap<Attendance, AttendanceResponseVM>();
+
+            // For class detail
+            CreateMap<User, Student_ClassResponseVM>()
+                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode))
+                .ForMember(dest => dest.AbsencePercentage, opt => opt.MapFrom(src => src.GetAbsencePercentage()));
+            CreateMap<Semester, Semester_ClassResponseVM>();
+            CreateMap<Room, Room_ClassResponseVM>();
+            CreateMap<Subject, Subject_ClassResponseVM>();
+            CreateMap<User, Lecturer_ClassResponseVM>()
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Employee!.Department));
+            CreateMap<Schedule, Schedule_ClassResponseVM>();
+            CreateMap<Slot, Slot_ClassResponseVM>();
+            CreateMap<Class, ClassResponseVM>()
+                .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students))
+                .ForMember(dest => dest.Schedules, opt => opt.MapFrom(src => src.Schedules));
+
+            // For schedule detail
+            CreateMap<Slot, Slot_ScheduleResponseVM>();
+            CreateMap<Class, Class_ScheduleResponseVM>();
+            CreateMap<Room, Room_ScheduleResponseVM>();
+            CreateMap<Attendance, Attendance_ScheduleResponseVM>();
+            CreateMap<User, Student_ScheduleResponseVM>()
+                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode));
+            CreateMap<Schedule, ScheduleResponseVM>()
+                .ForMember(dest => dest.Attendances, opt => opt.MapFrom(src => src.Attendances));
+
+            // For semester detail
+            CreateMap<Class, Class_SemesterResponseVM>();
+            CreateMap<Semester, SemesterResponseVM>()
+                .ForMember(dest => dest.Classes, opt => opt.MapFrom(src => src.Classes));
+
+            // For slot detail
+            CreateMap<Slot, SlotResponseVM>();
+
+            // For student detail
+            CreateMap<Class, Class_StudentResponseVM>()
+                .ForMember(src => src.AbsencePercentage, opt => opt.MapFrom(src => src.GetAbsencePercentage()));
+            CreateMap<FingerprintTemplate, FingerprintTemplate_StudentResponseVM>();
+            CreateMap<User, StudentResponseVM>()
+                .ForMember(dest => dest.FingerprintTemplates, opt => opt.MapFrom(src => src.Student!.FingerprintTemplates))
+                .ForMember(dest => dest.EnrolledClasses, opt => opt.MapFrom(src => src.EnrolledClasses));
+
+            // For employee detail
+            CreateMap<Class, Class_EmployeeResponseVM>();
+            CreateMap<Module, Module_EmployeeResponseVM>();
+            CreateMap<User, EmployeeResponseVM>()
+                .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Employee!.Department))
+                .ForMember(dest => dest.ManagedClasses, opt => opt.MapFrom(src => src.ManagedClasses))
+                .ForMember(dest => dest.Modules, opt => opt.MapFrom(src => src.Employee!.Modules));
+
+            // For module
+            CreateMap<Employee, Employee_ModuleResponseVM>()
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.User!.Id))
+                .ForMember(dest => dest.EmployeeID, opt => opt.MapFrom(src => src.EmployeeID))
+                .ForMember(dest => dest.DisplayName, opt => opt.MapFrom(src => src.User!.DisplayName))
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User!.Email))
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
+            CreateMap<Module, ModuleResponseVM>();
         }
     }
 }

@@ -15,5 +15,6 @@ namespace Base.IService.IService
         Task<ServiceResponseVM<Semester>> Create(SemesterVM newEntity);
         Task<ServiceResponseVM> Delete(int id);
         Task<ServiceResponseVM<Semester>> Update(SemesterVM updateSemester, int id);
+        Task<Semester?> GetById(int id);
     }
 }

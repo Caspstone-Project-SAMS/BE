@@ -63,7 +63,7 @@ namespace Base.API.Controllers
             }
 
         }
-
+        
         [HttpGet("download-excel-template")]
         public IActionResult DownloadExcel()
         {
@@ -76,6 +76,29 @@ namespace Base.API.Controllers
 
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_schedule.xlsx");
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetScheduleById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var existedSchedule = await _scheduleService.GetById(id);
+                if(existedSchedule is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Schedule not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<ScheduleResponseVM>(existedSchedule)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get schedule information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
     }
 }

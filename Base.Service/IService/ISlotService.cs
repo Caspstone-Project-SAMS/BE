@@ -15,5 +15,6 @@ namespace Base.Service.IService
         Task<ServiceResponseVM<Slot>> Create(SlotVM newEntity);
         Task<ServiceResponseVM> Delete(int id);
         Task<ServiceResponseVM<Slot>> Update(SlotVM updateEntity, int id);
+        Task<Slot?> GetById(int id);
     }
 }

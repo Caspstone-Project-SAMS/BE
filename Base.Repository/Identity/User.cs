@@ -68,6 +68,11 @@ public class User : IdentityUser<Guid>
         }
         return null;
     }
+
+    public int GetAbsencePercentage()
+    {
+        return this.StudentClasses.FirstOrDefault()?.AbsencePercentage ?? 0;
+    }
 }
 
 public class LoginUserManagement

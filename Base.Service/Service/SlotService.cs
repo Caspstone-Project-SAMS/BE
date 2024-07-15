@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -37,6 +38,17 @@ namespace Base.Service.Service
         public Task<ServiceResponseVM<Slot>> Update(SlotVM updateEntity, int id)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<Slot?> GetById(int id)
+        {
+            var includes = new Expression<Func<Slot, object?>>[]
+            {
+            };
+            return await _unitOfWork.SlotRepository
+                .Get(s => s.SlotID == id, includes)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
         }
     }
 }

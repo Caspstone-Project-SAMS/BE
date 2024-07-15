@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
@@ -67,6 +68,30 @@ namespace Base.API.Controllers
 
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_class.xlsx");
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetClasById(int id)
+        {
+            if(ModelState.IsValid && id > 0) 
+            { 
+                var existedClass = await _classService.GetById(id); 
+                if(existedClass is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Class not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<ClassResponseVM>(existedClass)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get class information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
     }
 }

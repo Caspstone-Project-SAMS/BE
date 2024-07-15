@@ -126,6 +126,18 @@ public class WebSocketConnectionManager
         public string? ModuleId { get; set; }
     }
 
+    public class ModuleWebSocket
+    {
+        public WebSocket? Socket { get; set; }
+        public string? ModuleID { get; set; }
+    }
+
+    public class ClientWebSocket
+    {
+        public WebSocket? Socket { get; set; }
+        public Guid? UserID { get; set; }
+    }
+
     private string generateModuleId()
     {
         string moduleId = "";
@@ -139,6 +151,121 @@ public class WebSocketConnectionManager
         return moduleId;
     }
 }
+
+public class WebSocketConnectionManager1
+{
+    private IList<ModuleWebSocket> _moduleSockets = new List<ModuleWebSocket>();
+    private IList<ClientWebSocket> _clientWebSocket = new List<ClientWebSocket>();
+
+    public void AddModuleSocket(WebSocket socket, int moduleId)
+    {
+        _moduleSockets.Add(new ModuleWebSocket
+        {
+            Socket = socket,
+            ModuleID = moduleId
+        });
+    }
+
+    public void AddClientSocket(WebSocket socket, Guid userId)
+    {
+        _clientWebSocket.Add(new ClientWebSocket
+        {
+            Socket = socket,
+            UserID = userId
+        });
+    }
+
+    public async Task<bool> SendMesageToModule(string message, int moduleId)
+    {
+        var socket = _moduleSockets.Where(m => m.ModuleID == moduleId).FirstOrDefault()?.Socket;
+        if (socket is null)
+        {
+            return false;
+        }
+
+        if(socket.State != WebSocketState.Open)
+        {
+            return false;
+        }
+
+        var buffer = Encoding.UTF8.GetBytes(message);
+        await socket.SendAsync(
+           new ArraySegment<byte>(buffer, 0, message.Length),
+           WebSocketMessageType.Text,
+           true,
+           CancellationToken.None
+        );
+
+        return true;
+    }
+
+    public async Task<bool> SendMessageToClient(string message, Guid userId)
+    {
+        var socket = _clientWebSocket.Where(c => c.UserID == userId).FirstOrDefault()?.Socket;
+        if(socket is null)
+        {
+            return false;
+        }
+
+        if (socket.State != WebSocketState.Open)
+        {
+            return false;
+        }
+
+        var buffer = Encoding.UTF8.GetBytes(message);
+        await socket.SendAsync(
+           new ArraySegment<byte>(buffer, 0, message.Length),
+           WebSocketMessageType.Text,
+           true,
+           CancellationToken.None
+        );
+
+        return true;
+    }
+
+    public async Task CloseModuleSocket(int moduleId, WebSocketCloseStatus? closeStatus, string? closeDescription, CancellationToken? cancellationToken)
+    {
+        var moduleSocket = _moduleSockets.Where(m => m.ModuleID == moduleId).FirstOrDefault();
+        if(moduleSocket is null)
+        {
+            return;
+        }
+        var socket = moduleSocket.Socket;
+        if (socket is not null && socket.State == WebSocketState.Open)
+        {
+            await socket.CloseAsync(closeStatus ?? WebSocketCloseStatus.NormalClosure, null, cancellationToken ?? CancellationToken.None);
+            _moduleSockets.Remove(moduleSocket);
+        }
+    }
+
+    public async Task CloseClientSocket(Guid userId, WebSocketCloseStatus? closeStatus, string? closeDescription, CancellationToken? cancellationToken)
+    {
+        var clientSocket = _clientWebSocket.Where(c => c.UserID == userId).FirstOrDefault();
+        if (clientSocket is null)
+        {
+            return;
+        }
+        var socket = clientSocket.Socket;
+        if (socket is not null && socket.State == WebSocketState.Open)
+        {
+            await socket.CloseAsync(closeStatus ?? WebSocketCloseStatus.NormalClosure, null, cancellationToken ?? CancellationToken.None);
+            _clientWebSocket.Remove(clientSocket);
+        }
+    }
+
+    public class ModuleWebSocket
+    {
+        public WebSocket? Socket { get; set; }
+        public int? ModuleID { get; set; }
+    }
+
+    public class ClientWebSocket
+    {
+        public WebSocket? Socket { get; set; }
+        public Guid? UserID { get; set; }
+    }
+}
+
 
 public class MessageSend
 {

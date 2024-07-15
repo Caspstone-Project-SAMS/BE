@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Design;
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
 namespace Base.Repository.Common;
@@ -243,5 +245,20 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
         builder.Ignore<IdentityRoleClaim<Guid>>();
         builder.Ignore<IdentityRole<Guid>>();
         builder.Ignore<IdentityUserRole<Guid>>();
+    }
+}
+
+public class DbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
+{
+    public ApplicationDbContext CreateDbContext(string[] args)
+    {
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.Development.json")
+            .Build();
+
+        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+        optionsBuilder.UseSqlServer(configuration.GetConnectionString("MsSQLConnection")!);
+        return new ApplicationDbContext(optionsBuilder.Options);
     }
 }

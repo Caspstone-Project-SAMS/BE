@@ -33,4 +33,9 @@ public class Class : AuditableEntity
 
 
     public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();
+
+    public int GetAbsencePercentage()
+    {
+        return this.StudentClasses.FirstOrDefault()?.AbsencePercentage ?? 0;
+    }
 }
