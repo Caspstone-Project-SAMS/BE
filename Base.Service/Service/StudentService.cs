@@ -339,8 +339,8 @@ namespace Base.Service.Service
             {
                 return new ServiceResponseVM<List<StudentClassVM>>
                 {
-                    IsSuccess = errors.Count == 0,
-                    Title = errors.Count == 0 ? "Add new student to class successfully" : "Partial success in adding new students to class",
+                    IsSuccess = errors.Count > 0,
+                    Title = errors.Count > 0 ? "Add new student to class successfully" : "Partial success in adding new students to class",
                     Result = responseList,
                     Errors = errors.ToArray()
                 };
