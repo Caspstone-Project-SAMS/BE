@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Mvc;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using IMailService = Base.Service.Common.IMailService;
 using MailService = Base.Service.Common.MailService;
+using Base.Repository.Entity;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -218,6 +219,27 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("Lecturer", policy =>
     {
         policy.Requirements.Add(new HasScopeRequirement("Lecturer", Configuration["Jwt:Issuer"]!));
+    }); 
+
+    options.AddPolicy("Student", policy =>
+    {
+        policy.Requirements.Add(new HasScopeRequirement("Student", Configuration["Jwt:Issuer"]!));
+    });
+
+    options.AddPolicy("Admin Lecturer", policy =>
+    {
+        policy.RequireAssertion(context =>
+        {
+            return context.User.HasClaim(claim =>
+
+                (claim.Type == "scope") &&
+                (
+                    claim.Value.Equals("Admin") ||
+                    claim.Value.Equals("Lecturer")
+                )
+            );
+        });
+        policy.Requirements.Add(new HasScopeRequirement("Lecturer", Configuration["Jwt:Issuer"]!));
     });
 });
 
@@ -283,6 +305,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddSingleton<WebSocketConnectionManager>();
+builder.Services.AddSingleton<WebSocketConnectionManager1>();
 
 var app = builder.Build();
 
