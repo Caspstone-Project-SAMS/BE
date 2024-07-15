@@ -115,6 +115,16 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Employee!.Department))
                 .ForMember(dest => dest.ManagedClasses, opt => opt.MapFrom(src => src.ManagedClasses))
                 .ForMember(dest => dest.Modules, opt => opt.MapFrom(src => src.Employee!.Modules));
+
+            // For module
+            CreateMap<Employee, Employee_ModuleResponseVM>()
+                .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.User!.Id))
+                .ForMember(dest => dest.EmployeeID, opt => opt.MapFrom(src => src.EmployeeID))
+                .ForMember(dest => dest.DisplayName, opt => opt.MapFrom(src => src.User!.DisplayName))
+                .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User!.Email))
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
+            CreateMap<Module, ModuleResponseVM>();
         }
     }
 }
