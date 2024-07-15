@@ -223,6 +223,44 @@ public class WebSocketConnectionManager1
         return true;
     }
 
+    public async void SendMessageToAllModule(string message)
+    {
+        var websockets = _moduleSockets.Select(s => s.Socket);
+        if (websockets is null) return;
+        var buffer = Encoding.UTF8.GetBytes(message);
+        foreach (WebSocket? ws in websockets)
+        {
+            if (ws != null)
+            {
+                await ws.SendAsync(
+                    new ArraySegment<byte>(buffer, 0, message.Length),
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None
+            );
+            }
+        }
+    }
+
+    public async void SendMessageToAllClient(string message)
+    {
+        var websockets = _clientWebSocket.Select(s => s.Socket);
+        if (websockets is null) return;
+        var buffer = Encoding.UTF8.GetBytes(message);
+        foreach (WebSocket? ws in websockets)
+        {
+            if (ws != null)
+            {
+                await ws.SendAsync(
+                    new ArraySegment<byte>(buffer, 0, message.Length),
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None
+            );
+            }
+        }
+    }
+
     public async Task CloseModuleSocket(int moduleId, WebSocketCloseStatus? closeStatus, string? closeDescription, CancellationToken? cancellationToken)
     {
         var moduleSocket = _moduleSockets.Where(m => m.ModuleID == moduleId).FirstOrDefault();
