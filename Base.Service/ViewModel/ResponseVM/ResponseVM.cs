@@ -38,6 +38,8 @@ public class AuthenticateResponseVM
 public class UserInformationResponseVM : Auditable
 {
     public Guid Id { get; set; }
+    public Guid? StudentID { get; set; }
+    public Guid? EmployeeID { get; set; }
     public string? Email { get; set; }
     public string? NormalizedEmail { get; set; }
     public bool EmailConfirmed { get; set; }
@@ -99,6 +101,7 @@ public class StudentResponse
 {
     public string? StudentName { get; set; }
     public Guid? UserID { get; set; }
+    public Guid? StudentID { get; set; }
     public string? Avatar { get; set; }
     public string? StudentCode { get; set; }
     public int AbsencePercentage { get; set; }
@@ -108,6 +111,7 @@ public class StudentModuleResponse
 {
     public string? StudentName { get; set; }
     public Guid? UserID { get; set; }
+    public Guid? StudentID { get; set; }
     public string? StudentCode { get; set; }
     public IEnumerable<string>? FingerprintTemplateData { get; set; }
 }

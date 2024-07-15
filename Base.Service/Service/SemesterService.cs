@@ -40,9 +40,9 @@ namespace Base.Service.Service
             }
 
             var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
-                (newEntity.StartDate >= s.StartDate && newEntity.StartDate <= s.EndDate) ||     
-                (newEntity.EndDate >= s.StartDate && newEntity.EndDate <= s.EndDate) ||         
-                (s.StartDate >= newEntity.StartDate && s.StartDate <= newEntity.EndDate) ||     
+                (newEntity.StartDate >= s.StartDate && newEntity.StartDate <= s.EndDate) ||
+                (newEntity.EndDate >= s.StartDate && newEntity.EndDate <= s.EndDate) ||
+                (s.StartDate >= newEntity.StartDate && s.StartDate <= newEntity.EndDate) ||
                 (s.EndDate >= newEntity.StartDate && s.EndDate <= newEntity.EndDate)).AnyAsync();
 
             if (overlappingSemester)
@@ -55,7 +55,7 @@ namespace Base.Service.Service
                 };
             }
 
-            Semester newSemester =  new Semester
+            Semester newSemester = new Semester
             {
                 SemesterCode = newEntity.SemesterCode,
                 SemesterStatus = newEntity.SemesterStatus,
@@ -171,7 +171,7 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Semester>> Update(SemesterVM updateSemester, int id)
         {
-            var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == id).SingleOrDefaultAsync();
+            var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == id && !s.IsDeleted).SingleOrDefaultAsync();
             if (existedSemester is null)
             {
                 return new ServiceResponseVM<Semester>
@@ -184,7 +184,7 @@ namespace Base.Service.Service
 
             if (updateSemester.SemesterCode != existedSemester.SemesterCode)
             {
-                var checkSemesterCode =  _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == updateSemester.SemesterCode).FirstOrDefault() is not null;
+                var checkSemesterCode = _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == updateSemester.SemesterCode && !s.IsDeleted).FirstOrDefault() is not null;
                 if (checkSemesterCode)
                 {
                     return new ServiceResponseVM<Semester>
@@ -194,31 +194,37 @@ namespace Base.Service.Service
                         Errors = new string[1] { $"Semester Code {updateSemester.SemesterCode} is already taken" }
                     };
                 }
-                if (updateSemester.StartDate != existedSemester.StartDate || updateSemester.EndDate != existedSemester.EndDate)
-                {
-                    var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
-                (updateSemester.StartDate >= s.StartDate && updateSemester.StartDate <= s.EndDate) ||
-                (updateSemester.EndDate >= s.StartDate && updateSemester.EndDate <= s.EndDate) ||
-                (s.StartDate >= updateSemester.StartDate && s.StartDate <= updateSemester.EndDate) ||
-                (s.EndDate >= updateSemester.StartDate && s.EndDate <= updateSemester.EndDate)).AnyAsync();
-
-                    if (overlappingSemester)
-                    {
-                        return new ServiceResponseVM<Semester>
-                        {
-                            IsSuccess = false,
-                            Title = "Update Semester failed",
-                            Errors = new string[1] { "Overlap with existing Semester" }
-                        };
-                    }
-                }
-                existedSemester.SemesterStatus = updateSemester.SemesterStatus;
-                existedSemester.SemesterCode = updateSemester.SemesterCode;
-                existedSemester.StartDate = updateSemester.StartDate;
-                existedSemester.EndDate = updateSemester.EndDate;
-                
             }
 
+            if (updateSemester.StartDate != existedSemester.StartDate || updateSemester.EndDate != existedSemester.EndDate)
+            {
+                var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
+                !s.IsDeleted &&
+                (
+                    (updateSemester.StartDate >= s.StartDate && updateSemester.StartDate <= s.EndDate) ||
+                    (updateSemester.EndDate >= s.StartDate && updateSemester.EndDate <= s.EndDate) ||
+                    (s.StartDate >= updateSemester.StartDate && s.StartDate <= updateSemester.EndDate) ||
+                    (s.EndDate >= updateSemester.StartDate && s.EndDate <= updateSemester.EndDate)
+                )
+                ).AnyAsync();
+
+                if (overlappingSemester)
+                {
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Semester failed",
+                        Errors = new string[1] { "Overlap with existing Semester" }
+                    };
+                }
+            }
+
+
+
+            existedSemester.SemesterStatus = updateSemester.SemesterStatus;
+            existedSemester.SemesterCode = updateSemester.SemesterCode;
+            existedSemester.StartDate = updateSemester.StartDate;
+            existedSemester.EndDate = updateSemester.EndDate;
             _unitOfWork.SemesterRepository.Update(existedSemester);
             var result = await _unitOfWork.SaveChangesAsync();
             if (result)
@@ -252,4 +258,8 @@ namespace Base.Service.Service
                 .FirstOrDefaultAsync();
         }
     }
+
 }
+
+        
+    

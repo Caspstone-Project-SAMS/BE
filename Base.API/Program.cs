@@ -239,7 +239,6 @@ builder.Services.AddAuthorization(options =>
                 )
             );
         });
-        policy.Requirements.Add(new HasScopeRequirement("Lecturer", Configuration["Jwt:Issuer"]!));
     });
 });
 

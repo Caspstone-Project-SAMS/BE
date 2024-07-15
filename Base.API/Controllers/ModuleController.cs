@@ -43,7 +43,11 @@ public class ModuleController : ControllerBase
             var result = await _moduleService.Get(startPage, endPage, quantity, mode, status, key, employeeId);
             if (result.IsSuccess)
             {
-                return Ok(result);
+                return Ok(new
+                {
+                    Title = result.Title,
+                    Result = _mapper.Map<ModuleResponseVM>(result.Result)
+                });
             }
             return BadRequest(new
             {

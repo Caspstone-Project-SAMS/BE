@@ -210,8 +210,7 @@ namespace Base.Service.Service
             {
                 s => s.FingerprintTemplates,
                 s => s.User,
-                s => s.User!.StudentClasses
-                
+                s => s.User!.StudentClasses            
             };
 
             var result = await _unitOfWork.StudentRepository
