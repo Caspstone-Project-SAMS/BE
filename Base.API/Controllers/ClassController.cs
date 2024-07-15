@@ -23,7 +23,7 @@ namespace Base.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetClassDetail([FromQuery]int scheduleID)
+        public async Task<IActionResult> GetClassDetail([FromQuery] int scheduleID)
         {
             var classDetail = await _classService.GetClassDetail(scheduleID);
             if (classDetail == null)
@@ -47,10 +47,10 @@ namespace Base.API.Controllers
         [HttpGet("get-all-class")]
         public async Task<IActionResult> GetAllClasses([FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] Guid? lecturerId, [FromQuery] int quantity, [FromQuery] int? semesterId, [FromQuery] string? classCode)
         {
-            var classes = await _classService.Get(startPage, endPage, lecturerId, quantity,semesterId,classCode);
-            if(classes == null)
+            var classes = await _classService.Get(startPage, endPage, lecturerId, quantity, semesterId, classCode);
+            if (classes == null)
             {
-                return NotFound();  
+                return NotFound();
             }
 
             return Ok(_mapper.Map<IEnumerable<ClassResponse>>(classes));
@@ -68,30 +68,31 @@ namespace Base.API.Controllers
 
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_class.xlsx");
-
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetClasById(int id)
-        {
-            if(ModelState.IsValid && id > 0) 
-            { 
-                var existedClass = await _classService.GetById(id); 
-                if(existedClass is null)
+        }
+            [HttpGet("{id}")]
+            public async Task<IActionResult> GetClasById(int id)
+            {
+                if (ModelState.IsValid && id > 0)
                 {
-                    return NotFound(new
+                    var existedClass = await _classService.GetById(id);
+                    if (existedClass is null)
                     {
-                        Title = "Class not found"
+                        return NotFound(new
+                        {
+                            Title = "Class not found"
+                        });
+                    }
+                    return Ok(new
+                    {
+                        Result = _mapper.Map<ClassResponseVM>(existedClass)
                     });
                 }
-                return Ok(new
+                return BadRequest(new
                 {
-                    Result = _mapper.Map<ClassResponseVM>(existedClass)
+                    Title = "Get class information failed",
+                    Errors = new string[1] { "Invalid input" }
                 });
             }
-            return BadRequest(new
-            {
-                Title = "Get class information failed",
-                Errors = new string[1] { "Invalid input" }
-            });
         }
     }
-}
+

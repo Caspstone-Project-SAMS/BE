@@ -22,7 +22,7 @@ namespace Base.Service.Service
         private readonly ICurrentUserService _currentUserService;
         private readonly IValidateGet _validateGet;
         private readonly IServiceProvider _serviceProvider;
-        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IValidateGet validateGet)
+        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IValidateGet validateGet, IServiceProvider serviceProvider)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
