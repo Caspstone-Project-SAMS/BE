@@ -3,6 +3,7 @@ using Base.Repository.Entity;
 using Base.Repository.Identity;
 using Base.Service.Common;
 using Base.Service.IService;
+using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.EntityFrameworkCore;
@@ -19,11 +20,13 @@ namespace Base.Service.Service
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IValidateGet _validateGet;
         private readonly IServiceProvider _serviceProvider;
-        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IServiceProvider serviceProvider)
+        public ClassService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService, IValidateGet validateGet)
         {
             _unitOfWork = unitOfWork;
             _currentUserService = currentUserService;
+            _validateGet = validateGet;
             _serviceProvider = serviceProvider;
         }
 
@@ -130,6 +133,39 @@ namespace Base.Service.Service
                     Errors = new string[2] { "The operation has been cancelled", ex.Message }
                 };
             }
+        }
+
+        public async Task<IEnumerable<Class>> Get(int startPage, int endPage, Guid? lecturerId, int quantity, int? semesterId, string? classCode)
+        {
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                throw new ArgumentException("Error when get quantity per page");
+            }
+            
+            var query = await _unitOfWork.ClassRepository.FindAll().Include(c => c.Lecturer).Include(c => c.Semester).ToArrayAsync();
+
+            if (lecturerId.HasValue)
+            {
+                query = query.Where(c => c.LecturerID == lecturerId).ToArray();
+            }
+
+            if (semesterId.HasValue)
+            {
+                query = query.Where(c => c.SemesterID == semesterId).ToArray();
+            }
+
+            if (classCode != null)
+            {
+                query = query.Where(c => c.ClassCode.Equals(classCode)).ToArray();
+            }
+
+            var classes = query
+                .Skip((startPage - 1) * quantityResult)
+                .Take((endPage - startPage + 1) * quantityResult);
+
+            return classes;
         }
 
         public async Task<Class> GetClassDetail(int scheduleID)

@@ -111,7 +111,7 @@ namespace Base.Service.Service
                 }
         }
 
-        public async Task<IEnumerable<Schedule>> GetSchedules(int startPage, int endPage, Guid lecturerId, int quantity, int semesterId, DateTime? startDate, DateTime? endDate)
+        public async Task<IEnumerable<Schedule>> GetSchedules(int startPage, int endPage, Guid lecturerId, int quantity, int? semesterId, DateTime? startDate, DateTime? endDate)
         {
             int quantityResult = 0;
             _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
@@ -120,12 +120,17 @@ namespace Base.Service.Service
                 throw new ArgumentException("Error when get quantity per page");
             }
 
-            var query = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId && s.Class.SemesterID == semesterId)
+            var query = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId && !s.IsDeleted)
                 .Include(s => s.Class)
                 .Include(s => s.Class!.Semester)
                 .Include(s => s.Class!.Room)
                 .Include(s => s.Slot)
                 .Include(s => s.Class!.Subject).ToArrayAsync();
+
+            if(semesterId.HasValue)
+            {
+                query = query.Where(s => s.Class!.SemesterID == semesterId).ToArray();
+            }
 
             if (startDate.HasValue)
             {
@@ -136,7 +141,7 @@ namespace Base.Service.Service
             if (endDate.HasValue)
             {
                 var endDateOnly = DateOnly.FromDateTime(endDate.Value);
-                query = query.Where(s => s.Date <= endDateOnly).ToArray();
+                query =  query.Where(s => s.Date <= endDateOnly).ToArray();
             }
 
             var schedules = query
