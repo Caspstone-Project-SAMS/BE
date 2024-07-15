@@ -253,6 +253,16 @@ public class WebSocketConnectionManager1
         }
     }
 
+    public IEnumerable<ModuleWebSocket> GetAllModuleSocket()
+    {
+        return _moduleSockets;
+    }
+
+    public IEnumerable<ClientWebSocket> GetAllClientSocket()
+    {
+        return _clientWebSocket;
+    }
+
     public class ModuleWebSocket
     {
         public WebSocket? Socket { get; set; }

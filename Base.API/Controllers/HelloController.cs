@@ -11,10 +11,12 @@ namespace Base.API.Controllers;
 public class HelloController : ControllerBase
 {
     private readonly WebSocketConnectionManager _webSocketConnectionManager;
+    private readonly WebSocketConnectionManager1 _webSocketConnectionManager1;
 
-    public HelloController(WebSocketConnectionManager webSocketConnectionManager)
+    public HelloController(WebSocketConnectionManager webSocketConnectionManager, WebSocketConnectionManager1 webSocketConnectionManager1)
     {
         _webSocketConnectionManager = webSocketConnectionManager;
+        _webSocketConnectionManager1 = webSocketConnectionManager1;
     }
 
     private static IList<FingerprintTemplate> fingerprintTemplates = new List<FingerprintTemplate>();
@@ -125,6 +127,25 @@ public class HelloController : ControllerBase
     {
         return Ok();
     }
+
+
+
+
+
+
+
+    [HttpGet("test-v2/all-module-websocket")]
+    public IActionResult GetV2ModuleWebsocket()
+    {
+        return Ok(_webSocketConnectionManager1.GetAllModuleSocket());
+    }
+
+    [HttpGet("test-v2/all-module-websocket")]
+    public IActionResult GetV2ClientWebsocket()
+    {
+        return Ok(_webSocketConnectionManager1.GetAllClientSocket());
+    }
+
 
     public class FingerprintTemplateTest
     {

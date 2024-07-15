@@ -38,6 +38,8 @@ public class AuthenticateResponseVM
 public class UserInformationResponseVM : Auditable
 {
     public Guid Id { get; set; }
+    public Guid? StudentID { get; set; }
+    public Guid? EmployeeID { get; set; }
     public string? Email { get; set; }
     public string? NormalizedEmail { get; set; }
     public bool EmailConfirmed { get; set; }
