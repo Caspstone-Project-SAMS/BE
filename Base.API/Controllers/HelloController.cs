@@ -140,7 +140,7 @@ public class HelloController : ControllerBase
         return Ok(_webSocketConnectionManager1.GetAllModuleSocket());
     }
 
-    [HttpGet("test-v2/all-module-websocket")]
+    [HttpGet("test-v2/all-client-websocket")]
     public IActionResult GetV2ClientWebsocket()
     {
         return Ok(_webSocketConnectionManager1.GetAllClientSocket());
