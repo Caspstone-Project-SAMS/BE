@@ -175,6 +175,28 @@ builder.Services.AddAuthentication(options =>
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new RsaSecurityKey(key ?? throw new ArgumentException("Key not found for authentication scheme"))
     };
+
+    x.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var secProtocalHeaders = context.Request.Headers["Sec-WebSocket-Protocol"].ToString();
+            var values = secProtocalHeaders.Split(",");
+            if (values.First().Trim() == "access_token")
+            {
+                var accessToken = values.Last().Trim();
+                // If the request is for ws client...
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) &&
+                    (path.StartsWithSegments("/ws/client")))
+                {
+                    // Read the token out of the request header
+                    context.Token = accessToken;
+                }
+            }
+            return Task.CompletedTask;
+        }
+    };
 })
 .AddOAuth("google", o =>
 {
@@ -327,6 +349,8 @@ else
 }
 
 app.UseWebSockets(webSocketOptions);
+
+app.UseMiddleware<WebsocketMiddleware>();
 
 app.UseStatusCodePages(async context =>
 {
