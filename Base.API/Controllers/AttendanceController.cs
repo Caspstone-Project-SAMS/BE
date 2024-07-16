@@ -65,10 +65,6 @@ namespace Base.API.Controllers
                     };
                     var messageSendString = JsonSerializer.Serialize(messageSend);
                     _webSocketConnectionManager.SendMessagesToAll(messageSendString);
-                    //=======================================
-
-
-
                     return Ok(new
                     {
                         Title = result.Title,

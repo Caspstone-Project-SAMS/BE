@@ -16,9 +16,11 @@ namespace Base.Service.Service
     public class SubjectService : ISubjectService
     {
         private readonly IUnitOfWork _unitOfWork;
-        public SubjectService(IUnitOfWork unitOfWork)
+        private readonly ICurrentUserService _currentUserService;
+        public SubjectService(IUnitOfWork unitOfWork, ICurrentUserService currentUserService)
         {
             _unitOfWork = unitOfWork;
+            _currentUserService = currentUserService;
         }
         public async Task<ServiceResponseVM<Subject>> Create(SubjectVM newEntity)
         {
@@ -39,7 +41,7 @@ namespace Base.Service.Service
                 SubjectCode = newEntity.SubjectCode,
                 SubjectName = newEntity.SubjectName,
                 SubjectStatus = newEntity.SubjectStatus,
-                CreatedBy = newEntity.CreatedBy,
+                CreatedBy = _currentUserService.UserId,
                 CreatedAt = ServerDateTime.GetVnDateTime(),
             };
 
@@ -154,55 +156,54 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Subject>> Update(SubjectVM updateEntity, int id)
         {
-            var existedSubject = await _unitOfWork.SubjectRepository.Get(s => s.SubjectID == id).SingleOrDefaultAsync();
-            if (existedSubject is null)
-            {
-                return new ServiceResponseVM<Subject>
-                {
-                    IsSuccess = false,
-                    Title = "Update Subject failed",
-                    Errors = new string[1] { "Subject not found" }
-                };
-            }
-
-            if (updateEntity.SubjectCode != null||updateEntity.SubjectCode != existedSubject.SubjectCode)
-            {
-                var checkSubjectCode = _unitOfWork.SubjectRepository.Get(s => s.SubjectCode == updateEntity.SubjectCode).FirstOrDefault() is not null;
-                if (checkSubjectCode)
+                var existedSubject = await _unitOfWork.SubjectRepository.Get(s => s.SubjectID == id).SingleOrDefaultAsync();
+                if (existedSubject is null)
                 {
                     return new ServiceResponseVM<Subject>
                     {
                         IsSuccess = false,
                         Title = "Update Subject failed",
-                        Errors = new string[1] { $"Subject Code {updateEntity.SubjectCode} is already taken" }
+                        Errors = new string[1] { "Subject not found" }
                     };
                 }
-                
+
+                if (updateEntity.SubjectCode != existedSubject.SubjectCode)
+                {
+                    var checkSubjectCode = _unitOfWork.SubjectRepository.Get(s => s.SubjectCode == updateEntity.SubjectCode).FirstOrDefault() is not null;
+                    if (checkSubjectCode)
+                    {
+                        return new ServiceResponseVM<Subject>
+                        {
+                            IsSuccess = false,
+                            Title = "Update Subject failed",
+                            Errors = new string[1] { $"Subject Code {updateEntity.SubjectCode} is already taken" }
+                        };
+                    }
+                }
                 existedSubject.SubjectCode = updateEntity.SubjectCode!;
                 existedSubject.SubjectName = updateEntity.SubjectName;
                 existedSubject.SubjectStatus = updateEntity.SubjectStatus;
 
-            }
-
-            _unitOfWork.SubjectRepository.Update(existedSubject);
-            var result = await _unitOfWork.SaveChangesAsync();
-            if (result)
-            {
-                return new ServiceResponseVM<Subject>
+                _unitOfWork.SubjectRepository.Update(existedSubject);
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
                 {
-                    IsSuccess = true,
-                    Title = "Update Subject successfully",
-                    Result = existedSubject
-                };
-            }
-            else
-            {
-                return new ServiceResponseVM<Subject>
+                    return new ServiceResponseVM<Subject>
+                    {
+                        IsSuccess = true,
+                        Title = "Update Subject successfully",
+                        Result = existedSubject
+                    };
+                }
+                else
                 {
-                    IsSuccess = false,
-                    Title = "Update Subject failed"
-                };
+                    return new ServiceResponseVM<Subject>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Subject failed"
+                    };
+                }
             }
         }
     }
-}
+

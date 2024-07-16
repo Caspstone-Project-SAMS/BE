@@ -14,6 +14,5 @@ namespace Base.Service.ViewModel.RequestVM
         [Required]
         public string SubjectName { get; set; } = string.Empty;
         public int SubjectStatus { get; set; }
-        public string CreatedBy { get; set; } = "Undefined";
     }
 }
