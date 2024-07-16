@@ -32,8 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IModuleService, ModuleService>();
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<INotificationService, NotificationService>();
-
-
+        services.AddScoped<IFingerprintService, FingerprintService>();
+        
         #endregion
 
         #region Validation

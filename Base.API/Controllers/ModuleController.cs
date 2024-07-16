@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using Base.API.Common;
+using Base.API.Service;
 using Base.IService.IService;
 using Base.Repository.Entity;
 using Base.Service.IService;
@@ -46,7 +46,7 @@ public class ModuleController : ControllerBase
                 return Ok(new
                 {
                     Title = result.Title,
-                    Result = _mapper.Map<ModuleResponseVM>(result.Result)
+                    Result = _mapper.Map<IEnumerable<ModuleResponseVM>>(result.Result)
                 });
             }
             return BadRequest(new
@@ -117,7 +117,11 @@ public class ModuleController : ControllerBase
                     var messageSendMode1 = new MessageSend
                     {
                         Event = "RegisterFingerprint",
-                        Data = existedStudent.Student?.StudentCode ?? ""
+                        Data = new
+                        {
+                            StudentCode = existedStudent.Student?.StudentCode ?? "",
+                            StudentID = existedStudent.Student?.StudentID ?? Guid.Empty
+                        }
                     };
                     var jsonPayloadMode1 = JsonSerializer.Serialize(messageSendMode1);
                     var resultMode1 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode1, activateModule.ModuleID);

@@ -5,7 +5,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
-namespace Base.API.Common;
+namespace Base.API.Service;
 
 public class WebSocketConnectionManager
 {
@@ -62,7 +62,7 @@ public class WebSocketConnectionManager
 
     public async void SendMessagesToAll(string? message)
     {
-        if(message == null)
+        if (message == null)
         {
             return;
         }
@@ -70,7 +70,7 @@ public class WebSocketConnectionManager
         var buffer = Encoding.UTF8.GetBytes(message);
         foreach (WebSocket? ws in websockets)
         {
-            if(ws != null)
+            if (ws != null)
             {
                 await ws.SendAsync(
                     new ArraySegment<byte>(buffer, 0, message.Length),
@@ -89,7 +89,7 @@ public class WebSocketConnectionManager
             return;
         }
         var socket = _sockets.Where(s => s.ModuleId == moduleId).Select(s => s.Socket).FirstOrDefault();
-        if(socket is null)
+        if (socket is null)
         {
             return;
         }
@@ -108,7 +108,7 @@ public class WebSocketConnectionManager
         var websocketsClass = _sockets;
         foreach (var ws in websocketsClass)
         {
-            if(ws.Socket is not null)
+            if (ws.Socket is not null)
             {
                 await ws.Socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
                 _sockets.Remove(ws);
@@ -159,20 +159,36 @@ public class WebSocketConnectionManager1
 
     public void AddModuleSocket(WebSocket socket, int moduleId)
     {
-        _moduleSockets.Add(new ModuleWebSocket
+        var existedWebsocket = _moduleSockets.Where(s => s.ModuleID == moduleId).FirstOrDefault();
+        if(existedWebsocket is null)
         {
-            Socket = socket,
-            ModuleID = moduleId
-        });
+            _moduleSockets.Add(new ModuleWebSocket
+            {
+                Socket = socket,
+                ModuleID = moduleId
+            });
+        }
+        else
+        {
+            existedWebsocket.Socket = socket;
+        }
     }
 
     public void AddClientSocket(WebSocket socket, Guid userId)
     {
-        _clientWebSocket.Add(new ClientWebSocket
+        var existedWebsocket = _clientWebSocket.FirstOrDefault(s => s.UserID == userId);
+        if(existedWebsocket is null)
         {
-            Socket = socket,
-            UserID = userId
-        });
+            _clientWebSocket.Add(new ClientWebSocket
+            {
+                Socket = socket,
+                UserID = userId
+            });
+        }
+        else
+        {
+            existedWebsocket.Socket = socket;
+        }
     }
 
     public async Task<bool> SendMesageToModule(string message, int moduleId)
@@ -183,7 +199,7 @@ public class WebSocketConnectionManager1
             return false;
         }
 
-        if(socket.State != WebSocketState.Open)
+        if (socket.State != WebSocketState.Open)
         {
             return false;
         }
@@ -202,7 +218,7 @@ public class WebSocketConnectionManager1
     public async Task<bool> SendMessageToClient(string message, Guid userId)
     {
         var socket = _clientWebSocket.Where(c => c.UserID == userId).FirstOrDefault()?.Socket;
-        if(socket is null)
+        if (socket is null)
         {
             return false;
         }
@@ -264,7 +280,7 @@ public class WebSocketConnectionManager1
     public async Task CloseModuleSocket(int moduleId, WebSocketCloseStatus? closeStatus, string? closeDescription, CancellationToken? cancellationToken)
     {
         var moduleSocket = _moduleSockets.Where(m => m.ModuleID == moduleId).FirstOrDefault();
-        if(moduleSocket is null)
+        if (moduleSocket is null)
         {
             return;
         }
@@ -318,7 +334,7 @@ public class WebSocketConnectionManager1
 public class MessageSend
 {
     public string Event { get; set; } = string.Empty;
-    public string Data { get; set; } = string.Empty;
+    public object? Data { get; set; }
 }
 
 public class DataSend

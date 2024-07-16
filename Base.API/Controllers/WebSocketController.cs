@@ -1,4 +1,4 @@
-﻿using Base.API.Common;
+﻿using Base.API.Service;
 using Base.Service.Common;
 using Base.Service.IService;
 using Microsoft.AspNetCore.Http;
@@ -64,6 +64,11 @@ public class WebSocketController : ControllerBase
     [HttpGet("/ws/module")]
     public async Task GetModule([FromQuery] string key)
     {
+        if(key is null || key == "" || key == string.Empty)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
         var getModulesResult = await _moduleService.Get(1, 1, 1, null, null, key, null);
         var existedModule = getModulesResult.Result?.FirstOrDefault();
         if (HttpContext.WebSockets.IsWebSocketRequest && existedModule is not null && existedModule.ModuleID > 0)
@@ -99,6 +104,11 @@ public class WebSocketController : ControllerBase
     public async Task GetClient()
     {
         var userId = _currentUserService.UserId;
+        if(userId == "Undefined")
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            return;
+        }
         var currentUser = await _userService.GetUserById(new Guid(userId));
         if (HttpContext.WebSockets.IsWebSocketRequest && currentUser is not null)
         {

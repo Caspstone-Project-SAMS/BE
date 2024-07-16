@@ -22,7 +22,7 @@ public static class DependencyInjection
 
         services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
-            options.UseSqlServer(configuration.GetConnectionString("MsSQLConnection"), b =>
+            options.UseSqlServer(configuration.GetConnectionString("MsSQLConnection") ?? throw new ArgumentNullException("Connection string not found"), b =>
             {
                 b.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
             });
@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddScoped<IStudentClassRepository, StudentClassRepository>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IModuleRepository, ModuleRepository>();
+        services.AddScoped<IFingerprintRepository, FingerprintRepository>();
         #endregion
 
         return services;

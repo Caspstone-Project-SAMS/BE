@@ -1,5 +1,5 @@
 ﻿using AutoMapper;
-using Base.API.Common;
+using Base.API.Service;
 using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.Service;
