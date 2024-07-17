@@ -21,7 +21,5 @@ namespace Base.Service.ViewModel.RequestVM
 
         public Guid LecturerID { get; set; }
 
-        public string CreatedBy { get; set; } = "Undefined";
-
     }
 }

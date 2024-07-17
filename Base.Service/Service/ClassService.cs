@@ -43,7 +43,7 @@ namespace Base.Service.Service
                 };
 
             }
-            var existedClassCode = await _unitOfWork.ClassRepository.Get(r => r.ClassCode.Equals(newEntity.ClassCode)).FirstOrDefaultAsync();
+            var existedClassCode = await _unitOfWork.ClassRepository.Get(r => r.ClassCode.Equals(newEntity.ClassCode +"-"+newEntity.SubjectCode)).FirstOrDefaultAsync();
             if (existedClassCode is not null)
             {
                 return new ServiceResponseVM<Class>
@@ -80,7 +80,7 @@ namespace Base.Service.Service
 
             Class newClass = new Class()
             {
-                ClassCode = newEntity.ClassCode,
+                ClassCode = newEntity.ClassCode +"-"+ newEntity.SubjectCode,
                 ClassStatus = 1,
                 SemesterID = existedSemester.SemesterID,
                 RoomID = existedRoom.RoomID,

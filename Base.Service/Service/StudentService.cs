@@ -285,8 +285,6 @@ namespace Base.Service.Service
             List<string> errors = new List<string>();
             foreach(var newEntity in newEntities)
             {
-                try
-                {
                     
                     var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode), includes: u => u.User).SingleOrDefaultAsync();
                     if (existedStudent is null)
@@ -321,40 +319,67 @@ namespace Base.Service.Service
                     
                     await _unitOfWork.StudentClassRepository.AddAsync(newStudentClass);
                     responseList.Add(newEntity);
-                }
-                catch (DbUpdateException ex)
-                {
-                    errors.Add($"DbUpdateException for ClassCode {newEntity.ClassCode} and StudentCode {newEntity.StudentCode}: {ex.Message}");
-                    continue;
-                }
-                catch (OperationCanceledException ex)
-                {
-                    errors.Add($"OperationCanceledException for ClassCode {newEntity.ClassCode} and StudentCode {newEntity.StudentCode}: {ex.Message}");
-                    continue;
-                }
-            }
-            var result = await _unitOfWork.SaveChangesAsync();
+              
+            }//
 
-            if (result)
-            {
-                return new ServiceResponseVM<List<StudentClassVM>>
-                {
-                    IsSuccess = errors.Count > 0,
-                    Title = errors.Count > 0 ? "Add new student to class successfully" : "Partial success in adding new students to class",
-                    Result = responseList,
-                    Errors = errors.ToArray()
-                };
-            }
-            else
-            {
-                return new ServiceResponseVM<List<StudentClassVM>>
-                {
-                    IsSuccess = false,
-                    Title = "Add new student to class failed",
-                    Errors = errors.ToArray()
-                };
-            }
 
+                    if(errors.Count > 0)
+                    {
+                        return new ServiceResponseVM<List<StudentClassVM>>
+                            {
+                                 IsSuccess = false,
+                                 Title = "Add new student to class failed",
+                                 Errors = errors.Distinct().ToArray()
+                            };
+                    }
+
+
+                    try
+                    {
+                        var result = await _unitOfWork.SaveChangesAsync();
+
+                        if (result)
+                        {
+                            return new ServiceResponseVM<List<StudentClassVM>>
+                            {
+                                IsSuccess = true,
+                                Title = "Add new student to class successfully",
+                                Result = responseList,
+                            };
+                        }
+                        else
+                        {
+                            return new ServiceResponseVM<List<StudentClassVM>>
+                            {
+                                IsSuccess = false,
+                                Title = "Add new student to class failed",
+                                Errors = errors.Distinct().ToArray()
+                            };
+                        }
+                
+                    }
+                    catch (DbUpdateException ex)
+                    {
+                        errors.Add($"DbUpdateException: {ex.Message}");
+                        return new ServiceResponseVM<List<StudentClassVM>>
+                        {
+                            IsSuccess = false,
+                            Title = "Add new student to class failed",
+                            Errors = errors.Distinct().ToArray()
+                        };
+
+                    }
+                    catch (OperationCanceledException ex)
+                    {
+                        errors.Add($"OperationCanceledException: {ex.Message}");
+                        return new ServiceResponseVM<List<StudentClassVM>>
+                        {
+                            IsSuccess = false,
+                            Title = "Add new student to class failed",
+                            Errors = errors.Distinct().ToArray()
+                        };
+
+                }
         }
 
         public async Task<User?> GetById(Guid id)
