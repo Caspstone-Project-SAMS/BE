@@ -53,7 +53,7 @@ namespace Base.API.Controllers
                 return NotFound();
             }
 
-            return Ok(_mapper.Map<IEnumerable<ClassResponse>>(classes));
+            return Ok(classes);
         }
 
         [HttpGet("download-excel-template")]
