@@ -35,8 +35,7 @@ namespace Base.Service.Service
             List<string> errors = new List<string>();
             foreach (var newEntity in newEntities)
             {
-                try
-                {
+                
                     var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode) && !c.IsDeleted).SingleOrDefaultAsync();
                     if (existedClass is null)
                     {
@@ -78,18 +77,21 @@ namespace Base.Service.Service
                         IsDeleted = false
                     };
                         await _unitOfWork.ScheduleRepository.AddAsync(newSchedule);
-                }
-                catch (DbUpdateException ex)
-                {
-                    errors.Add($"DbUpdateException for ClassCode {newEntity.ClassCode}: {ex.Message}");
-                    continue;
-                }
-                catch (OperationCanceledException ex)
-                {
-                    errors.Add($"OperationCanceledException for ClassCode {newEntity.ClassCode}: {ex.Message}");
-                    continue;
-                }
+                        createdSchedule.Add(newEntity);
             }
+
+            if (errors.Count > 0)
+            {
+                return new ServiceResponseVM<List<ScheduleVM>>
+                {
+                    IsSuccess = false,
+                    Title = "Create schedule failed",
+                    Errors = errors.Distinct().ToArray()
+                };
+            }
+
+            try
+            {
                 var result = await _unitOfWork.SaveChangesAsync();
                 if (result)
                 {
@@ -106,9 +108,31 @@ namespace Base.Service.Service
                     {
                         IsSuccess = false,
                         Title = "Create schedule failed",
-                        Errors = errors.ToArray()
+                        Errors = errors.Distinct().ToArray()
                     };
                 }
+
+            }
+            catch (DbUpdateException ex)
+            {
+                errors.Add($"DbUpdateException: {ex.Message}");
+                return new ServiceResponseVM<List<ScheduleVM>>
+                {
+                    IsSuccess = false,
+                    Title = "Create schedule failed",
+                    Errors = errors.Distinct().ToArray()
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                errors.Add($"OperationCanceledException: {ex.Message}");
+                return new ServiceResponseVM<List<ScheduleVM>>
+                {
+                    IsSuccess = false,
+                    Title = "Create schedule failed",
+                    Errors = errors.Distinct().ToArray()
+                };
+            }
         }
 
         public async Task<IEnumerable<Schedule>> GetSchedules(int startPage, int endPage, Guid lecturerId, int quantity, int? semesterId, DateTime? startDate, DateTime? endDate)
@@ -122,6 +146,7 @@ namespace Base.Service.Service
 
             var query = await _unitOfWork.ScheduleRepository.Get(s => s.Class!.LecturerID == lecturerId && !s.IsDeleted)
                 .Include(s => s.Class)
+                .Include(s => s.Room)
                 .Include(s => s.Class!.Semester)
                 .Include(s => s.Class!.Room)
                 .Include(s => s.Slot)
@@ -147,6 +172,7 @@ namespace Base.Service.Service
             var schedules = query
                 .Skip((startPage - 1) * quantityResult)
                 .Take((endPage - startPage + 1) * quantityResult);
+                
 
             return schedules;
         }
