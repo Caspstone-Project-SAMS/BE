@@ -1,12 +1,8 @@
 ﻿using AutoMapper;
-using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
-using DocumentFormat.OpenXml.Wordprocessing;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Swashbuckle.AspNetCore.Annotations;
 
 namespace Base.API.Controllers
 {
@@ -16,13 +12,11 @@ namespace Base.API.Controllers
     {
         private readonly IScheduleService _scheduleService;
         private readonly IMapper _mapper;
-        private readonly IWebHostEnvironment _hostingEnvironment;
 
-        public ScheduleController(IScheduleService scheduleService, IMapper mapper, IWebHostEnvironment hostingEnvironment)
+        public ScheduleController(IScheduleService scheduleService, IMapper mapper)
         {
             _scheduleService = scheduleService;
             _mapper = mapper;
-            _hostingEnvironment = hostingEnvironment;
         }
 
         [HttpGet]
@@ -64,19 +58,6 @@ namespace Base.API.Controllers
 
         }
 
-        [HttpGet("download-excel-template")]
-        public IActionResult DownloadExcel()
-        {
-            var filePath = Path.Combine(_hostingEnvironment.WebRootPath, "template_schedule.xlsx");
-
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound();
-            }
-
-            var fileBytes = System.IO.File.ReadAllBytes(filePath);
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_schedule.xlsx");
-        }
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetScheduleById(int id)
