@@ -31,7 +31,7 @@ namespace Base.API.Controllers
                 if (result.IsSuccess)
                 {
                     // Notify to admin
-                    var messageSend = new MessageSend()
+                    var messageSend = new WebsocketMessage()
                     {
                         Event = "RegisterFingerSuccessfully",
                         Data = new

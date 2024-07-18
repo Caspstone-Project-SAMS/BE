@@ -34,7 +34,7 @@ public class WebSocketConnectionManager
 
         if (isRegisterModule)
         {
-            var messageSend = new MessageSend
+            var messageSend = new WebsocketMessage
             {
                 Event = "GetModuleID",
                 Data = moduleId ?? ""
@@ -157,6 +157,20 @@ public class WebSocketConnectionManager1
     private IList<ModuleWebSocket> _moduleSockets = new List<ModuleWebSocket>();
     private IList<ClientWebSocket> _clientWebSocket = new List<ClientWebSocket>();
 
+    public bool CheckModuleSocket(int moduleId)
+    {
+        var existedWebsocket = _moduleSockets.Where(s => s.ModuleID == moduleId).FirstOrDefault();
+        if(existedWebsocket is null || existedWebsocket.Socket is null)
+        {
+            return false;
+        }
+        if(existedWebsocket.Socket.State != WebSocketState.Open || existedWebsocket.Socket.State != WebSocketState.Connecting)
+        {
+            return false;
+        }
+        return true;
+    }
+
     public void AddModuleSocket(WebSocket socket, int moduleId)
     {
         var existedWebsocket = _moduleSockets.Where(s => s.ModuleID == moduleId).FirstOrDefault();
@@ -170,6 +184,7 @@ public class WebSocketConnectionManager1
         }
         else
         {
+            existedWebsocket.Socket?.Dispose();
             existedWebsocket.Socket = socket;
         }
     }
@@ -187,6 +202,7 @@ public class WebSocketConnectionManager1
         }
         else
         {
+            existedWebsocket.Socket?.Dispose();
             existedWebsocket.Socket = socket;
         }
     }
@@ -290,6 +306,7 @@ public class WebSocketConnectionManager1
             await socket.CloseAsync(closeStatus ?? WebSocketCloseStatus.NormalClosure, null, cancellationToken ?? CancellationToken.None);
             _moduleSockets.Remove(moduleSocket);
         }
+        socket?.Dispose();
     }
 
     public async Task CloseClientSocket(Guid userId, WebSocketCloseStatus? closeStatus, string? closeDescription, CancellationToken? cancellationToken)
@@ -305,6 +322,7 @@ public class WebSocketConnectionManager1
             await socket.CloseAsync(closeStatus ?? WebSocketCloseStatus.NormalClosure, null, cancellationToken ?? CancellationToken.None);
             _clientWebSocket.Remove(clientSocket);
         }
+        socket?.Dispose();
     }
 
     public IEnumerable<ModuleWebSocket> GetAllModuleSocket()
@@ -331,7 +349,7 @@ public class WebSocketConnectionManager1
 }
 
 
-public class MessageSend
+public class WebsocketMessage
 {
     public string Event { get; set; } = string.Empty;
     public object? Data { get; set; }

@@ -3,6 +3,9 @@ using Base.Service.Common;
 using Base.Service.IService;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
 using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace Base.API.Controllers;
@@ -75,6 +78,9 @@ public class WebSocketController : ControllerBase
         {
             using (var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync())
             {
+                // Call the keep-alive function in a separate task
+                _ = KeepAlive(webSocket);
+
                 _websocketConnectionManager1.AddModuleSocket(webSocket, existedModule.ModuleID);
 
                 var buffer = new byte[1024 * 4];
@@ -124,6 +130,34 @@ public class WebSocketController : ControllerBase
                 {
                     receiveResult = await webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                    if(receiveResult.MessageType == WebSocketMessageType.Text)
+                    {
+                        string? jsonString = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
+                        WebsocketMessage? receivedMessage = JsonSerializer.Deserialize<WebsocketMessage>(jsonString);
+                        if(receivedMessage is not null)
+                        {
+                            var sendMessage = new WebsocketMessage();
+
+                            switch (receivedMessage.Event)
+                            {
+                                case "CheckModule":
+                                    var checkModuleResult = CheckModule(receivedMessage);
+                                    if(checkModuleResult is not null)
+                                    {
+                                        await _websocketConnectionManager1.SendMessageToClient(checkModuleResult, currentUser.Id);
+                                    }
+                                    break;
+                                case "CheckModules":
+                                    var checkModulesResult = CheckModulesResult(receivedMessage);
+                                    if(checkModulesResult is not null)
+                                    {
+                                        await _websocketConnectionManager1.SendMessageToClient(checkModulesResult, currentUser.Id);
+                                    }
+                                    break;
+                            }
+                        }
+                    }
                 }
 
                 await _websocketConnectionManager1.CloseClientSocket(currentUser.Id,
@@ -135,6 +169,61 @@ public class WebSocketController : ControllerBase
         else
         {
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+        }
+    }
+
+    private string? CheckModule(WebsocketMessage receivedMessage)
+    {
+        var moduleId = (int?)receivedMessage.Data;
+        if (moduleId is null) return null;
+        receivedMessage.Event = "CheckModuleResult";
+        receivedMessage.Data = new
+        {
+            ModuleId = moduleId,
+            Result = _websocketConnectionManager1.CheckModuleSocket((int)moduleId)
+        };
+        return JsonSerializer.Serialize(receivedMessage);
+    }
+
+    private string? CheckModulesResult(WebsocketMessage receivedMessage)
+    {
+        var moduleIds = (List<int>?)receivedMessage.Data;
+        if (moduleIds is null || moduleIds.Count <= 0) return null;
+        var checkModulesResult = new List<object>();
+        foreach (var moduleId in moduleIds)
+        {
+            var moduleResult = new
+            {
+                ModuleId = moduleId,
+                Result = _websocketConnectionManager1.CheckModuleSocket((int)moduleId)
+            };
+            checkModulesResult.Add(moduleResult);
+        }
+        receivedMessage.Event = "CheckModulesResult";
+        receivedMessage.Data = checkModulesResult;
+        return JsonSerializer.Serialize(receivedMessage);
+    }
+
+    private async Task KeepAlive(WebSocket webSocket)
+    {
+        while (webSocket.State == WebSocketState.Open)
+        {
+            try
+            {
+                // Send a ping frame
+                var buffer = new ArraySegment<byte>(new byte[0]);
+                await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                // Wait for the pong frame or timeout
+                // Here we don't specifically check for a pong, but you can add logic to handle pong if needed
+
+                await Task.Delay(TimeSpan.FromSeconds(10)); // Ping interval
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"KeepAlive exception: {ex}");
+                break;
+            }
         }
     }
 }

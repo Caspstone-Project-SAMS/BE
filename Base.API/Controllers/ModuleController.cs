@@ -114,7 +114,7 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Student not found" }
                         });
                     }
-                    var messageSendMode1 = new MessageSend
+                    var messageSendMode1 = new WebsocketMessage
                     {
                         Event = "RegisterFingerprint",
                         Data = new
@@ -139,7 +139,7 @@ public class ModuleController : ControllerBase
                     });
 
                 case 2:
-                    // Mode 2 - start attendance session
+                    // Mode 2 - prepare attendance session
                     if (activateModule.StartAttendance is null)
                     {
                         return BadRequest(new
@@ -157,9 +157,9 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Schedule not found" }
                         });
                     }
-                    var messageSendMode2 = new MessageSend
+                    var messageSendMode2 = new WebsocketMessage
                     {
-                        Event = "StartAttendance",
+                        Event = "PrepareAttendance",
                         Data = existedSschedule.ScheduleID.ToString()
                     };
                     var jsonPayloadMode2 = JsonSerializer.Serialize(messageSendMode2);
@@ -196,7 +196,7 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Schedule not found" }
                         });
                     }
-                    var messageSendMode3 = new MessageSend
+                    var messageSendMode3 = new WebsocketMessage
                     {
                         Event = "StopAttendance",
                         Data = existedSscheduleMode3.ScheduleID.ToString()

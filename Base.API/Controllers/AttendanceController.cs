@@ -58,7 +58,7 @@ namespace Base.API.Controllers
                         status = 1
                     };
                     var dataSendString = JsonSerializer.Serialize(dataSend);
-                    var messageSend = new MessageSend
+                    var messageSend = new WebsocketMessage
                     {
                         Event = "statusChange",
                         Data = dataSendString
@@ -95,7 +95,7 @@ namespace Base.API.Controllers
                         status = 1
                     };
                     var dataSendString = JsonSerializer.Serialize(dataSend);
-                    var messageSend = new MessageSend
+                    var messageSend = new WebsocketMessage
                     {
                         Event = "statusChange",
                         Data = dataSendString
