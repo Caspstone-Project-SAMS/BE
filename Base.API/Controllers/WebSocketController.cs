@@ -172,6 +172,7 @@ public class WebSocketController : ControllerBase
         }
     }
 
+
     private string? CheckModule(WebsocketMessage receivedMessage)
     {
         var moduleId = (int?)receivedMessage.Data;
@@ -210,12 +211,20 @@ public class WebSocketController : ControllerBase
         {
             try
             {
-                // Send a ping frame
-                var buffer = new ArraySegment<byte>(new byte[0]);
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(8));
+
+                // Send a ping frame with unique payload
+                var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes("ping"));
                 await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
 
-                // Wait for the pong frame or timeout
-                // Here we don't specifically check for a pong, but you can add logic to handle pong if needed
+                var pongReceived = await WaitForPongAsync(webSocket, cts.Token);
+
+                if (!pongReceived)
+                {
+                    await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Pong not received", CancellationToken.None);
+                    break;
+                }
 
                 await Task.Delay(TimeSpan.FromSeconds(10)); // Ping interval
             }
@@ -225,5 +234,29 @@ public class WebSocketController : ControllerBase
                 break;
             }
         }
+    }
+
+    private async Task<bool> WaitForPongAsync(WebSocket webSocket, CancellationToken cancellationToken)
+    {
+        byte[] buffer = new byte[1024];
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                if(result.MessageType == WebSocketMessageType.Binary)
+                {
+                    string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    if(receiveData == "pong")
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
     }
 }
