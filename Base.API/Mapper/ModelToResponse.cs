@@ -112,6 +112,7 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.EnrolledClasses, opt => opt.MapFrom(src => src.EnrolledClasses));
 
             // For employee detail
+            CreateMap<Role, Role_EmployeeResponseVM>();
             CreateMap<Class, Class_EmployeeResponseVM>();
             CreateMap<Module, Module_EmployeeResponseVM>();
             CreateMap<User, EmployeeResponseVM>()

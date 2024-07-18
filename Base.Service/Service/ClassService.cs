@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -32,55 +33,77 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Class>> Create(ClassVM newEntity)
         {
-            var existedRoom = await _unitOfWork.RoomRepository.Get(r => r.RoomName.Equals(newEntity.RoomName)).FirstOrDefaultAsync();
-            if (existedRoom is null)
-            {
-                return new ServiceResponseVM<Class>
-                {
-                    IsSuccess = false,
-                    Title = "Create Class failed",
-                    Errors = new string[1] { "Room Name is not exist" }
-                };
-
-            }
-            var existedClassCode = await _unitOfWork.ClassRepository.Get(r => r.ClassCode.Equals(newEntity.ClassCode +"-"+newEntity.SubjectCode)).FirstOrDefaultAsync();
-            if (existedClassCode is not null)
-            {
-                return new ServiceResponseVM<Class>
-                {
-                    IsSuccess = false,
-                    Title = "Create Class failed",
-                    Errors = new string[1] { "Class Code is already exist" }
-                };
-
-            }
-            var existedSemester = await _unitOfWork.SemesterRepository.Get(r => r.SemesterCode.Equals(newEntity.SemesterCode)).FirstOrDefaultAsync();
+            var existedSemester = await _unitOfWork.SemesterRepository
+                .Get(r => !r.IsDeleted && r.SemesterID == newEntity.SemesterId)
+                .FirstOrDefaultAsync();
             if (existedSemester is null)
             {
                 return new ServiceResponseVM<Class>
                 {
                     IsSuccess = false,
                     Title = "Create Class failed",
-                    Errors = new string[1] { "Semester Code is not exist" }
+                    Errors = new string[1] { "Semester not found" }
                 };
 
             }
 
-            var existedSubject = await _unitOfWork.SubjectRepository.Get(r => r.SubjectCode.Equals(newEntity.SubjectCode)).FirstOrDefaultAsync();
+            var existedRoom = await _unitOfWork.RoomRepository
+                .Get(r => !r.IsDeleted && r.RoomID == newEntity.RoomId)
+                .FirstOrDefaultAsync();
+            if (existedRoom is null)
+            {
+                return new ServiceResponseVM<Class>
+                {
+                    IsSuccess = false,
+                    Title = "Create Class failed",
+                    Errors = new string[1] { "Room not found" }
+                };
+
+            }
+
+            var existedClassCode = await _unitOfWork.ClassRepository
+                .Get(r => !r.IsDeleted && (r.ClassCode.Equals(newEntity.ClassCode) && r.SemesterID == newEntity.SemesterId ))
+                .FirstOrDefaultAsync();
+            if (existedClassCode is not null)
+            {
+                return new ServiceResponseVM<Class>
+                {
+                    IsSuccess = false,
+                    Title = "Create Class failed",
+                    Errors = new string[1] { "Class Code is already existed" }
+                };
+
+            }
+
+            var existedSubject = await _unitOfWork.SubjectRepository
+                .Get(r => !r.IsDeleted && r.SubjectID == newEntity.SubjectId)
+                .FirstOrDefaultAsync();
             if (existedSubject is null)
             {
                 return new ServiceResponseVM<Class>
                 {
                     IsSuccess = false,
                     Title = "Create Class failed",
-                    Errors = new string[1] { "Subject Code is not exist" }
+                    Errors = new string[1] { "Subject not found" }
                 };
+            }
 
+            var existedLecturer = await _unitOfWork.UserRepository
+                .Get(u => !u.Deleted && u.Id == newEntity.LecturerID && u.Role!.Name == "Lecturer")
+                .FirstOrDefaultAsync();
+            if(existedLecturer is null)
+            {
+                return new ServiceResponseVM<Class>
+                {
+                    IsSuccess = false,
+                    Title = "Create Class failed",
+                    Errors = new string[1] { "Lecturer not found" }
+                };
             }
 
             Class newClass = new Class()
             {
-                ClassCode = newEntity.ClassCode +"-"+ newEntity.SubjectCode,
+                ClassCode = newEntity.ClassCode,
                 ClassStatus = 1,
                 SemesterID = existedSemester.SemesterID,
                 RoomID = existedRoom.RoomID,
@@ -135,56 +158,6 @@ namespace Base.Service.Service
             }
         }
 
-        public async Task<IEnumerable<Class>> Get(int startPage, int endPage, Guid? lecturerId, int quantity, int? semesterId, string? classCode)
-        {
-            int quantityResult = 0;
-            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
-            if (quantityResult == 0)
-            {
-                throw new ArgumentException("Error when get quantity per page");
-            }
-            
-            var query = await _unitOfWork.ClassRepository.FindAll().Include(c => c.Lecturer).Include(c => c.Semester).ToArrayAsync();
-
-            if (lecturerId.HasValue)
-            {
-                query = query.Where(c => c.LecturerID == lecturerId).ToArray();
-            }
-
-            if (semesterId.HasValue)
-            {
-                query = query.Where(c => c.SemesterID == semesterId).ToArray();
-            }
-
-            if (classCode != null)
-            {
-                query = query.Where(c => c.ClassCode.Equals(classCode)).ToArray();
-            }
-
-            var classes = query
-                .Skip((startPage - 1) * quantityResult)
-                .Take((endPage - startPage + 1) * quantityResult);
-
-            return classes;
-        }
-
-        public async Task<Class> GetClassDetail(int scheduleID)
-        {
-            var includes = new Expression<Func<Class, object?>>[]
-        {
-            c => c.Lecturer,
-            c => c.Subject,
-            c => c.Schedules,
-            c => c.Room,
-        };
-            var classDetail = await _unitOfWork.ClassRepository.Get(cl => cl.Schedules.Any(c => c.ScheduleID == scheduleID),includes: includes).SingleOrDefaultAsync();
-            if(classDetail == null)
-            {
-                throw new Exception($"Not Found Class With ScheduleID = {scheduleID}");
-            }
-            return classDetail;
-        }
-
         public async Task<Class?> GetById(int classId)
         {
             DbContextFactory dbFactory = new DbContextFactory();
@@ -236,6 +209,119 @@ namespace Base.Service.Service
 
             dbContext1.Dispose();
             dbContext2.Dispose();
+
+            return result;
+        }
+
+        public async Task<ServiceResponseVM<IEnumerable<Class>>> GetAllClasses(int startPage, int endPage, int quantity, int? semesterId, string? classCode, int? classStatus, int? roomID, int? subjectID, Guid? lecturerId, Guid? studentId, int? scheduleId)
+        {
+            var result = new ServiceResponseVM<IEnumerable<Class>>()
+            {
+                IsSuccess = false
+            };
+            var errors = new List<string>();
+
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                errors.Add("Invalid get quantity");
+                result.Errors = errors;
+                return result;
+            }
+
+            var expressions = new List<Expression>();
+            ParameterExpression pe = Expression.Parameter(typeof(Class), "c");
+            MethodInfo? containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+            MethodInfo? anyMethodStudent = typeof(Enumerable).GetMethods()
+                .First(m => m.Name == "Any" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(typeof(StudentClass));
+
+            MethodInfo? anyMethodSchedule = typeof(Enumerable).GetMethods()
+                .First(m => m.Name == "Any" && m.GetParameters().Length == 2)
+                .MakeGenericMethod(typeof(Schedule));
+
+            if (containsMethod is null)
+            {
+                errors.Add("Method Contains can not found from string type");
+                return result;
+            }
+            if(anyMethodStudent is null || anyMethodSchedule is null)
+            {
+                errors.Add("Method Any can not found from Enumerable type");
+                return result;
+            }
+
+            expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.IsDeleted)), Expression.Constant(false)));
+
+            if(semesterId is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.SemesterID)), Expression.Constant(semesterId)));
+            }
+
+            if(classCode is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.ClassCode)), Expression.Constant(classCode)));
+            }
+
+            if(classStatus is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.ClassStatus)), Expression.Constant(classStatus)));
+            }
+
+            if(roomID is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.RoomID)), Expression.Constant(roomID)));
+            }
+
+            if(subjectID is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.SubjectID)), Expression.Constant(subjectID)));
+            }
+
+            if(lecturerId is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.LecturerID)), Expression.Constant(lecturerId)));
+            }
+
+            if(studentId is not null)
+            {
+                var studentClassParameter = Expression.Parameter(typeof(StudentClass), "a");
+                var studentIdProperty = Expression.Property(studentClassParameter, "StudentID");
+                var studentIdCondition = Expression.Equal(studentIdProperty, Expression.Constant(studentId));
+                var lambda = Expression.Lambda(studentIdCondition, studentClassParameter);
+                var expression = Expression.Call(anyMethodStudent, Expression.Property(pe, nameof(Class.StudentClasses)), lambda);
+                expressions.Add(expression);
+            }
+
+            if (scheduleId is not null)
+            {
+                var scheduleParameter = Expression.Parameter(typeof(Schedule), "s");
+                var scheduleIdProperty = Expression.Property(scheduleParameter, "ScheduleID");
+                var scheduleIdCondition = Expression.Equal(scheduleIdProperty, Expression.Constant(scheduleId));
+                var lambda = Expression.Lambda(scheduleIdCondition, scheduleParameter);
+                expressions.Add(Expression.Call(anyMethodSchedule, Expression.Property(pe, nameof(Class.Schedules)), lambda));
+            }
+
+            Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
+            Expression<Func<Class, bool>> where = Expression.Lambda<Func<Class, bool>>(combined, pe);
+
+            var includes = new Expression<Func<Class, object?>>[]
+            {
+                c => c.Lecturer,
+                c => c.Semester
+            };
+
+            var classes = await _unitOfWork.ClassRepository
+                .Get(where, includes)
+                .AsNoTracking()
+                .Skip((startPage - 1) * quantityResult)
+                .Take((endPage - startPage + 1) * quantityResult)
+                .ToArrayAsync();
+
+            result.IsSuccess = true;
+            result.Result = classes;
+            result.Title = "Get successfully";
 
             return result;
         }

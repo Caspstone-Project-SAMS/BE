@@ -3,6 +3,7 @@ using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,38 +23,23 @@ namespace Base.API.Controllers
             _hostingEnvironment = hostingEnvironment;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetClassDetail([FromQuery] int scheduleID)
-        {
-            var classDetail = await _classService.GetClassDetail(scheduleID);
-            if (classDetail == null)
-            {
-                return NotFound();
-            }
-            return Ok(_mapper.Map<ClassResponse>(classDetail));
-        }
-
         [HttpPost]
         public async Task<IActionResult> CreateClass(ClassVM resource)
         {
-            var response = await _classService.Create(resource);
-            if (response.IsSuccess)
+            var result = await _classService.Create(resource);
+            if (result.IsSuccess)
             {
-                return Ok(response.Title);
+                return Ok(new
+                {
+                    Title = result.Title,
+                    Result = _mapper.Map<ClassResponseVM>(result.Result)
+                });
             }
-            return BadRequest(response);
-        }
-
-        [HttpGet("get-all-class")]
-        public async Task<IActionResult> GetAllClasses([FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] Guid? lecturerId, [FromQuery] int quantity, [FromQuery] int? semesterId, [FromQuery] string? classCode)
-        {
-            var classes = await _classService.Get(startPage, endPage, lecturerId, quantity, semesterId, classCode);
-            if (classes == null)
+            return BadRequest(new
             {
-                return NotFound();
-            }
-
-            return Ok(classes);
+                Title = result.Title,
+                Errors = result.Errors
+            });
         }
 
         [HttpGet("download-excel-template")]
@@ -69,30 +55,69 @@ namespace Base.API.Controllers
             var fileBytes = System.IO.File.ReadAllBytes(filePath);
             return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_class.xlsx");
         }
-            [HttpGet("{id}")]
-            public async Task<IActionResult> GetClasById(int id)
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllClasses(
+            [FromQuery] int startPage, 
+            [FromQuery] int endPage,
+            [FromQuery] int quantity,
+            [FromQuery] int? semesterId, 
+            [FromQuery] string? classCode,
+            [FromQuery] int? classStatus,
+            [FromQuery] int? roomID,
+            [FromQuery] int? subjectID,
+            [FromQuery] Guid? lecturerId,
+            [FromQuery] Guid? studentId,
+            [FromQuery] int? scheduleId)
+        {
+            if (ModelState.IsValid)
             {
-                if (ModelState.IsValid && id > 0)
+                var result = await _classService.GetAllClasses(startPage, endPage, quantity, semesterId, classCode, classStatus, roomID, subjectID, lecturerId, studentId, scheduleId);
+                if (result.IsSuccess)
                 {
-                    var existedClass = await _classService.GetById(id);
-                    if (existedClass is null)
-                    {
-                        return NotFound(new
-                        {
-                            Title = "Class not found"
-                        });
-                    }
                     return Ok(new
                     {
-                        Result = _mapper.Map<ClassResponseVM>(existedClass)
+                        Title = result.Title,
+                        Result = _mapper.Map<IEnumerable<ClassResponseVM>>(result.Result)
                     });
                 }
                 return BadRequest(new
                 {
-                    Title = "Get class information failed",
-                    Errors = new string[1] { "Invalid input" }
+                    Title = "Get classes falied",
+                    Errors = result.Errors
                 });
             }
+            return BadRequest(new
+            {
+                Title = "Get classes failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetClasById(int id)
+        {
+            if (ModelState.IsValid && id > 0)
+            {
+                var existedClass = await _classService.GetById(id);
+                if (existedClass is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Class not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<ClassResponseVM>(existedClass)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get class information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
     }
+}
 
