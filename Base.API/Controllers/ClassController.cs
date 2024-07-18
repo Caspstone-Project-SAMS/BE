@@ -15,12 +15,10 @@ namespace Base.API.Controllers
     {
         private readonly IClassService _classService;
         private readonly IMapper _mapper;
-        private readonly IWebHostEnvironment _hostingEnvironment;
-        public ClassController(IClassService classService, IMapper mapper, IWebHostEnvironment hostingEnvironment)
+        public ClassController(IClassService classService, IMapper mapper)
         {
             _classService = classService;
             _mapper = mapper;
-            _hostingEnvironment = hostingEnvironment;
         }
 
         [HttpPost]
@@ -40,20 +38,6 @@ namespace Base.API.Controllers
                 Title = result.Title,
                 Errors = result.Errors
             });
-        }
-
-        [HttpGet("download-excel-template")]
-        public IActionResult DownloadExcel()
-        {
-            var filePath = Path.Combine(_hostingEnvironment.WebRootPath, "template_class.xlsx");
-
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound();
-            }
-
-            var fileBytes = System.IO.File.ReadAllBytes(filePath);
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_class.xlsx");
         }
 
         [HttpGet]
