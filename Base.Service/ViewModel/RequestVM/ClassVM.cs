@@ -7,19 +7,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Base.Service.ViewModel.RequestVM
+namespace Base.Service.ViewModel.RequestVM;
+
+public class ClassVM
 {
-    public class ClassVM
-    {
-        public string ClassCode { get; set; } = string.Empty;
+    [Required]
+    public string ClassCode { get; set; } = string.Empty;
+    [Required]
+    public int SemesterId { get; set; }
+    [Required]
+    public int RoomId { get; set; }
+    [Required]
+    public int SubjectId { get; set; }
+    [Required]
+    public Guid LecturerID { get; set; }
 
-        public string SemesterCode { get; set; } = string.Empty;
-
-        public string RoomName { get; set; } = string.Empty;
-
-        public string SubjectCode { get; set; } = string.Empty;
-
-        public Guid LecturerID { get; set; }
-
-    }
 }

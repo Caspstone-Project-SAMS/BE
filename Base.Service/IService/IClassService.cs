@@ -10,10 +10,9 @@ using System.Threading.Tasks;
 namespace Base.Service.IService
 {
     public interface IClassService
-    {
-        Task<Class> GetClassDetail(int scheduleID);
+    { 
         Task<ServiceResponseVM<Class>> Create(ClassVM newEntity);
-        Task<IEnumerable<Class>> Get(int startPage, int endPage, Guid? lecturerId, int quantity, int? semesterId,string? classCode);
         Task<Class?> GetById(int classId);
+        Task<ServiceResponseVM<IEnumerable<Class>>> GetAllClasses(int startPage, int endPage, int quantity, int? semesterId, string? classCode, int? classStatus, int? roomID, int? subjectID, Guid? lecturerId, Guid? studentId, int? scheduleId);
     }
 }

@@ -44,5 +44,39 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllEmployee(
+            [FromQuery] int startPage, 
+            [FromQuery] int endPage,
+            [FromQuery] int quantity,
+            [FromQuery] string? email,
+            [FromQuery] string? phone,
+            [FromQuery] string? department,
+            [FromQuery] int? roleId)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _employeeService.GetAll(startPage, endPage, quantity, email, phone, department, roleId);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = _mapper.Map<IEnumerable<EmployeeResponseVM>>(result.Result)
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = "Get employees falied",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get employees failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }
