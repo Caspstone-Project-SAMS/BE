@@ -1,20 +1,8 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using ClosedXML.Excel;
-using Google.Apis.Sheets.v4;
-using Base.API.Common;
-using DocumentFormat.OpenXml.Spreadsheet;
-using Google.Apis.Sheets.v4.Data;
-using static Google.Apis.Sheets.v4.SpreadsheetsResource.ValuesResource;
-using Base.Repository.Entity;
-using DocumentFormat.OpenXml.Drawing.Diagrams;
-using System;
+﻿using Microsoft.AspNetCore.Mvc;
 using Base.Service.ViewModel.RequestVM;
 using Base.IService.IService;
 using AutoMapper;
 using Base.Service.ViewModel.ResponseVM;
-using Base.Service.Service;
-using Microsoft.Extensions.Hosting.Internal;
 
 namespace Base.API.Controllers
 {
@@ -27,14 +15,12 @@ namespace Base.API.Controllers
         //SpreadsheetsResource.ValuesResource _googleSheetValues;
         private readonly IStudentService _studentService;
         private readonly IMapper _mapper;
-        private readonly IWebHostEnvironment _hostingEnvironment;
 
-        public StudentController(IStudentService studentService, IMapper mapper, IWebHostEnvironment hostingEnvironment)
+        public StudentController(IStudentService studentService, IMapper mapper)
         {
             //_googleSheetValues = googleSheetsHelper.Service.Spreadsheets.Values;
             _studentService = studentService;
             _mapper = mapper;
-            _hostingEnvironment = hostingEnvironment;
         }
         //public class Student
         //{
@@ -316,19 +302,6 @@ namespace Base.API.Controllers
             {
                 return BadRequest(result);
             }
-        }
-        [HttpGet("download-excel-template")]
-        public IActionResult DownloadExcel()
-        {
-            var filePath = Path.Combine(_hostingEnvironment.WebRootPath, "template_student.xlsx");
-
-            if (!System.IO.File.Exists(filePath))
-            {
-                return NotFound();
-            }
-
-            var fileBytes = System.IO.File.ReadAllBytes(filePath);
-            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "template_student.xlsx");
         }
 
         [HttpGet("{id}")]
