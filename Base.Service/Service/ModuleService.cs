@@ -109,5 +109,8 @@ internal class ModuleService : IModuleService
         return result;
     }
 
-
+    public Task<ServiceResponseVM<Module>> Update()
+    {
+        throw new NotImplementedException();
+    }
 }
