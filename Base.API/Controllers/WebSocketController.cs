@@ -207,12 +207,13 @@ public class WebSocketController : ControllerBase
 
     private async Task KeepAlive(WebSocket webSocket)
     {
+        await Task.Delay(TimeSpan.FromSeconds(30));
         while (webSocket.State == WebSocketState.Open)
         {
             try
             {
                 var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(8));
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
 
                 // Send a ping frame with unique payload
                 var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes("ping"));
@@ -223,6 +224,7 @@ public class WebSocketController : ControllerBase
                 if (!pongReceived)
                 {
                     await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Pong not received", CancellationToken.None);
+                    webSocket.Dispose();
                     break;
                 }
 

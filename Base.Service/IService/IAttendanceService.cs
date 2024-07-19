@@ -16,6 +16,8 @@ namespace Base.Service.IService
 
         Task<ServiceResponseVM<List<StudentListUpdateVM>>> UpdateListStudentStatus(StudentListUpdateVM[] studentArr);
 
+        Task<ServiceResponseVM<IEnumerable<Attendance>>> GetAttendanceList(int startPage, int endPage, int quantity, int? attendanceStatus, int? scheduleID, Guid? studentId, int? classId);
+
         Task<Attendance?> GetAttendanceById(int attendanceID);
     }
 }

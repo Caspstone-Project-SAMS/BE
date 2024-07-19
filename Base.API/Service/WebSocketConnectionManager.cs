@@ -171,6 +171,16 @@ public class WebSocketConnectionManager1
         return true;
     }
 
+    public WebSocket? GetModuleSocket(int moduleId)
+    {
+        return _moduleSockets.FirstOrDefault(m => m.ModuleID == moduleId)?.Socket;
+    }
+
+    public WebSocket? GetClientSocket(Guid userId)
+    {
+        return _clientWebSocket.FirstOrDefault(c => c.UserID == userId)?.Socket;
+    }
+
     public void AddModuleSocket(WebSocket socket, int moduleId)
     {
         var existedWebsocket = _moduleSockets.Where(s => s.ModuleID == moduleId).FirstOrDefault();

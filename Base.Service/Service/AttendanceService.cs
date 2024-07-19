@@ -159,5 +159,66 @@ namespace Base.Service.Service
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<ServiceResponseVM<IEnumerable<Attendance>>> GetAttendanceList(int startPage, int endPage, int quantity, int? attendanceStatus, int? scheduleID, Guid? studentId, int? classId)
+        {
+            var result = new ServiceResponseVM<IEnumerable<Attendance>>()
+            {
+                IsSuccess = false
+            };
+            var errors = new List<string>();
+
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                errors.Add("Invalid get quantity");
+                result.Errors = errors;
+                return result;
+            }
+
+            var includes = new Expression<Func<Attendance, object?>>[]
+            {
+                s => s.Schedule,
+                s => s.Student,
+                s => s.Student!.Student,
+                s => s.Schedule!.Class,
+                s => s.Schedule!.Class!.Room,
+                s => s.Schedule!.Slot,
+                s => s.Schedule!.Room,
+            };
+
+            var queryAttendance = _unitOfWork.AttendanceRepository.Get(a => !a.IsDeleted, includes);
+
+            if(attendanceStatus is not null)
+            {
+                queryAttendance = queryAttendance.Where(a => a.AttendanceStatus == attendanceStatus);
+            }
+
+            if(scheduleID is not null)
+            {
+                queryAttendance = queryAttendance.Where(a => a.ScheduleID == scheduleID);
+            }
+
+            if(studentId is not null)
+            {
+                queryAttendance = queryAttendance.Where(a => a.StudentID == studentId);
+            }
+
+            if(classId is not null)
+            {
+                queryAttendance = queryAttendance.Where(a => a.Schedule!.Class!.ClassID == classId);
+            }
+
+            result.IsSuccess = true;
+            result.Result = await queryAttendance
+                .AsNoTracking()
+                .Skip((startPage - 1) * quantityResult)
+                .Take((endPage - startPage + 1) * quantityResult)
+                .ToArrayAsync();
+            result.Title = "Get successfully";
+
+            return result;
+        }
     }
 }

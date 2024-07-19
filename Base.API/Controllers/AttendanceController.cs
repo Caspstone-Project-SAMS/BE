@@ -137,5 +137,39 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllAttendances(
+            [FromQuery] int startPage, 
+            [FromQuery] int endPage, 
+            [FromQuery] int quantity,
+            [FromQuery] int? attendanceStatus,
+            [FromQuery] int? scheduleID,
+            [FromQuery] Guid? studentId,
+            [FromQuery] int? classId)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _attendanceService.GetAttendanceList(startPage, endPage, quantity, attendanceStatus, scheduleID, studentId, classId);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = _mapper.Map<IEnumerable<AttendancesResponseVM>>(result.Result)
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = "Get attendances falied",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get attendances failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

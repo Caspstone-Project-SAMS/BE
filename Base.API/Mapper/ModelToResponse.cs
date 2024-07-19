@@ -70,6 +70,12 @@ namespace Base.API.Mapper
             CreateMap<Schedule, Schedule_AttendanceResponseVM>();
             CreateMap<Attendance, AttendanceResponseVM>();
 
+            CreateMap<Attendance, AttendancesResponseVM>()
+                .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedule!.Date))
+                .ForMember(dest => dest.Slot, opt => opt.MapFrom(src => src.Schedule!.Slot))
+                .ForMember(dest => dest.Class, opt => opt.MapFrom(src => src.Schedule!.Class))
+                .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Schedule!.Room != null ? src.Schedule.Room : src.Schedule.Class!.Room));
+
             // For class detail
             CreateMap<User, Student_ClassResponseVM>()
                 .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode))
