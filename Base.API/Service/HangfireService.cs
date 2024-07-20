@@ -36,7 +36,7 @@ namespace Base.API.Service
 
         public async Task<string> SenDataToModule(DateOnly? date, int moduleId)
         {
-            var messageSendMode = new MessageSend
+            var messageSendMode = new WebsocketMessage
             {
                 Event = "PrepareSchedules",
                 Data = date.ToString(),
