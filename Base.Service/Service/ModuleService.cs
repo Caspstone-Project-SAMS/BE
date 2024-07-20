@@ -2,8 +2,10 @@
 using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.Validation;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using FirebaseAdmin;
+using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -109,5 +111,40 @@ internal class ModuleService : IModuleService
         return result;
     }
 
+    public async Task<ServiceResponseVM<Module>> Update(ModuleVM newEntity,int id)
+    {
+        var result = new ServiceResponseVM<Module>()
+        {
+            IsSuccess = false      
+        };
 
+        var existedModule = await _unitOfWork.ModuleRepository.Get(m => m.ModuleID == id).SingleOrDefaultAsync();
+        if(existedModule is null)
+        {
+            result.Title = "Update Module Failed";
+            result.Errors = new string[1] { "Module not found" };
+            return result;
+        }
+
+        existedModule.AutoPrepare = newEntity.AutoPrepare;
+        existedModule.PreparedTime = TimeOnly.Parse(newEntity.PreparedTime!);
+
+        _unitOfWork.ModuleRepository.Update(existedModule);
+
+        var save = await _unitOfWork.SaveChangesAsync();
+        if (save)
+        {
+            result.IsSuccess = true;
+            result.Title = "Update Module Successfully";
+            result.Result = existedModule;
+            return result;
+        }
+        else
+        {
+            result.IsSuccess = false;
+            result.Title = "Update Module Failed";
+            return result;
+        }
+
+    }
 }

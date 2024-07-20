@@ -6,6 +6,7 @@ using Base.Service.Common;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -279,24 +280,34 @@ namespace Base.Service.Service
             }
         }
 
-        public async Task<ServiceResponseVM<List<StudentClassVM>>> AddStudentToClass(List<StudentClassVM> newEntities)
+        public async Task<ServiceResponseVM<List<StudentClassVM>>> AddStudentToClass(List<StudentClassVM> newEntities,int semesterId)
         {
             List<StudentClassVM> responseList = new List<StudentClassVM>();
             List<string> errors = new List<string>();
+            var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == semesterId && !s.IsDeleted).SingleOrDefaultAsync();
+            if (existedSemester is null)
+            {
+                return new ServiceResponseVM<List<StudentClassVM>>
+                {
+                    IsSuccess = false,
+                    Title = "Add new student to class failed",
+                    Errors = new string[1] { "Semester not Existed" }
+                };
+            }
             foreach(var newEntity in newEntities)
             {
                     
-                    var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode), includes: u => u.User).SingleOrDefaultAsync();
+                    var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode) && !s.IsDeleted, includes: u => u.User).SingleOrDefaultAsync();
                     if (existedStudent is null)
                     {
                         errors.Add($"Student with code {newEntity.StudentCode} not existed");
                         continue;
                     }
 
-                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode)).SingleOrDefaultAsync();
+                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode) && c.SemesterID == semesterId && !c.IsDeleted).SingleOrDefaultAsync();
                     if (existedClass is null)
                     {
-                        errors.Add($"Class with code {newEntity.ClassCode} not existed");
+                        errors.Add($"Class with code {newEntity.ClassCode} not existed in Semester {existedSemester.SemesterCode}");
                         continue;
                     }
 

@@ -303,7 +303,6 @@ namespace Base.Service.Service
                 var lambda = Expression.Lambda(scheduleIdCondition, scheduleParameter);
                 expressions.Add(Expression.Call(anyMethodSchedule, Expression.Property(pe, nameof(Class.Schedules)), lambda));
             }
-
             Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
             Expression<Func<Class, bool>> where = Expression.Lambda<Func<Class, bool>>(combined, pe);
 
