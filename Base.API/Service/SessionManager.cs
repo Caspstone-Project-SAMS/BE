@@ -44,10 +44,10 @@ public class SessionManager
         return true;
     }
 
-    public bool RegisterFinger(int sessionId, string fingerprintTemplate, int fingerNumber)
+    public bool RegisterFinger(int sessionId, string fingerprintTemplate, int fingerNumber, Guid studentId)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.Category == 1);
-        if(session is null || session.Category != 1 || session.SessionState != 1 || session.FingerRegistration is null)
+        if(session is null || session.Category != 1 || session.SessionState != 1 || session.FingerRegistration is null || session.FingerRegistration.StudentId != studentId)
         {
             return false;
         }
@@ -64,7 +64,7 @@ public class SessionManager
         return true;
     }
 
-    public void CancelFingerprintRegistrationSession(int sessionId, Guid userId)
+    public void CancelSession(int sessionId, Guid userId)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.UserID == userId);
         if (session is null) return;

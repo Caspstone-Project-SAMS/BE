@@ -25,7 +25,7 @@ namespace Base.API.Controllers
             _webSocketConnectionManager = webSocketConnectionManager;
             _mapper = mapper;
         }
-
+        
         [HttpGet]
         public async Task<IActionResult> GetAllAttendance([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] int scheduleID)
         {
