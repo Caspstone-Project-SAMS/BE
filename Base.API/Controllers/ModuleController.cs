@@ -36,7 +36,7 @@ public class ModuleController : ControllerBase
         WebSocketConnectionManager1 websocketConnectionManager,
         IScheduleService scheduleService,
         SessionManager sessionManager,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
         HangfireService hangFireService)
     {
         _moduleService = moduleService;
