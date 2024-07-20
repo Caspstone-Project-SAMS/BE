@@ -285,14 +285,14 @@ namespace Base.API.Controllers
         }
 
         [HttpPost("add-students-to-class")]
-        public async Task<IActionResult> AddStudentsToClass([FromBody] List<StudentClassVM> newEntities)
+        public async Task<IActionResult> AddStudentsToClass([FromBody] List<StudentClassVM> newEntities,int semesterId)
         {
             if (newEntities == null || newEntities.Count == 0)
             {
                 return BadRequest("No student-class entities provided.");
             }
 
-            var result = await _studentService.AddStudentToClass(newEntities);
+            var result = await _studentService.AddStudentToClass(newEntities, semesterId);
 
             if (result.IsSuccess)
             {

@@ -1,5 +1,6 @@
 ﻿using Base.API.Controllers;
 using Base.Repository.Common;
+using Base.Repository.Entity;
 using Hangfire;
 using System;
 using System.Collections.Generic;
@@ -25,32 +26,32 @@ namespace Base.API.Service
             _websocketConnectionManager = websocketConnectionManager;
         }
 
-        public void ConfigureRecurringJobsAsync(string jobName, TimeOnly prepareTime,int scheduleID)
+        public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, DateOnly? date, int moduleId)
         {
             var cronExpression = ConvertToCronExpression(prepareTime);
-            _recurringJobManager.AddOrUpdate(jobName,() => SenDataToModule(scheduleID), cronExpression);
+            _recurringJobManager.AddOrUpdate(jobName,() => SenDataToModule(date, moduleId), cronExpression);
             
         }
 
 
-        public async Task<string> SenDataToModule(int scheduleID)
+        public async Task<string> SenDataToModule(DateOnly? date, int moduleId)
         {
             var messageSendMode = new MessageSend
             {
-                Event = "SendData",
-                Data = scheduleID.ToString(),
+                Event = "PrepareSchedules",
+                Data = date.ToString(),
             };
             var jsonPayloadMode = JsonSerializer.Serialize(messageSendMode);
-            var resultMode = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode, scheduleID);
+            var resultMode = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode,moduleId);
 
             try
             {
                 if (resultMode)
                 {
-                    return "Send data to moudle successfully";
+                    return $"{date.ToString()}";
                 }
 
-                return "Send data to moudle unsuccessfully";
+                return "Prepare schedules for module unsuccessfully";
             }
             catch (Exception ex)
             {
@@ -59,10 +60,17 @@ namespace Base.API.Service
         }
 
 
-        private string ConvertToCronExpression(TimeOnly prepareTime)
+        private string ConvertToCronExpression(TimeOnly? prepareTime)
         {
-            return Cron.Daily(prepareTime.Hour, prepareTime.Minute);
+            if (prepareTime.HasValue)
+            {
+                TimeOnly time = prepareTime.Value;
+                return Cron.Daily(time.Hour, time.Minute);
+            }
+            else
+            {
+                return Cron.Daily(); 
+            }
         }
-
     }
 }

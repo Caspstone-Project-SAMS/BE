@@ -9,10 +9,10 @@ namespace Base.Service.ViewModel.RequestVM
     public class ModuleVM
     {
         public bool AutoPrepare { get; set; } = false;
-        public int? PreparedMinBeforeSlot { get; set; }
-        public TimeOnly? PreparedTime { get; set; }
-        public bool AutoReset { get; set; } = false;
-        public int? ResetMinAfterSlot { get; set; }
-        public TimeOnly? ResetTime { get; set; }
+        //public int? PreparedMinBeforeSlot { get; set; }
+        public string? PreparedTime { get; set; }
+        //public bool AutoReset { get; set; } = false;
+        //public int? ResetMinAfterSlot { get; set; }
+        //public TimeOnly? ResetTime { get; set; }
     }
 }
