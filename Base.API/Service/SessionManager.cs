@@ -6,6 +6,7 @@ namespace Base.API.Service;
 public class SessionManager
 {
     private IList<Session> _sessions = new List<Session>();
+    private IList<string> strings = new List<string>();
 
     public int CreateSession(int moduleId, Guid userId)
     {
@@ -104,6 +105,16 @@ public class SessionManager
         if (session is null) return;
         session.SessionState = 2; //End
         session.Errors = errors;
+    }
+
+
+    public void AddString(string text)
+    {
+        strings.Add(text);
+    }
+    public IEnumerable<string> GetAllString()
+    {
+        return strings;
     }
 }
 

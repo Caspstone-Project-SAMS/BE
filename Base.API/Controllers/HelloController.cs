@@ -12,11 +12,15 @@ public class HelloController : ControllerBase
 {
     private readonly WebSocketConnectionManager _webSocketConnectionManager;
     private readonly WebSocketConnectionManager1 _webSocketConnectionManager1;
+    private readonly SessionManager _sessionManager;
 
-    public HelloController(WebSocketConnectionManager webSocketConnectionManager, WebSocketConnectionManager1 webSocketConnectionManager1)
+    public HelloController(WebSocketConnectionManager webSocketConnectionManager, 
+        WebSocketConnectionManager1 webSocketConnectionManager1,
+        SessionManager sessionManager)
     {
         _webSocketConnectionManager = webSocketConnectionManager;
         _webSocketConnectionManager1 = webSocketConnectionManager1;
+        _sessionManager = sessionManager;
     }
 
     private static IList<FingerprintTemplate> fingerprintTemplates = new List<FingerprintTemplate>();
@@ -144,6 +148,12 @@ public class HelloController : ControllerBase
     public IActionResult GetV2ClientWebsocket()
     {
         return Ok(_webSocketConnectionManager1.GetAllClientSocket());
+    }
+
+    [HttpGet("Session")]
+    public IActionResult GetSessionString()
+    {
+        return Ok(_sessionManager.GetAllString());
     }
 
 

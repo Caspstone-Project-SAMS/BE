@@ -17,18 +17,21 @@ public class WebSocketController : ControllerBase
     private readonly IModuleService _moduleService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUserService _userService;
+    private readonly SessionManager _sessionManager;
 
     public WebSocketController(WebSocketConnectionManager webSocketConnectionManager, 
         WebSocketConnectionManager1 websocketConnectionManager1,
         IModuleService moduleService,
         ICurrentUserService currentUserService,
-        IUserService userService)
+        IUserService userService,
+        SessionManager sessionManager)
     {
         _websocketConnectionManager = webSocketConnectionManager;
         _websocketConnectionManager1 = websocketConnectionManager1;
         _moduleService = moduleService;
         _currentUserService = currentUserService;
         _userService = userService;
+        _sessionManager = sessionManager;
     }
 
     [HttpGet("/ws")]
@@ -249,7 +252,9 @@ public class WebSocketController : ControllerBase
                 if(result.MessageType == WebSocketMessageType.Binary)
                 {
                     string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    if(receiveData == "pong")
+                    Console.WriteLine(receiveData);
+                    _sessionManager.AddString(receiveData);
+                    if (receiveData == "pong")
                     {
                         return true;
                     }
