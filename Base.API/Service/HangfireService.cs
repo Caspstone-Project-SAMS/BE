@@ -39,7 +39,7 @@ namespace Base.API.Service
             var messageSendMode = new WebsocketMessage
             {
                 Event = "PrepareSchedules",
-                Data = date.ToString(),
+                Data = date?.ToString(),
             };
             var jsonPayloadMode = JsonSerializer.Serialize(messageSendMode);
             var resultMode = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode,moduleId);
@@ -48,9 +48,8 @@ namespace Base.API.Service
             {
                 if (resultMode)
                 {
-                    return $"{date.ToString()}";
+                    return $"Prepare schedules for module unsuccessfully";
                 }
-
                 return "Prepare schedules for module unsuccessfully";
             }
             catch (Exception ex)
@@ -65,12 +64,22 @@ namespace Base.API.Service
             if (prepareTime.HasValue)
             {
                 TimeOnly time = prepareTime.Value;
-                return Cron.Daily(time.Hour, time.Minute);
+                TimeZoneInfo vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+
+                // Tạo DateTime với Kind là Unspecified
+                DateTime vnDateTimeUnspecified = new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.Today.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
+
+                // Chuyển đổi từ thời gian Unspecified sang thời gian VN (Local)
+                DateTime vnDateTime = TimeZoneInfo.ConvertTime(vnDateTimeUnspecified, vnTimeZone);
+
+                // Lấy giờ và phút theo thời gian VN để tạo cron expression
+                return Cron.Daily(vnDateTime.Hour, vnDateTime.Minute);
             }
             else
             {
-                return Cron.Daily(); 
+                return Cron.Daily();
             }
         }
+
     }
 }
