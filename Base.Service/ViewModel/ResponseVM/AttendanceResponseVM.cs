@@ -61,3 +61,16 @@ public class Room_AttendanceResponseVM
     public string? RoomDescription { get; set; }
     public int? RoomStatus { get; set; }
 }
+
+
+public class AttendancesResponseVM
+{
+    public int AttendanceID { get; set; }
+    public int AttendanceStatus { get; set; }
+    public DateOnly? Date { get; set; }
+    public string? Comments { get; set; }
+    public Student_AttendanceResponseVM? Student { get; set; }
+    public Class_AttendanceResponseVM? Class { get; set; }
+    public Slot_AttendanceResponseVM? Slot { get; set; }
+    public Room_AttendanceResponseVM? Room { get; set; }
+}

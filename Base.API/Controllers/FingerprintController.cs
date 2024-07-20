@@ -6,51 +6,68 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
-namespace Base.API.Controllers
-{
-    [Route("api/[controller]")]
-    [ApiController]
-    public class FingerprintController : ControllerBase
-    {
-        private readonly IFingerprintService _fingerprintService;
-        private readonly IMapper _mapper;
-        private readonly WebSocketConnectionManager1 _webSocketConnectionManager;
-        public FingerprintController(IFingerprintService fingerprintService, IMapper mapper, WebSocketConnectionManager1 webSocketConnectionManager)
-        {
-            _fingerprintService = fingerprintService;
-            _webSocketConnectionManager = webSocketConnectionManager;
-            _mapper = mapper;
-        }
+namespace Base.API.Controllers;
 
-        [HttpPost]
-        public async Task<IActionResult> CreateNewFingerprint([FromBody] FingerprintVM resource)
+[Route("api/[controller]")]
+[ApiController]
+public class FingerprintController : ControllerBase
+{
+    private readonly IFingerprintService _fingerprintService;
+    private readonly IMapper _mapper;
+    private readonly WebSocketConnectionManager1 _webSocketConnectionManager;
+    private readonly SessionManager _sessionManager;
+    public FingerprintController(IFingerprintService fingerprintService, 
+        IMapper mapper, 
+        WebSocketConnectionManager1 webSocketConnectionManager,
+        SessionManager sessionManager)
+    {
+        _fingerprintService = fingerprintService;
+        _webSocketConnectionManager = webSocketConnectionManager;
+        _mapper = mapper;
+        _sessionManager = sessionManager;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateNewFingerprint([FromBody] FingerprintVM resource)
+    {
+        if (ModelState.IsValid)
         {
-            if (ModelState.IsValid)
+            // Need to check session, add finger to session
+            var sessionCheck = _sessionManager.RegisterFinger(resource.SessionID, resource.FingerprintTemplate, resource.FingerNumber, resource.StudentID);
+            if (!sessionCheck)
             {
-                var result = await _fingerprintService.CreateNewFinger(resource.StudentID, resource.FingerprintTemplate);
-                if (result.IsSuccess)
+                return BadRequest(new
                 {
-                    // Notify to admin
-                    var messageSend = new MessageSend()
-                    {
-                        Event = "RegisterFingerSuccessfully",
-                        Data = new
-                        {
-                            StudentID = resource.StudentID,
-                            Finger = resource.SessionID
-                        }
-                    };
-                    var messageSendString = JsonSerializer.Serialize(messageSend);
-                    _webSocketConnectionManager.SendMessageToAllClient(messageSendString);
-                    return Ok(result);
-                }
-                return BadRequest(result);
+                    Title = "Invalid session",
+                    Errors = new string[1] { "Invalid session" }
+                });
             }
-            return BadRequest(new
+
+            // Notify to admin
+            var messageSend = new WebsocketMessage()
             {
-                Title = "Register fingerprint failed",
-                Errors = new string[1] { "Invalid input" }
+                Event = "RegisterFingerSuccessfully",
+                Data = new
+                {
+                    SessionID = resource.SessionID,
+                    StudentID = resource.StudentID,
+                    Finger = resource.FingerNumber
+                }
+            };
+            var messageSendString = JsonSerializer.Serialize(messageSend);
+            // Send to admin who have the session
+            var session = _sessionManager.GetSessionById(resource.SessionID);
+            await _webSocketConnectionManager.SendMessageToClient(messageSendString, session?.UserID ?? Guid.Empty);
+
+            return Ok(new
+            {
+                Title = "Register successfully"
             });
         }
+        return BadRequest(new
+        {
+            Title = "Register fingerprint failed",
+            Errors = new string[1] { "Invalid input" }
+        });
     }
 }

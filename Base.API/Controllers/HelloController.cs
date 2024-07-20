@@ -91,7 +91,7 @@ public class HelloController : ControllerBase
     [HttpPost("activate-module")]
     public IActionResult ActivateRegisterFingerprint([FromQuery] string content, [FromQuery] string moduleId)
     {
-        var messageSend = new MessageSend
+        var messageSend = new WebsocketMessage
         {
             Event = "RegisterFingerprint",
             Data = content

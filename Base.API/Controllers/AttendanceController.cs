@@ -25,7 +25,7 @@ namespace Base.API.Controllers
             _webSocketConnectionManager = webSocketConnectionManager;
             _mapper = mapper;
         }
-
+        
         [HttpGet]
         public async Task<IActionResult> GetAllAttendance([FromQuery]int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] int scheduleID)
         {
@@ -58,7 +58,7 @@ namespace Base.API.Controllers
                         status = 1
                     };
                     var dataSendString = JsonSerializer.Serialize(dataSend);
-                    var messageSend = new MessageSend
+                    var messageSend = new WebsocketMessage
                     {
                         Event = "statusChange",
                         Data = dataSendString
@@ -95,7 +95,7 @@ namespace Base.API.Controllers
                         status = 1
                     };
                     var dataSendString = JsonSerializer.Serialize(dataSend);
-                    var messageSend = new MessageSend
+                    var messageSend = new WebsocketMessage
                     {
                         Event = "statusChange",
                         Data = dataSendString
@@ -134,6 +134,40 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Get attendance information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllAttendances(
+            [FromQuery] int startPage, 
+            [FromQuery] int endPage, 
+            [FromQuery] int quantity,
+            [FromQuery] int? attendanceStatus,
+            [FromQuery] int? scheduleID,
+            [FromQuery] Guid? studentId,
+            [FromQuery] int? classId)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _attendanceService.GetAttendanceList(startPage, endPage, quantity, attendanceStatus, scheduleID, studentId, classId);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = _mapper.Map<IEnumerable<AttendancesResponseVM>>(result.Result)
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = "Get attendances falied",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get attendances failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }

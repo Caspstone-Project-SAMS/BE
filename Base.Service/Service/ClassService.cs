@@ -213,6 +213,7 @@ namespace Base.Service.Service
             return result;
         }
 
+
         public async Task<ServiceResponseVM<IEnumerable<Class>>> GetAllClasses(int startPage, int endPage, int quantity, int? semesterId, string? classCode, int? classStatus, int? roomID, int? subjectID, Guid? lecturerId, Guid? studentId, int? scheduleId)
         {
             var result = new ServiceResponseVM<IEnumerable<Class>>()

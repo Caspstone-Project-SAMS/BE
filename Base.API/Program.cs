@@ -327,6 +327,7 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager1>();
+builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<HangfireService>();
 
 var app = builder.Build();
@@ -334,7 +335,7 @@ var app = builder.Build();
 // <snippet_UseWebSocket>
 var webSocketOptions = new WebSocketOptions
 {
-    KeepAliveInterval = TimeSpan.FromMinutes(2)
+    KeepAliveInterval = TimeSpan.FromMinutes(2),
 };
 
 // Configure the HTTP request pipeline.

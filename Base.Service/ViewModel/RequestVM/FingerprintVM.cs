@@ -15,4 +15,6 @@ public class FingerprintVM
     public Guid StudentID { get; set; }
     [Required]
     public int SessionID { get; set; }
+    [Required]
+    public int FingerNumber { get; set; }
 }
