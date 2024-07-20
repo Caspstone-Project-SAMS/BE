@@ -2,7 +2,9 @@
 using Base.API.Service;
 using Base.IService.IService;
 using Base.Repository.Entity;
+using Base.Service.Common;
 using Base.Service.IService;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Authorization;
@@ -22,17 +24,20 @@ public class ModuleController : ControllerBase
     private readonly IStudentService _studentService;
     private readonly IScheduleService _scheduleService;
     private readonly WebSocketConnectionManager1 _websocketConnectionManager;
+    private readonly HangfireService _hangFireService;
     public ModuleController(IModuleService moduleService, 
         IMapper mapper, 
         IStudentService studentService,
         WebSocketConnectionManager1 websocketConnectionManager,
-        IScheduleService scheduleService)
+        IScheduleService scheduleService,
+        HangfireService hangFireService)
     {
         _moduleService = moduleService;
         _mapper = mapper;
         _studentService = studentService;
         _websocketConnectionManager = websocketConnectionManager;
         _scheduleService = scheduleService;
+        _hangFireService = hangFireService;
     }
 
     [HttpGet]
@@ -232,6 +237,37 @@ public class ModuleController : ControllerBase
         });
     }
 
+    [HttpPut]
+    public async Task<IActionResult> UpdateModule(ModuleVM resource,int id)
+    {
+        var result = await _moduleService.Update(resource,id);
+
+        if (result.IsSuccess)
+        {
+            DateTime vnDateTime = ServerDateTime.GetVnDateTime();
+            var prepareTime = result.Result!.PreparedTime;
+            var autoPrepare = result.Result!.AutoPrepare;
+            DateOnly? date = null;
+            TimeOnly sevenPM = new TimeOnly(19, 0);
+            TimeOnly twentyThreePM = new TimeOnly(23, 59);
+            if (prepareTime >= sevenPM && prepareTime < twentyThreePM)
+            {
+
+                date = DateOnly.FromDateTime(vnDateTime.AddDays(1));
+            }
+            else
+            {
+                date = DateOnly.FromDateTime(vnDateTime);
+            }
+            if (autoPrepare)
+            {
+                _hangFireService.ConfigureRecurringJobsAsync($"Prepare for module {id}", prepareTime, date, id);
+            }
+            return Ok(result.Title);
+        }
+
+        return BadRequest(result.Title);
+    }
     
 }
 
