@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using static Org.BouncyCastle.Math.EC.ECCurve;
 
 namespace Base.API.Controllers;
@@ -18,6 +19,9 @@ public class WebSocketController : ControllerBase
     private readonly ICurrentUserService _currentUserService;
     private readonly IUserService _userService;
     private readonly SessionManager _sessionManager;
+
+    private event EventHandler<WebsocketEventArgs>? PingPongEvent;
+    private bool _pingPongStatus = false;
 
     public WebSocketController(WebSocketConnectionManager webSocketConnectionManager, 
         WebSocketConnectionManager1 websocketConnectionManager1,
@@ -94,10 +98,21 @@ public class WebSocketController : ControllerBase
                 {
                     receiveResult = await webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer), CancellationToken.None);
+                    string receiveData = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
+                    if (receiveResult.MessageType == WebSocketMessageType.Binary)
+                    {
+                        if(receiveData == "pong")
+                        {
+                            PingPongEvent?.Invoke(this, new WebsocketEventArgs
+                            {
+                                Event = "PingPong"
+                            });
+                        }
+                    }
+                    else if(receiveData == "Hello")
+                    {
 
-                    string receiveData = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count); ///////////////////////////////////////////////////////////
-                    Console.WriteLine(receiveData); ///////////////////////////////////////////////////////////
-                    _sessionManager.AddString("Websocket controller: " +  receiveData); ///////////////////////////////////////////////////////////
+                    }
                 }
 
                 await _websocketConnectionManager1.CloseModuleSocket(existedModule.ModuleID,
@@ -215,18 +230,20 @@ public class WebSocketController : ControllerBase
     private async Task KeepAlive(WebSocket webSocket)
     {
         await Task.Delay(TimeSpan.FromSeconds(30));
+        var a = new WebsocketEventArgs();
+        PingPongEvent += OnPingPongEventHandler;
         while (webSocket.State == WebSocketState.Open)
         {
             try
             {
-                var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(10));
-
                 // Send a ping frame with unique payload
                 var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes("ping"));
                 await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
 
-                var pongReceived = await WaitForPongAsync(webSocket, cts.Token);
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                var pongReceived = WaitForPong(cts.Token);
 
                 if (!pongReceived)
                 {
@@ -243,25 +260,32 @@ public class WebSocketController : ControllerBase
                 break;
             }
         }
+        PingPongEvent -= OnPingPongEventHandler;
     }
 
-    private async Task<bool> WaitForPongAsync(WebSocket webSocket, CancellationToken cancellationToken)
+    private bool WaitForPong(CancellationToken cancellationToken)
     {
-        byte[] buffer = new byte[1024];
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                if(result.MessageType == WebSocketMessageType.Binary)
+                /*WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+
+                string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count); //////////////////////////////////////////////////
+                Console.WriteLine(receiveData); //////////////////////////////////////////////////
+                _sessionManager.AddString("Websocket controller at Ping/Pong: " + receiveData); //////////////////////////////////////////////////
+
+                if (result.MessageType == WebSocketMessageType.Binary)
                 {
-                    string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count); //////////////////////////////////////////////////
-                    Console.WriteLine(receiveData); //////////////////////////////////////////////////
-                    _sessionManager.AddString("Ping/Pong: " + receiveData); //////////////////////////////////////////////////
                     if (receiveData == "pong")
                     {
                         return true;
                     }
+                }*/
+                if (_pingPongStatus)
+                {
+                    _pingPongStatus = false;
+                    return true;
                 }
             }
         }
@@ -269,5 +293,19 @@ public class WebSocketController : ControllerBase
         {
         }
         return false;
+    }
+
+    private void OnPingPongEventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if(e.Event == "PingPong")
+        {
+            _pingPongStatus = true;
+        }
+    }
+
+    public class WebsocketEventArgs
+    {
+        public string Event { get; set; } = string.Empty;
+        public object? Data { get; set; }
     }
 }

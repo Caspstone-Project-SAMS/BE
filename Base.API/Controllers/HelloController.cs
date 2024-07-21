@@ -156,6 +156,19 @@ public class HelloController : ControllerBase
         return Ok(_sessionManager.GetAllString());
     }
 
+    [HttpGet("Session/all")]
+    public IActionResult GetAllSessions()
+    {
+        return Ok(_sessionManager.GetAllSessions());
+    }
+
+    [HttpDelete("Session")]
+    public IActionResult DeleteAllString()
+    {
+        _sessionManager.DeleteAllString();
+        return Ok();
+    }
+
 
     public class FingerprintTemplateTest
     {

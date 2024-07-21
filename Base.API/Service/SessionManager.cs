@@ -13,6 +13,7 @@ public class SessionManager
         var sessionId = _sessions.Count() + 1;
         _sessions.Add(new Session
         {
+            SessionId = sessionId,
             UserID = userId,
             ModuleId = moduleId,
             TimeStamp = DateTime.Now,
@@ -107,6 +108,11 @@ public class SessionManager
         session.Errors = errors;
     }
 
+    public IEnumerable<Session> GetAllSessions()
+    {
+        return _sessions.ToList();
+    }
+
 
     public void AddString(string text)
     {
@@ -115,6 +121,10 @@ public class SessionManager
     public IEnumerable<string> GetAllString()
     {
         return strings;
+    }
+    public void DeleteAllString()
+    {
+        strings.Clear();
     }
 }
 
