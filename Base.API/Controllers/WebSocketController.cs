@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading;
 using static Org.BouncyCastle.Math.EC.ECCurve;
+using Base.API.Common;
 
 namespace Base.API.Controllers;
 
@@ -19,6 +20,7 @@ public class WebSocketController : ControllerBase
     private readonly ICurrentUserService _currentUserService;
     private readonly IUserService _userService;
     private readonly SessionManager _sessionManager;
+    private readonly WebsocketEventManager _websocketEventManager;
 
     private event EventHandler<WebsocketEventArgs>? PingPongEvent;
     private bool _pingPongStatus = false;
@@ -28,7 +30,8 @@ public class WebSocketController : ControllerBase
         IModuleService moduleService,
         ICurrentUserService currentUserService,
         IUserService userService,
-        SessionManager sessionManager)
+        SessionManager sessionManager,
+        WebsocketEventManager websocketEventManager)
     {
         _websocketConnectionManager = webSocketConnectionManager;
         _websocketConnectionManager1 = websocketConnectionManager1;
@@ -36,6 +39,7 @@ public class WebSocketController : ControllerBase
         _currentUserService = currentUserService;
         _userService = userService;
         _sessionManager = sessionManager;
+        _websocketEventManager = websocketEventManager;
     }
 
     [HttpGet("/ws")]
@@ -90,6 +94,10 @@ public class WebSocketController : ControllerBase
 
                 _websocketConnectionManager1.AddModuleSocket(webSocket, existedModule.ModuleID);
 
+                // Create a manager for the event handlers of that module's websocket based on moduleId
+                _websocketEventManager.AddHandler(existedModule.ModuleID);
+                var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(existedModule.ModuleID);
+
                 var buffer = new byte[1024 * 4];
                 var receiveResult = await webSocket.ReceiveAsync(
                     new ArraySegment<byte>(buffer), CancellationToken.None);
@@ -109,9 +117,18 @@ public class WebSocketController : ControllerBase
                             });
                         }
                     }
-                    else if(receiveData == "Hello")
+                    else if(receiveResult.MessageType == WebSocketMessageType.Text)
                     {
-
+                        if (receiveData.Contains("Connected"))
+                        {
+                            if(websocketEventHandler is not null)
+                                websocketEventHandler.OnConnectModuleEvent(receiveData);
+                        }
+                        else if(receiveData.Contains("Fingerprint registration"))
+                        {
+                            if (websocketEventHandler is not null)
+                                websocketEventHandler.OnRegisterFingerprintEvent(receiveData);
+                        }
                     }
                 }
 
@@ -247,7 +264,8 @@ public class WebSocketController : ControllerBase
 
                 if (!pongReceived)
                 {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Pong not received", CancellationToken.None);
+                    webSocket.Abort();
+                    //await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Pong not received", CancellationToken.None);
                     webSocket.Dispose();
                     break;
                 }
@@ -269,19 +287,6 @@ public class WebSocketController : ControllerBase
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                /*WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-
-                string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count); //////////////////////////////////////////////////
-                Console.WriteLine(receiveData); //////////////////////////////////////////////////
-                _sessionManager.AddString("Websocket controller at Ping/Pong: " + receiveData); //////////////////////////////////////////////////
-
-                if (result.MessageType == WebSocketMessageType.Binary)
-                {
-                    if (receiveData == "pong")
-                    {
-                        return true;
-                    }
-                }*/
                 if (_pingPongStatus)
                 {
                     _pingPongStatus = false;
@@ -301,11 +306,5 @@ public class WebSocketController : ControllerBase
         {
             _pingPongStatus = true;
         }
-    }
-
-    public class WebsocketEventArgs
-    {
-        public string Event { get; set; } = string.Empty;
-        public object? Data { get; set; }
     }
 }

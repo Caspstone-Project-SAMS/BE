@@ -14,6 +14,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Base.API.Common;
 
 namespace Base.API.Controllers;
 
@@ -29,6 +30,8 @@ public class ModuleController : ControllerBase
     private readonly SessionManager _sessionManager;
     private readonly ICurrentUserService _currentUserService;
     private readonly HangfireService _hangFireService;
+    private readonly WebsocketEventManager _websocketEventManager;
+    private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
 
     public ModuleController(IModuleService moduleService, 
         IMapper mapper, 
@@ -37,7 +40,8 @@ public class ModuleController : ControllerBase
         IScheduleService scheduleService,
         SessionManager sessionManager,
         ICurrentUserService currentUserService,
-        HangfireService hangFireService)
+        HangfireService hangFireService,
+        WebsocketEventManager websocketEventManager)
     {
         _moduleService = moduleService;
         _mapper = mapper;
@@ -47,6 +51,7 @@ public class ModuleController : ControllerBase
         _sessionManager = sessionManager;
         _currentUserService = currentUserService;
         _hangFireService = hangFireService;
+        _websocketEventManager = websocketEventManager;
     }
 
     [HttpGet]
@@ -107,6 +112,7 @@ public class ModuleController : ControllerBase
     {
         if(ModelState.IsValid && activateModule.ModuleID > 0 && activateModule.Mode > 0)
         {
+            var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(activateModule.ModuleID);
             var userId = new Guid(_currentUserService.UserId);
             var cts = new CancellationTokenSource();
 
@@ -155,6 +161,12 @@ public class ModuleController : ControllerBase
                         });
                     }
 
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.RegisterFingerprintEvent += OnModuleMode1EventHandler;
+                    }
+                    websocketEventState.SessionId = activateModule.SessionId ?? 0;
+
                     var messageSendMode1 = new WebsocketMessage
                     {
                         Event = "RegisterFingerprint",
@@ -167,13 +179,17 @@ public class ModuleController : ControllerBase
                         }
                     };
                     var jsonPayloadMode1 = JsonSerializer.Serialize(messageSendMode1);
-
                     var resultMode1 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode1, activateModule.ModuleID);
                     if (resultMode1)
                     {
                         cts.CancelAfter(TimeSpan.FromSeconds(10));
-                        if (await WaitForModuleMode1(cts.Token, activateModule.ModuleID, activateModule.SessionId ?? 0))
+                        if (WaitForModuleMode1(cts.Token))
                         {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                            }
+
                             return Ok(new
                             {
                                 Title = "Activate module successfully",
@@ -182,6 +198,12 @@ public class ModuleController : ControllerBase
                     }
 
                     _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                    }
+
                     return BadRequest(new
                     {
                         Title = "Activate module failed",
@@ -345,6 +367,13 @@ public class ModuleController : ControllerBase
                 // Mode 6 - connect module
                 case 6:
                     var sessionIdMode6 = _sessionManager.CreateSession(activateModule.ModuleID, new Guid(_currentUserService.UserId));
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.ConnectModuleEvent += OnModuleConnectingEventHandler;
+                    }
+                    websocketEventState.SessionId = sessionIdMode6;
+
                     var messageSendMode6 = new WebsocketMessage
                     {
                         Event = "ConnectModule",
@@ -359,8 +388,13 @@ public class ModuleController : ControllerBase
                     if (resultMode6)
                     {
                         cts.CancelAfter(TimeSpan.FromSeconds(10));
-                        if (await WaitForModuleConnecting(cts.Token, activateModule.ModuleID, sessionIdMode6))
+                        if (WaitForModuleConnecting(cts.Token))
                         {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.ConnectModuleEvent -= OnModuleConnectingEventHandler;
+                            }
+
                             return Ok(new
                             {
                                 Title = "Connect module successfully",
@@ -372,6 +406,12 @@ public class ModuleController : ControllerBase
                         }
                     }
                     _sessionManager.DeleteSession(sessionIdMode6);
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.ConnectModuleEvent -= OnModuleConnectingEventHandler;
+                    }
+
                     return BadRequest(new
                     {
                         Title = "Connect module failed"
@@ -394,16 +434,50 @@ public class ModuleController : ControllerBase
         });
     }
 
-    private async Task<bool> WaitForModuleMode1(CancellationToken cancellationToken, int moduleId, int sessionId)
+
+    [HttpPut]
+    public async Task<IActionResult> UpdateModule(ModuleVM resource,int id)
     {
-        var socket = _websocketConnectionManager.GetModuleSocket(moduleId);
+        var result = await _moduleService.Update(resource,id);
+
+        if (result.IsSuccess)
+        {
+            DateTime vnDateTime = ServerDateTime.GetVnDateTime();
+            var prepareTime = result.Result!.PreparedTime;
+            var autoPrepare = result.Result!.AutoPrepare;
+            DateOnly? date = null;
+            TimeOnly sevenPM = new TimeOnly(19, 0);
+            TimeOnly twentyThreePM = new TimeOnly(23, 59);
+            if (prepareTime >= sevenPM && prepareTime < twentyThreePM)
+            {
+
+                date = DateOnly.FromDateTime(vnDateTime.AddDays(1));
+            }
+            else
+            {
+                date = DateOnly.FromDateTime(vnDateTime);
+            }
+            if (autoPrepare)
+            {
+                _hangFireService.ConfigureRecurringJobsAsync($"Prepare for module {id}", prepareTime, date, id);
+            }
+            return Ok(result.Title);
+        }
+
+        return BadRequest(result.Title);
+    }
+
+
+    private bool WaitForModuleMode1(CancellationToken cancellationToken)
+    {
+        /*var socket = _websocketConnectionManager.GetModuleSocket(moduleId);
         if (socket is null) return false;
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[1024];*/
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                /*WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
@@ -412,6 +486,10 @@ public class ModuleController : ControllerBase
                     {
                         return true;
                     }
+                }*/
+                if (websocketEventState.ModuleMode1)
+                {
+                    return true;
                 }
             }
         }
@@ -421,16 +499,16 @@ public class ModuleController : ControllerBase
         return false;
     }
 
-    private async Task<bool> WaitForModuleConnecting(CancellationToken cancellationToken, int moduleId, int sessionId)
+    private bool WaitForModuleConnecting(CancellationToken cancellationToken)
     {
-        var socket = _websocketConnectionManager.GetModuleSocket(moduleId);
+        /*var socket = _websocketConnectionManager.GetModuleSocket(moduleId);
         if (socket is null) return false;
-        byte[] buffer = new byte[1024];
+        byte[] buffer = new byte[1024];*/
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
+                /*WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
@@ -439,6 +517,10 @@ public class ModuleController : ControllerBase
                     {
                         return true;
                     }
+                }*/
+                if (websocketEventState.ModuleConnected)
+                {
+                    return true;
                 }
             }
         }
@@ -474,37 +556,31 @@ public class ModuleController : ControllerBase
         return false;
     }
 
-    [HttpPut]
-    public async Task<IActionResult> UpdateModule(ModuleVM resource,int id)
+
+
+    public void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
     {
-        var result = await _moduleService.Update(resource,id);
-
-        if (result.IsSuccess)
+        if(e.Event == ("Connected " + websocketEventState.SessionId))
         {
-            DateTime vnDateTime = ServerDateTime.GetVnDateTime();
-            var prepareTime = result.Result!.PreparedTime;
-            var autoPrepare = result.Result!.AutoPrepare;
-            DateOnly? date = null;
-            TimeOnly sevenPM = new TimeOnly(19, 0);
-            TimeOnly twentyThreePM = new TimeOnly(23, 59);
-            if (prepareTime >= sevenPM && prepareTime < twentyThreePM)
-            {
-
-                date = DateOnly.FromDateTime(vnDateTime.AddDays(1));
-            }
-            else
-            {
-                date = DateOnly.FromDateTime(vnDateTime);
-            }
-            if (autoPrepare)
-            {
-                _hangFireService.ConfigureRecurringJobsAsync($"Prepare for module {id}", prepareTime, date, id);
-            }
-            return Ok(result.Title);
+            websocketEventState.ModuleConnected = true;
         }
-
-        return BadRequest(result.Title);
     }
+
+    public void OnModuleMode1EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if(e.Event == ("Fingerprint registration ") + websocketEventState.SessionId)
+        {
+            websocketEventState.ModuleMode1 = true;
+        }
+    }
+}
+
+
+public class WebsocketEventState
+{
+    public int SessionId { get; set; }
+    public bool ModuleConnected { get; set; } = false;
+    public bool ModuleMode1 { get; set; } = false;
 }
 
 public class ActivateModule
