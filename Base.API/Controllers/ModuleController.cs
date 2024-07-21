@@ -558,17 +558,18 @@ public class ModuleController : ControllerBase
 
 
 
-    public void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
+    private void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
     {
+
         if(e.Event == ("Connected " + websocketEventState.SessionId))
         {
             websocketEventState.ModuleConnected = true;
         }
     }
 
-    public void OnModuleMode1EventHandler(object? sender, WebsocketEventArgs e)
+    private void OnModuleMode1EventHandler(object? sender, WebsocketEventArgs e)
     {
-        if(e.Event == ("Fingerprint registration ") + websocketEventState.SessionId)
+        if(e.Event == ("Fingerprint registration " + websocketEventState.SessionId))
         {
             websocketEventState.ModuleMode1 = true;
         }
