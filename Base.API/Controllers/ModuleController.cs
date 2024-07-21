@@ -407,6 +407,7 @@ public class ModuleController : ControllerBase
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    _sessionManager.AddString("Module controller mode 1: " + receiveData); ///////////////////////////////////////////////////////////
                     if (receiveData == ("Fingerprint registration " + sessionId))
                     {
                         return true;
@@ -433,6 +434,7 @@ public class ModuleController : ControllerBase
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
                     string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    _sessionManager.AddString("Module controller mode 6: " + receiveData); ///////////////////////////////////////////////////////////
                     if (receiveData == ("Connected " + sessionId))
                     {
                         return true;

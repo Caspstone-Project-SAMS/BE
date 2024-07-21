@@ -94,6 +94,10 @@ public class WebSocketController : ControllerBase
                 {
                     receiveResult = await webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer), CancellationToken.None);
+
+                    string receiveData = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count); ///////////////////////////////////////////////////////////
+                    Console.WriteLine(receiveData); ///////////////////////////////////////////////////////////
+                    _sessionManager.AddString("Websocket controller: " +  receiveData); ///////////////////////////////////////////////////////////
                 }
 
                 await _websocketConnectionManager1.CloseModuleSocket(existedModule.ModuleID,
@@ -251,9 +255,9 @@ public class WebSocketController : ControllerBase
                 WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
                 if(result.MessageType == WebSocketMessageType.Binary)
                 {
-                    string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine(receiveData);
-                    _sessionManager.AddString(receiveData);
+                    string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count); //////////////////////////////////////////////////
+                    Console.WriteLine(receiveData); //////////////////////////////////////////////////
+                    _sessionManager.AddString("Ping/Pong: " + receiveData); //////////////////////////////////////////////////
                     if (receiveData == "pong")
                     {
                         return true;
