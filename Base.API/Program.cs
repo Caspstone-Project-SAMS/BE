@@ -106,7 +106,7 @@ builder.Services.AddScoped<IAuthorizationHandler, HasScopeHandler>();
 builder.Services.AddSingleton(provider => new MapperConfiguration(cfg =>
 {
     cfg.AddProfile(new RequestToModel(provider.GetService<ICurrentUserService>()!));
-    cfg.AddProfile(new ModelToResponse());
+    cfg.AddProfile(new ModelToResponse(provider.GetService<WebSocketConnectionManager1>()!));
 }).CreateMapper());
 
 builder.Services.AddControllers(options =>

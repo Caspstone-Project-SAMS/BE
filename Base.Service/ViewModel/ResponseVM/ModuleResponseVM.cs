@@ -10,6 +10,7 @@ public class ModuleResponseVM
 {
     public int ModuleID { get; set; }
     public int? Status { get; set; }
+    public int? ConnectionStatus { get; set; }
     public int? Mode { get; set; }
     public bool? AutoPrepare { get; set; } = false;
     public int? PreparedMinBeforeSlot { get; set; }

@@ -89,8 +89,11 @@ public class WebSocketController : ControllerBase
         {
             using (var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync())
             {
+                // Notify module is connected
+                _ = NotifyModuleConnected(existedModule.ModuleID);
+
                 // Call the keep-alive function in a separate task
-                _ = KeepAlive(webSocket);
+                _ = KeepAlive(webSocket, existedModule.ModuleID);
 
                 _websocketConnectionManager1.AddModuleSocket(webSocket, existedModule.ModuleID);
 
@@ -177,24 +180,6 @@ public class WebSocketController : ControllerBase
                         if(receivedMessage is not null)
                         {
                             var sendMessage = new WebsocketMessage();
-
-                            switch (receivedMessage.Event)
-                            {
-                                case "CheckModule":
-                                    var checkModuleResult = CheckModule(receivedMessage);
-                                    if(checkModuleResult is not null)
-                                    {
-                                        await _websocketConnectionManager1.SendMessageToClient(checkModuleResult, currentUser.Id);
-                                    }
-                                    break;
-                                case "CheckModules":
-                                    var checkModulesResult = CheckModulesResult(receivedMessage);
-                                    if(checkModulesResult is not null)
-                                    {
-                                        await _websocketConnectionManager1.SendMessageToClient(checkModulesResult, currentUser.Id);
-                                    }
-                                    break;
-                            }
                         }
                     }
                 }
@@ -244,7 +229,7 @@ public class WebSocketController : ControllerBase
         return JsonSerializer.Serialize(receivedMessage);
     }
 
-    private async Task KeepAlive(WebSocket webSocket)
+    private async Task KeepAlive(WebSocket webSocket, int moduleId)
     {
         await Task.Delay(TimeSpan.FromSeconds(30));
         var a = new WebsocketEventArgs();
@@ -265,8 +250,11 @@ public class WebSocketController : ControllerBase
                 if (!pongReceived)
                 {
                     webSocket.Abort();
-                    //await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Pong not received", CancellationToken.None);
                     webSocket.Dispose();
+
+                    //Notify to user that module is lost connected
+                    _ = NotifyModuleLostConnected(moduleId);
+
                     break;
                 }
 
@@ -306,5 +294,41 @@ public class WebSocketController : ControllerBase
         {
             _pingPongStatus = true;
         }
+    }
+
+    private async Task NotifyModuleLostConnected(int moduleId)
+    {
+        var module = await _moduleService.GetById(moduleId);
+        if (module is null || module.Employee?.User is null) return;
+        var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
+        if (clientSocket is null) return;
+        var messageSend = new WebsocketMessage
+        {
+            Event = "ModuleLostConnected",
+            Data = new
+            {
+                ModuleId = moduleId
+            }
+        };
+        var jsonPayload = JsonSerializer.Serialize(messageSend);
+        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+    }
+
+    private async Task NotifyModuleConnected(int moduleId)
+    {
+        var module = await _moduleService.GetById(moduleId);
+        if (module is null || module.Employee?.User is null) return;
+        var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
+        if (clientSocket is null) return;
+        var messageSend = new WebsocketMessage
+        {
+            Event = "ModuleConnected",
+            Data = new
+            {
+                ModuleId = moduleId
+            }
+        };
+        var jsonPayload = JsonSerializer.Serialize(messageSend);
+        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
     }
 }

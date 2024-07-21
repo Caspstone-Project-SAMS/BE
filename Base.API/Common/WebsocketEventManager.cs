@@ -30,6 +30,7 @@ public class WebsocketEventHandler
 
     public event EventHandler<WebsocketEventArgs>? ConnectModuleEvent;
     public event EventHandler<WebsocketEventArgs>? RegisterFingerprintEvent;
+    public event EventHandler<WebsocketEventArgs>? CancelSessionEvent;
 
     public void OnConnectModuleEvent(string receivedEvent)
     {
@@ -42,6 +43,14 @@ public class WebsocketEventHandler
     public void OnRegisterFingerprintEvent(string receivedEvent)
     {
         RegisterFingerprintEvent?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnCancelSessionEvent(string receivedEvent)
+    {
+        CancelSessionEvent?.Invoke(this, new WebsocketEventArgs
         {
             Event = receivedEvent
         });

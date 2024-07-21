@@ -1,4 +1,6 @@
-﻿using DocumentFormat.OpenXml.InkML;
+﻿using Base.Service.IService;
+using Base.Service.ViewModel.ResponseVM;
+using DocumentFormat.OpenXml.InkML;
 using Microsoft.AspNetCore.Http;
 
 namespace Base.API.Service;
@@ -7,6 +9,13 @@ public class SessionManager
 {
     private IList<Session> _sessions = new List<Session>();
     private IList<string> strings = new List<string>();
+
+    private readonly IServiceScopeFactory _serviceScopeFactory;
+
+    public SessionManager(IServiceScopeFactory serviceScopeFactory)
+    {
+        _serviceScopeFactory = serviceScopeFactory;
+    }
 
     public int CreateSession(int moduleId, Guid userId)
     {
@@ -66,18 +75,11 @@ public class SessionManager
         return true;
     }
 
-    public void CancelSession(int sessionId, Guid userId)
+    
+
+    public IEnumerable<Session> GetSessions(Guid? userId, int? state, int? category, int? moduleId, Guid? studentId)
     {
-        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.UserID == userId);
-        if (session is null) return;
-        session.SessionState = 2;
-    }
-
-
-
-    public IEnumerable<Session> GetSessions(Guid? userId, int? state, int? category)
-    {
-        var sessions = _sessions;
+        List<Session> sessions = _sessions.ToList();
         if (userId is not null)
         {
             sessions = sessions.Where(s => s.UserID == userId).ToList();
@@ -90,6 +92,14 @@ public class SessionManager
         {
             sessions = sessions.Where(s => s.Category == category).ToList();
         }
+        if(moduleId is not null)
+        {
+            sessions = sessions.Where(s => s.ModuleId == moduleId).ToList();
+        }
+        if(studentId is not null)
+        {
+            sessions = sessions.Where(s => s.FingerRegistration != null && s.FingerRegistration.StudentId == studentId).ToList();
+        }
 
         return sessions;
     }
@@ -98,6 +108,71 @@ public class SessionManager
     {
         return _sessions.FirstOrDefault(s => s.SessionId == id);
     }
+
+    public void CancelSession(int sessionId, Guid userId)
+    {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.UserID == userId);
+        if (session is null) return;
+        session.SessionState = 2;
+    }
+
+    public async Task<ServiceResponseVM> SubmitSession(int sessionId, Guid userId)
+    {
+        var session = _sessions.FirstOrDefault(s => s.UserID == userId && s.SessionId == sessionId);
+        if(session is null)
+        {
+            return new ServiceResponseVM
+            {
+                IsSuccess = false,
+                Title = "Submit session failed",
+                Errors = new string[1] { "Session not found" }
+            };
+
+        }
+
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var fingerprintService = serviceScope.ServiceProvider.GetRequiredService<IFingerprintService>();
+
+        switch (session.Category)
+        {
+            case 1:
+                if(session.FingerRegistration is null)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = false,
+                        Title = "Submit session failed",
+                        Errors = new string[1] { "Invalid fingerprint information" }
+                    };
+                }
+                var registerFingerResult = await fingerprintService.RegisterFingerprintTemplate(session.FingerRegistration.StudentId,
+                        session.FingerRegistration.FingerprintTemplate1,
+                        session.FingerRegistration.Finger1TimeStamp,
+                        session.FingerRegistration.FingerprintTemplate2,
+                        session.FingerRegistration.Finger2TimeStamp);
+                if (registerFingerResult.IsSuccess)
+                {
+                    _sessions.Remove(session);
+                }
+                return registerFingerResult;
+
+            case 2:
+                break;
+
+            case 3:
+                break;
+
+            default:
+                break;
+        }
+
+        return new ServiceResponseVM
+        {
+            Title = "Submit session failed",
+            Errors = new string[1] { "Undefined session" }
+        };
+    }
+
 
 
     public void SessionError(int sessionId, List<string> errors)

@@ -103,6 +103,8 @@ public class StudentResponse
     public Guid? UserID { get; set; }
     public Guid? StudentID { get; set; }
     public string? Avatar { get; set; }
+    public string? Email { get; set; }
+    public string? PhoneNumber { get; set; }
     public string? StudentCode { get; set; }
     public int AbsencePercentage { get; set; }
     public bool IsAuthenticated { get; set; } = false;

@@ -11,4 +11,6 @@ namespace Base.Service.IService;
 public interface IFingerprintService
 {
     Task<ServiceResponseVM<FingerprintTemplate>> CreateNewFinger(Guid studentId, string fingerprintTemplate);
+
+    Task<ServiceResponseVM> RegisterFingerprintTemplate(Guid studentId, string fingerprintTemplate1, DateTime? fingerprint1Timestamp, string fingerprintTemplate2, DateTime? fingerprint2Timestamp);
 }

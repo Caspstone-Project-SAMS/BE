@@ -1,4 +1,5 @@
 ﻿using AutoMapper;
+using Base.API.Service;
 using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Repository.Identity;
@@ -8,7 +9,7 @@ namespace Base.API.Mapper
 {
     public class ModelToResponse : Profile
     {
-        public ModelToResponse()
+        public ModelToResponse(WebSocketConnectionManager1 webSocketConnectionManager)
         {
             CreateMap<ServiceResponseVM<User>, ServiceResponseVM>();
             CreateMap<ServiceResponseVM<Role>, ServiceResponseVM>();
@@ -38,7 +39,9 @@ namespace Base.API.Mapper
                  .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id))
                  .ForMember(dest => dest.AbsencePercentage, opt => opt.MapFrom(src => src.User!.StudentClasses.FirstOrDefault(sc => sc.AbsencePercentage >=0)!.AbsencePercentage))
-                 .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.IsAuthenticated()));
+                 .ForMember(dest => dest.IsAuthenticated, opt => opt.MapFrom(src => src.IsAuthenticated()))
+                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User!.Email))
+                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
 
             CreateMap<Student, StudentModuleResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
@@ -134,7 +137,9 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Avatar, opt => opt.MapFrom(src => src.User!.Avatar))
                 .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User!.Email))
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
-            CreateMap<Module, ModuleResponseVM>();
+            CreateMap<Module, ModuleResponseVM>()
+                .ForMember(dest => dest.ConnectionStatus, opt => 
+                    opt.MapFrom(src => webSocketConnectionManager.GetModuleSocket(src.ModuleID) != null ? 1 : 2));
         }
     }
 }
