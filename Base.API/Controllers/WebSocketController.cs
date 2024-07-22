@@ -231,7 +231,7 @@ public class WebSocketController : ControllerBase
 
     private async Task KeepAlive(WebSocket webSocket, int moduleId)
     {
-        await Task.Delay(TimeSpan.FromSeconds(30));
+        await Task.Delay(TimeSpan.FromSeconds(15));
         var a = new WebsocketEventArgs();
         PingPongEvent += OnPingPongEventHandler;
         while (webSocket.State == WebSocketState.Open)
@@ -253,12 +253,13 @@ public class WebSocketController : ControllerBase
                     webSocket.Dispose();
 
                     //Notify to user that module is lost connected
+                    await Task.Delay(TimeSpan.FromSeconds(1));
                     _ = NotifyModuleLostConnected(moduleId);
 
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(10)); // Ping interval
+                await Task.Delay(TimeSpan.FromSeconds(7)); // Ping interval
             }
             catch (Exception ex)
             {

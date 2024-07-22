@@ -217,6 +217,14 @@ public class HelloController : ControllerBase
         return Ok();
     }
 
+
+    [HttpGet("Module-check-status")]
+    public IActionResult GetModuleStatus([FromQuery] int moduleId)
+    {
+        return Ok("Module check: " + _webSocketConnectionManager1.CheckModuleSocket(moduleId));
+    }
+
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;
