@@ -6,7 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using static Org.BouncyCastle.Math.EC.ECCurve;
+using Base.API.Common;
 
 namespace Base.API.Controllers;
 
@@ -17,18 +19,27 @@ public class WebSocketController : ControllerBase
     private readonly IModuleService _moduleService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IUserService _userService;
+    private readonly SessionManager _sessionManager;
+    private readonly WebsocketEventManager _websocketEventManager;
+
+    private event EventHandler<WebsocketEventArgs>? PingPongEvent;
+    private bool _pingPongStatus = false;
 
     public WebSocketController(WebSocketConnectionManager webSocketConnectionManager, 
         WebSocketConnectionManager1 websocketConnectionManager1,
         IModuleService moduleService,
         ICurrentUserService currentUserService,
-        IUserService userService)
+        IUserService userService,
+        SessionManager sessionManager,
+        WebsocketEventManager websocketEventManager)
     {
         _websocketConnectionManager = webSocketConnectionManager;
         _websocketConnectionManager1 = websocketConnectionManager1;
         _moduleService = moduleService;
         _currentUserService = currentUserService;
         _userService = userService;
+        _sessionManager = sessionManager;
+        _websocketEventManager = websocketEventManager;
     }
 
     [HttpGet("/ws")]
@@ -78,10 +89,17 @@ public class WebSocketController : ControllerBase
         {
             using (var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync())
             {
+                // Notify module is connected
+                _ = NotifyModuleConnected(existedModule.ModuleID);
+
                 // Call the keep-alive function in a separate task
-                _ = KeepAlive(webSocket);
+                _ = KeepAlive(webSocket, existedModule.ModuleID);
 
                 _websocketConnectionManager1.AddModuleSocket(webSocket, existedModule.ModuleID);
+
+                // Create a manager for the event handlers of that module's websocket based on moduleId
+                _websocketEventManager.AddHandler(existedModule.ModuleID);
+                var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(existedModule.ModuleID);
 
                 var buffer = new byte[1024 * 4];
                 var receiveResult = await webSocket.ReceiveAsync(
@@ -91,6 +109,37 @@ public class WebSocketController : ControllerBase
                 {
                     receiveResult = await webSocket.ReceiveAsync(
                         new ArraySegment<byte>(buffer), CancellationToken.None);
+                    string receiveData = Encoding.UTF8.GetString(buffer, 0, receiveResult.Count);
+                    if (receiveResult.MessageType == WebSocketMessageType.Binary)
+                    {
+                        if(receiveData == "pong")
+                        {
+                            PingPongEvent?.Invoke(this, new WebsocketEventArgs
+                            {
+                                Event = "PingPong"
+                            });
+                        }
+                    }
+                    else if(receiveResult.MessageType == WebSocketMessageType.Text)
+                    {
+                        if (receiveData.Contains("Connected"))
+                        {
+                            if(websocketEventHandler is not null)
+                                websocketEventHandler.OnConnectModuleEvent(receiveData);
+                        }
+                        else if(receiveData.Contains("Fingerprint registration"))
+                        {
+                            if (websocketEventHandler is not null)
+                                websocketEventHandler.OnRegisterFingerprintEvent(receiveData);
+                        }
+                        else if (receiveData.Contains("Prepare attendance"))
+                        {
+                            if(websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnPrepareAttendanceSession(receiveData);
+                            }
+                        }
+                    }
                 }
 
                 await _websocketConnectionManager1.CloseModuleSocket(existedModule.ModuleID,
@@ -138,24 +187,6 @@ public class WebSocketController : ControllerBase
                         if(receivedMessage is not null)
                         {
                             var sendMessage = new WebsocketMessage();
-
-                            switch (receivedMessage.Event)
-                            {
-                                case "CheckModule":
-                                    var checkModuleResult = CheckModule(receivedMessage);
-                                    if(checkModuleResult is not null)
-                                    {
-                                        await _websocketConnectionManager1.SendMessageToClient(checkModuleResult, currentUser.Id);
-                                    }
-                                    break;
-                                case "CheckModules":
-                                    var checkModulesResult = CheckModulesResult(receivedMessage);
-                                    if(checkModulesResult is not null)
-                                    {
-                                        await _websocketConnectionManager1.SendMessageToClient(checkModulesResult, currentUser.Id);
-                                    }
-                                    break;
-                            }
                         }
                     }
                 }
@@ -205,30 +236,37 @@ public class WebSocketController : ControllerBase
         return JsonSerializer.Serialize(receivedMessage);
     }
 
-    private async Task KeepAlive(WebSocket webSocket)
+    private async Task KeepAlive(WebSocket webSocket, int moduleId)
     {
-        await Task.Delay(TimeSpan.FromSeconds(30));
+        await Task.Delay(TimeSpan.FromSeconds(15));
+        var a = new WebsocketEventArgs();
+        PingPongEvent += OnPingPongEventHandler;
         while (webSocket.State == WebSocketState.Open)
         {
             try
             {
-                var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(10));
-
                 // Send a ping frame with unique payload
                 var buffer = new ArraySegment<byte>(Encoding.UTF8.GetBytes("ping"));
                 await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
 
-                var pongReceived = await WaitForPongAsync(webSocket, cts.Token);
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+                var pongReceived = WaitForPong(cts.Token);
 
                 if (!pongReceived)
                 {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.EndpointUnavailable, "Pong not received", CancellationToken.None);
+                    webSocket.Abort();
                     webSocket.Dispose();
+
+                    //Notify to user that module is lost connected
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    _ = NotifyModuleLostConnected(moduleId);
+
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(10)); // Ping interval
+                await Task.Delay(TimeSpan.FromSeconds(7)); // Ping interval
             }
             catch (Exception ex)
             {
@@ -236,23 +274,19 @@ public class WebSocketController : ControllerBase
                 break;
             }
         }
+        PingPongEvent -= OnPingPongEventHandler;
     }
 
-    private async Task<bool> WaitForPongAsync(WebSocket webSocket, CancellationToken cancellationToken)
+    private bool WaitForPong(CancellationToken cancellationToken)
     {
-        byte[] buffer = new byte[1024];
         try
         {
             while (!cancellationToken.IsCancellationRequested)
             {
-                WebSocketReceiveResult result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
-                if(result.MessageType == WebSocketMessageType.Binary)
+                if (_pingPongStatus)
                 {
-                    string receiveData = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    if(receiveData == "pong")
-                    {
-                        return true;
-                    }
+                    _pingPongStatus = false;
+                    return true;
                 }
             }
         }
@@ -260,5 +294,49 @@ public class WebSocketController : ControllerBase
         {
         }
         return false;
+    }
+
+    private void OnPingPongEventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if(e.Event == "PingPong")
+        {
+            _pingPongStatus = true;
+        }
+    }
+
+    private async Task NotifyModuleLostConnected(int moduleId)
+    {
+        var module = await _moduleService.GetById(moduleId);
+        if (module is null || module.Employee?.User is null) return;
+        var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
+        if (clientSocket is null) return;
+        var messageSend = new WebsocketMessage
+        {
+            Event = "ModuleLostConnected",
+            Data = new
+            {
+                ModuleId = moduleId
+            }
+        };
+        var jsonPayload = JsonSerializer.Serialize(messageSend);
+        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+    }
+
+    private async Task NotifyModuleConnected(int moduleId)
+    {
+        var module = await _moduleService.GetById(moduleId);
+        if (module is null || module.Employee?.User is null) return;
+        var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
+        if (clientSocket is null) return;
+        var messageSend = new WebsocketMessage
+        {
+            Event = "ModuleConnected",
+            Data = new
+            {
+                ModuleId = moduleId
+            }
+        };
+        var jsonPayload = JsonSerializer.Serialize(messageSend);
+        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
     }
 }

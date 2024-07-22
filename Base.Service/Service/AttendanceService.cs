@@ -112,7 +112,7 @@ namespace Base.Service.Service
                         existedAttendance.AttendanceTime = student.AttendanceTime ?? ServerDateTime.GetVnDateTime();
                         existedAttendance.Comments = student.Comments;
 
-                    _unitOfWork.AttendanceRepository.Update(existedAttendance);
+                        _unitOfWork.AttendanceRepository.Update(existedAttendance);
                     }
                     catch (Exception ex)
                     {

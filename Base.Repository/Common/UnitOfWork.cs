@@ -34,6 +34,8 @@ public interface IUnitOfWork
 
     IEmployeeRepository EmployeeRepository { get; }
 
+    IFingerprintRepository FingerprintRepository { get; }
+
     Task<bool> SaveChangesAsync();
     void Dispose();
 }
@@ -67,6 +69,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IEmployeeRepository EmployeeRepository { get; private set; }
 
+    public IFingerprintRepository FingerprintRepository { get; private set;  }
+
     public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
         IRoleRepository roleRepository,
@@ -80,7 +84,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         ISlotRepository slotRepository,
         IStudentClassRepository studentClassRepository,
         IModuleRepository moduleRepository,
-        IEmployeeRepository employeeRepository)
+        IEmployeeRepository employeeRepository,
+        IFingerprintRepository fingerprintRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -96,6 +101,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         StudentClassRepository = studentClassRepository;
         ModuleRepository = moduleRepository;
         EmployeeRepository = employeeRepository;
+        FingerprintRepository = fingerprintRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

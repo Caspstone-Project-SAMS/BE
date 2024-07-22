@@ -1,8 +1,13 @@
 using Base.API.Service;
+using Base.IService.IService;
+using Base.Repository.Common;
+using Base.Repository.IRepository;
+using Base.Service.IService;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using FingerprintTemplateClass = Base.Repository.Entity.FingerprintTemplate;
 
 namespace Base.API.Controllers;
 
@@ -12,11 +17,21 @@ public class HelloController : ControllerBase
 {
     private readonly WebSocketConnectionManager _webSocketConnectionManager;
     private readonly WebSocketConnectionManager1 _webSocketConnectionManager1;
+    private readonly SessionManager _sessionManager;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IStudentService _studentService;
 
-    public HelloController(WebSocketConnectionManager webSocketConnectionManager, WebSocketConnectionManager1 webSocketConnectionManager1)
+    public HelloController(WebSocketConnectionManager webSocketConnectionManager, 
+        WebSocketConnectionManager1 webSocketConnectionManager1,
+        SessionManager sessionManager,
+        IUnitOfWork unitOfWork,
+        IStudentService studentService)
     {
         _webSocketConnectionManager = webSocketConnectionManager;
         _webSocketConnectionManager1 = webSocketConnectionManager1;
+        _sessionManager = sessionManager;
+        _unitOfWork = unitOfWork;
+        _studentService = studentService;
     }
 
     private static IList<FingerprintTemplate> fingerprintTemplates = new List<FingerprintTemplate>();
@@ -144,6 +159,69 @@ public class HelloController : ControllerBase
     public IActionResult GetV2ClientWebsocket()
     {
         return Ok(_webSocketConnectionManager1.GetAllClientSocket());
+    }
+
+    [HttpGet("Session")]
+    public IActionResult GetSessionString()
+    {
+        return Ok(_sessionManager.GetAllString());
+    }
+
+    [HttpGet("Session/all")]
+    public IActionResult GetAllSessions()
+    {
+        return Ok(_sessionManager.GetAllSessions());
+    }
+
+    [HttpDelete("Session")]
+    public IActionResult DeleteAllString()
+    {
+        _sessionManager.DeleteAllString();
+        return Ok();
+    }
+
+
+    [HttpPost("register-fingerprint-for-all-students")]
+    public async Task<IActionResult> RegisterFingerprint()
+    {
+        var students = await _studentService.GetStudents(1, 100, 100, null, null);
+        IList<FingerprintTemplateClass> fingerprintList = new List<FingerprintTemplateClass>();
+        var totalCount = fingerprintTemplates.Count() - 1;
+        Random random = new Random();
+        int randomNumber;
+
+        if (totalCount <= 0) return Ok();
+
+        foreach (var student in students)
+        {
+            if(student.FingerprintTemplates.Count() == 0)
+            {
+                randomNumber = random.Next(0, totalCount);
+                fingerprintList.Add(new FingerprintTemplateClass
+                {
+                    FingerprintTemplateData = fingerprintTemplates.ElementAt(randomNumber).Fingerprint,
+                    Status = 1,
+                    StudentID = student.StudentID,
+                });
+                randomNumber = random.Next(0, totalCount);
+                fingerprintList.Add(new FingerprintTemplateClass
+                {
+                    FingerprintTemplateData = fingerprintTemplates.ElementAt(randomNumber).Fingerprint,
+                    Status = 1,
+                    StudentID = student.StudentID,
+                });
+            }
+        }
+        await _unitOfWork.FingerprintRepository.AddRangeAsync(fingerprintList);
+        await _unitOfWork.SaveChangesAsync();
+        return Ok();
+    }
+
+
+    [HttpGet("Module-check-status")]
+    public IActionResult GetModuleStatus([FromQuery] int moduleId)
+    {
+        return Ok("Module check: " + _webSocketConnectionManager1.CheckModuleSocket(moduleId));
     }
 
 

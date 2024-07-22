@@ -33,7 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IFingerprintService, FingerprintService>();
-        
+
         #endregion
 
         #region Validation
@@ -44,7 +44,7 @@ public static class DependencyInjection
         services.AddScoped<IUploadFile, UploadFile>();
         services.AddSingleton(typeof(GoogleSheetsHelper));
 
-       
+
 
         return services;
     }

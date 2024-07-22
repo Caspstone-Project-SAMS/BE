@@ -106,7 +106,7 @@ builder.Services.AddScoped<IAuthorizationHandler, HasScopeHandler>();
 builder.Services.AddSingleton(provider => new MapperConfiguration(cfg =>
 {
     cfg.AddProfile(new RequestToModel(provider.GetService<ICurrentUserService>()!));
-    cfg.AddProfile(new ModelToResponse());
+    cfg.AddProfile(new ModelToResponse(provider.GetService<WebSocketConnectionManager1>()!));
 }).CreateMapper());
 
 builder.Services.AddControllers(options =>
@@ -325,6 +325,7 @@ builder.Services.AddSwaggerGen(c =>
                 });
 });
 
+builder.Services.AddSingleton<WebsocketEventManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager1>();
 builder.Services.AddSingleton<SessionManager>();

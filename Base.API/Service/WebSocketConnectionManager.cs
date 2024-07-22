@@ -166,9 +166,9 @@ public class WebSocketConnectionManager1
         }
         if(existedWebsocket.Socket.State != WebSocketState.Open || existedWebsocket.Socket.State != WebSocketState.Connecting)
         {
-            return false;
+            return true;
         }
-        return true;
+        return false;
     }
 
     public WebSocket? GetModuleSocket(int moduleId)
