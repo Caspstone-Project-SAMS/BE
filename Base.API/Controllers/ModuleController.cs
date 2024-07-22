@@ -288,7 +288,7 @@ public class ModuleController : ControllerBase
 
                 // Mode 3 - prepare attendance session
                 case 3:
-                    if (activateModule.StartAttendance is null)
+                    if (activateModule.PrepareAttendance is null)
                     {
                         return BadRequest(new
                         {
@@ -296,7 +296,7 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Invalid input" }
                         });
                     }
-                    var existedSschedule = await _scheduleService.GetById(activateModule.StartAttendance.ScheduleID);
+                    var existedSschedule = await _scheduleService.GetById(activateModule.PrepareAttendance.ScheduleID);
                     if (existedSschedule is null)
                     {
                         return BadRequest(new
@@ -306,20 +306,69 @@ public class ModuleController : ControllerBase
                         });
                     }
 
+                    var totalStudents = await _studentService.GetStudentsByClassID(existedSschedule.ClassID, 1, 100, 50);
+                    int totalWorkAmount = 0;
+                    if(totalStudents is not null)
+                    {
+                        totalWorkAmount = totalStudents.Count();
+
+                    }
+
+                    var sessionResultMode3 = _sessionManager.CreatePrepareAScheduleSession(activateModule.SessionId ?? 0,
+                        activateModule.PrepareAttendance.ScheduleID,
+                        totalWorkAmount
+                        );
+
+                    if (!sessionResultMode3)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Session is not started" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.PrepareAttendanceSession += OnModuleMode3EventHandler;
+                    }
+                    websocketEventState.SessionId = activateModule.SessionId ?? 0;
+
                     var messageSendMode3 = new WebsocketMessage
                     {
                         Event = "PrepareAttendance",
-                        Data = existedSschedule.ScheduleID.ToString()
+                        Data = new
+                        {
+                            ScheduleID = existedSschedule.ScheduleID,
+                            SessionID = activateModule.SessionId
+                        }
                     };
                     var jsonPayloadMode3 = JsonSerializer.Serialize(messageSendMode3);
                     var resultMode3 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode3, activateModule.ModuleID);
                     if (resultMode3)
                     {
-                        return Ok(new
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode3(cts.Token))
                         {
-                            Title = "Activate module successfully"
-                        });
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.PrepareAttendanceSession -= OnModuleMode3EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Activate module successfully",
+                            });
+                        }
                     }
+
+                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.PrepareAttendanceSession -= OnModuleMode3EventHandler;
+                    }
+
                     return BadRequest(new
                     {
                         Title = "Activate module failed",
@@ -531,6 +580,24 @@ public class ModuleController : ControllerBase
         return false;
     }
 
+    private bool WaitForModuleMode3(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode3)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
 
 
     private void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
@@ -557,6 +624,14 @@ public class ModuleController : ControllerBase
             websocketEventState.ModuleMode2 = true;
         }
     }
+
+    private void OnModuleMode3EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if(e.Event == ("Prepare attendance " + websocketEventState.SessionId))
+        {
+            websocketEventState.ModuleMode3 = true;
+        }
+    }
 }
 
 
@@ -566,6 +641,7 @@ public class WebsocketEventState
     public bool ModuleConnected { get; set; } = false;
     public bool ModuleMode1 { get; set; } = false;
     public bool ModuleMode2 { get; set; } = false;
+    public bool ModuleMode3 { get; set; } = false;
 }
 
 public class ActivateModule
@@ -576,7 +652,7 @@ public class ActivateModule
     public int Mode { get; set; }
     public int? SessionId { get; set; }
     public RegisterMode? RegisterMode { get; set; }
-    public StartAttendance? StartAttendance { get; set; }
+    public PrepareAttendance? PrepareAttendance { get; set; }
     public StopAttendance? StopAttendance { get; set; }
 
 }
@@ -592,7 +668,7 @@ public class CancelRegisterMode
     public int MyProperty { get; set; }
 }
 
-public class StartAttendance
+public class PrepareAttendance
 {
     public int ScheduleID { get; set; }
 }

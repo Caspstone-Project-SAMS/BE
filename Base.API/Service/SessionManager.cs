@@ -77,12 +77,37 @@ public class SessionManager
     }
 
 
-    /*public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId)
+    public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount)
     {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
+        if (session is null) return false;
 
-    }*/
+        var prepareAttendance = new PrepareAttendance()
+        {
+            ScheduleId = scheduleId,
+            Progress = 0,
+            TotalWorkAmount = totalWorkAmount
+        };
 
-    
+        session.Category = 2;
+        session.SessionState = 1;
+        session.PrepareAttendance = prepareAttendance;
+
+        return true;
+    }
+
+    public void UpdateSchedulePreparationProgress(int sessionId, int completedWorkAmount)
+    {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
+        if (session is null) return;
+
+        if (session.PrepareAttendance is null) return;
+
+        session.PrepareAttendance.CompletedWorkAmount = session.PrepareAttendance.CompletedWorkAmount + completedWorkAmount;
+        session.PrepareAttendance.Progress = MathF.Round((session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount) * 100);
+    }
+
+
 
     public IEnumerable<Session> GetSessions(Guid? userId, int? state, int? category, int? moduleId, Guid? studentId)
     {
@@ -220,6 +245,7 @@ public class Session
     public int DurationInMin { get; set; }
     public int ModuleId { get; set; }
     public FingerRegistration? FingerRegistration { get; set; }
+    public PrepareAttendance? PrepareAttendance { get; set; }
     public IEnumerable<string> Errors { get; set; } = new List<string>();
 }
 
@@ -231,6 +257,14 @@ public class FingerRegistration
     public DateTime? Finger1TimeStamp { get; set; }
     public string FingerprintTemplate2 { get; set; } = string.Empty;
     public DateTime? Finger2TimeStamp { get; set; }
+}
+
+public class PrepareAttendance
+{
+    public int ScheduleId { get; set; }
+    public float Progress { get; set; }
+    public int TotalWorkAmount { get; set; }
+    public int CompletedWorkAmount { get; set; }
 }
 
 

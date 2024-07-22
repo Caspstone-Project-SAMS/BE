@@ -118,7 +118,8 @@ namespace Base.API.Mapper
             CreateMap<FingerprintTemplate, FingerprintTemplate_StudentResponseVM>();
             CreateMap<User, StudentResponseVM>()
                 .ForMember(dest => dest.FingerprintTemplates, opt => opt.MapFrom(src => src.Student!.FingerprintTemplates))
-                .ForMember(dest => dest.EnrolledClasses, opt => opt.MapFrom(src => src.EnrolledClasses));
+                .ForMember(dest => dest.EnrolledClasses, opt => opt.MapFrom(src => src.EnrolledClasses))
+                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode));
 
             // For employee detail
             CreateMap<Role, Role_EmployeeResponseVM>();

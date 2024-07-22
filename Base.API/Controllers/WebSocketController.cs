@@ -132,6 +132,13 @@ public class WebSocketController : ControllerBase
                             if (websocketEventHandler is not null)
                                 websocketEventHandler.OnRegisterFingerprintEvent(receiveData);
                         }
+                        else if (receiveData.Contains("Prepare attendance"))
+                        {
+                            if(websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnPrepareAttendanceSession(receiveData);
+                            }
+                        }
                     }
                 }
 
