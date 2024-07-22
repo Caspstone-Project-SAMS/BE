@@ -479,25 +479,15 @@ public class ModuleController : ControllerBase
 
         if (result.IsSuccess)
         {
-            DateTime vnDateTime = ServerDateTime.GetVnDateTime();
             var prepareTime = result.Result!.PreparedTime;
             var autoPrepare = result.Result!.AutoPrepare;
-            DateOnly? date = null;
-            TimeOnly sevenPM = new TimeOnly(19, 0);
-            TimeOnly twentyThreePM = new TimeOnly(23, 59);
-            if (prepareTime >= sevenPM && prepareTime < twentyThreePM)
-            {
-
-                date = DateOnly.FromDateTime(vnDateTime.AddDays(1));
-            }
-            else
-            {
-                date = DateOnly.FromDateTime(vnDateTime);
-            }
             if (autoPrepare)
             {
-                _hangFireService.ConfigureRecurringJobsAsync($"Prepare for module {id}", prepareTime, date, id);
+                _hangFireService.ConfigureRecurringJobsAsync($"Prepare for module {id}", prepareTime, id);
             }
+
+            _hangFireService.RemoveRecurringJobsAsync($"Prepare for module {id}");
+            
             return Ok(result.Title);
         }
 

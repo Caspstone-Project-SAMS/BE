@@ -1,6 +1,7 @@
 ﻿using Base.API.Controllers;
 using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Service.Common;
 using Hangfire;
 using System;
 using System.Collections.Generic;
@@ -26,20 +27,46 @@ namespace Base.API.Service
             _websocketConnectionManager = websocketConnectionManager;
         }
 
-        public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, DateOnly? date, int moduleId)
+        public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
         {
-            var cronExpression = ConvertToCronExpression(prepareTime);
-            _recurringJobManager.AddOrUpdate(jobName,() => SenDataToModule(date, moduleId), cronExpression);
-            
-        }
+            DateTime vnDateTime = ServerDateTime.GetVnDateTime();
+            DateOnly? date = null;
+            if (prepareTime.HasValue && prepareTime.Value >= new TimeOnly(19, 0) && prepareTime.Value < new TimeOnly(0, 0))
+            {
+                date = DateOnly.FromDateTime(vnDateTime.AddDays(1));
+            }
+            else
+            {
+                date = DateOnly.FromDateTime(vnDateTime);
+            }
 
+            var cronExpression = ConvertToCronExpression(prepareTime);
+
+            _recurringJobManager.AddOrUpdate(
+                jobName,
+                () => SenDataToModule(date, moduleId),
+                cronExpression,
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"),
+                }
+            );
+                
+        }
+        public void RemoveRecurringJobsAsync(string jobId)
+        {
+            _recurringJobManager.RemoveIfExists(jobId);
+        }
 
         public async Task<string> SenDataToModule(DateOnly? date, int moduleId)
         {
             var messageSendMode = new WebsocketMessage
             {
                 Event = "PrepareSchedules",
-                Data = date?.ToString(),
+                Data = new
+                {
+                    PrepareDate = date?.ToString("yyyy-MM-dd")
+                },
             };
             var jsonPayloadMode = JsonSerializer.Serialize(messageSendMode);
             var resultMode = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode,moduleId);
@@ -50,7 +77,7 @@ namespace Base.API.Service
                 {
                     return $"Prepare schedules for module unsuccessfully";
                 }
-                return "Prepare schedules for module unsuccessfully";
+                return $"Prepare schedules for module unsuccessfully, data {jsonPayloadMode}";
             }
             catch (Exception ex)
             {
@@ -59,27 +86,17 @@ namespace Base.API.Service
         }
 
 
-        private string ConvertToCronExpression(TimeOnly? prepareTime)
+        private static string ConvertToCronExpression(TimeOnly? prepareTime)
         {
             if (prepareTime.HasValue)
             {
                 TimeOnly time = prepareTime.Value;
-                TimeZoneInfo vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-
-                // Tạo DateTime với Kind là Unspecified
-                DateTime vnDateTimeUnspecified = new DateTime(DateTime.Today.Year, DateTime.Today.Month, DateTime.Today.Day, time.Hour, time.Minute, 0, DateTimeKind.Unspecified);
-
-                // Chuyển đổi từ thời gian Unspecified sang thời gian VN (Local)
-                DateTime vnDateTime = TimeZoneInfo.ConvertTime(vnDateTimeUnspecified, vnTimeZone);
-
-                // Lấy giờ và phút theo thời gian VN để tạo cron expression
-                return Cron.Daily(vnDateTime.Hour, vnDateTime.Minute);
+                return Cron.Daily(time.Hour, time.Minute);
             }
             else
             {
                 return Cron.Daily();
             }
         }
-
     }
 }
