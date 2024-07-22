@@ -75,7 +75,7 @@ builder.Services.AddIdentityCore<User>(options =>
     options.SignIn.RequireConfirmedAccount = true;
 
     // Passord settings
-    options.Password.RequireDigit = true;
+    options.Password.RequireDigit = false;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = false;
     options.Password.RequireNonAlphanumeric = false;
