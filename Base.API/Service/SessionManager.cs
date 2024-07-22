@@ -37,6 +37,7 @@ public class SessionManager
         _sessions.Remove(session);
     }
 
+
     public bool CreateFingerRegistrationSession(int sessionId, int fingerRegistrationMode, Guid userId, Guid studentId)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
@@ -74,6 +75,12 @@ public class SessionManager
         }
         return true;
     }
+
+
+    /*public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId)
+    {
+
+    }*/
 
     
 

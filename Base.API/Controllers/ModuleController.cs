@@ -305,6 +305,7 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Schedule not found" }
                         });
                     }
+
                     var messageSendMode3 = new WebsocketMessage
                     {
                         Event = "PrepareAttendance",

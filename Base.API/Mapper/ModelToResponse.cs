@@ -139,7 +139,7 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
             CreateMap<Module, ModuleResponseVM>()
                 .ForMember(dest => dest.ConnectionStatus, opt => 
-                    opt.MapFrom(src => webSocketConnectionManager.GetModuleSocket(src.ModuleID) != null ? 1 : 2));
+                    opt.MapFrom(src => webSocketConnectionManager.CheckModuleSocket(src.ModuleID) == true ? 1 : 2));
         }
     }
 }
