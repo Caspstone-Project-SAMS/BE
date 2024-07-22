@@ -57,14 +57,20 @@ namespace Base.Service.Service
                         continue;
                     }
 
-                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID && s.ClassID == existedClass.ClassID && !s.IsDeleted).ToArrayAsync();
+                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date 
+                                                                            && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID 
+                                                                            && s.ClassID == existedClass.ClassID && !s.IsDeleted).ToArrayAsync();
                     if( conflictingSchedule.Count() > 0)
                     {
                         errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date}'.");
                         continue;
                     }
 
-                    var conflictingScheduleLecturer = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID && s.ClassID == existedClass.ClassID && s.Class!.LecturerID == existedClass.LecturerID && !s.IsDeleted).ToArrayAsync();
+                    var conflictingScheduleLecturer = 
+                    await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date 
+                                                            && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID 
+                                                            && s.Class!.RoomID == existedClass.RoomID && s.ClassID == existedClass.ClassID 
+                                                            && s.Class!.LecturerID == existedClass.LecturerID && !s.IsDeleted).ToArrayAsync();
                     if (conflictingScheduleLecturer.Count() > 0)
                     {
                         errors.Add($"Lecturer already have class for this slot");
