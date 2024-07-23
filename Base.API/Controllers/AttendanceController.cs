@@ -51,7 +51,7 @@ namespace Base.API.Controllers
                 if (result.IsSuccess)
                 {
 
-                    // Make a real-time update using websocket here
+                    /*// Make a real-time update using websocket here
                     var dataSend = new DataSend
                     {
                         studentID = studentID.ToString(),
@@ -64,7 +64,9 @@ namespace Base.API.Controllers
                         Data = dataSendString
                     };
                     var messageSendString = JsonSerializer.Serialize(messageSend);
-                    _webSocketConnectionManager.SendMessagesToAll(messageSendString);
+                    _webSocketConnectionManager.SendMessagesToAll(messageSendString);*/
+
+
                     return Ok(new
                     {
                         Title = result.Title,
@@ -87,7 +89,7 @@ namespace Base.API.Controllers
             var result = await _attendanceService.UpdateListStudentStatus(studentArr);
             if (result.IsSuccess)
             {
-                // real-time websocket
+                /*// real-time websocket
                 foreach (var item in studentArr)
                 {
                     var dataSend = new DataSend
@@ -103,7 +105,7 @@ namespace Base.API.Controllers
                     };
                     var messageSendString = JsonSerializer.Serialize(messageSend);
                     _webSocketConnectionManager.SendMessagesToAll(messageSendString);
-                }
+                }*/
 
                 return Ok(new
                 {

@@ -43,24 +43,37 @@ namespace Base.Service.Service
                         continue;
                     }
 
-                    var existedSlot = await _unitOfWork.SlotRepository.Get(s => s.SlotNumber == newEntity.SlotNumber && !s.IsDeleted).SingleOrDefaultAsync();
+                    var existedSlot = await _unitOfWork.SlotRepository.Get(s => s.SlotNumber == newEntity.SlotNumber && !s.IsDeleted).FirstOrDefaultAsync();
                     if( existedSlot is null)
                     {
                         errors.Add($"Slot {newEntity.SlotNumber} not existed");
                         continue;
                     }
 
-                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID == existedClass.ClassID && !s.IsDeleted).SingleOrDefaultAsync();
+                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && !s.IsDeleted).FirstOrDefaultAsync();
                     if(existedSchedule is not null)
                     {
                         errors.Add($"A schedule already exists for class {newEntity.ClassCode} at slot {newEntity.SlotNumber} on date {newEntity.Date}");
                         continue;
                     }
 
-                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID && !s.IsDeleted).ToArrayAsync();
+                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date 
+                                                                            && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID 
+                                                                            && s.ClassID == existedClass.ClassID && !s.IsDeleted).ToArrayAsync();
                     if( conflictingSchedule.Count() > 0)
                     {
                         errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date}'.");
+                        continue;
+                    }
+
+                    var conflictingScheduleLecturer = 
+                    await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date 
+                                                            && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID 
+                                                            && s.Class!.RoomID == existedClass.RoomID && s.ClassID == existedClass.ClassID 
+                                                            && s.Class!.LecturerID == existedClass.LecturerID && !s.IsDeleted).ToArrayAsync();
+                    if (conflictingScheduleLecturer.Count() > 0)
+                    {
+                        errors.Add($"Lecturer already have class for this slot");
                         continue;
                     }
 

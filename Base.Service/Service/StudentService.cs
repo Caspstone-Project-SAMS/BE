@@ -41,14 +41,14 @@ namespace Base.Service.Service
 
             foreach (var newEntity in newEntities)
             {
-                var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).SingleOrDefaultAsync();
+                var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).FirstOrDefaultAsync();
                 if (existedStudent is not null)
                 {
                     errors.Add($"StudentCode {newEntity.StudentCode} is already taken");
                     continue;
                 }
 
-                var existingUserEmail = await _unitOfWork.UserRepository.Get(u => u.Email == newEntity.Email).SingleOrDefaultAsync();
+                var existingUserEmail = await _unitOfWork.UserRepository.Get(u => u.Email == newEntity.Email).FirstOrDefaultAsync();
                 if (existingUserEmail != null)
                 {
                     errors.Add($"User with email {newEntity.Email} already exists.");
@@ -297,21 +297,21 @@ namespace Base.Service.Service
             foreach(var newEntity in newEntities)
             {
                     
-                    var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode) && !s.IsDeleted, includes: u => u.User).SingleOrDefaultAsync();
+                    var existedStudent = await _unitOfWork.StudentRepository.Get(s => s.StudentCode.Equals(newEntity.StudentCode) && !s.IsDeleted, includes: u => u.User).FirstOrDefaultAsync();
                     if (existedStudent is null)
                     {
                         errors.Add($"Student with code {newEntity.StudentCode} not existed");
                         continue;
                     }
 
-                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode) && c.SemesterID == semesterId && !c.IsDeleted).SingleOrDefaultAsync();
+                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode) && c.SemesterID == semesterId && !c.IsDeleted).FirstOrDefaultAsync();
                     if (existedClass is null)
                     {
                         errors.Add($"Class with code {newEntity.ClassCode} not existed in Semester {existedSemester.SemesterCode}");
                         continue;
                     }
 
-                    var check = await _unitOfWork.StudentClassRepository.Get("StudentClass",s => s.StudentID.Equals(existedStudent.User!.Id) && s.ClassID == existedClass.ClassID).SingleOrDefaultAsync();
+                    var check = await _unitOfWork.StudentClassRepository.Get("StudentClass",s => s.StudentID.Equals(existedStudent.User!.Id) && s.ClassID == existedClass.ClassID).FirstOrDefaultAsync();
                     if (check is not null)
                     {
                         errors.Add($"Student with code {newEntity.StudentCode} already existed in Class {newEntity.ClassCode}");
