@@ -36,6 +36,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     public DbSet<Attendance> Attendances { get; set; } = null!;
     public DbSet<Module> Modules { get; set; } = null!;
     public DbSet<SubstituteTeaching> SubstituteTeachings { get; set; } = null!;
+    public DbSet<PreparationTask> PreparationTasks { get; set; } = null!;
+    public DbSet<ActivityHistory> ActivityHistories { get; set; } = null!;
 
 
 
@@ -237,6 +239,10 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
         builder.Entity<SubstituteTeaching>().ToTable("SubstituteTeaching");
 
         builder.Entity<Attendance>().ToTable("Attendance");
+
+        builder.Entity<PreparationTask>().ToTable("PreparationTask");
+
+        builder.Entity<ActivityHistory>().ToTable("ActivityHistory");
 
 
         builder.Ignore<IdentityUserClaim<Guid>>();

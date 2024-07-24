@@ -18,13 +18,20 @@ namespace Base.API.Service
         private readonly IBackgroundJobClient _backgroundJobClient;
         private readonly IRecurringJobManager _recurringJobManager;
         private readonly WebSocketConnectionManager1 _websocketConnectionManager;
+        private readonly SessionManager _sessionManager;
+        private readonly ICurrentUserService _currentUserService;
+
         public HangfireService(IBackgroundJobClient backgroundJobClient,
                                IRecurringJobManager recurringJobManager,
-                               WebSocketConnectionManager1 websocketConnectionManager)
+                               WebSocketConnectionManager1 websocketConnectionManager,
+                               SessionManager sessionManager,
+                               ICurrentUserService currentUserService)
         {
             _backgroundJobClient = backgroundJobClient;
             _recurringJobManager = recurringJobManager;
             _websocketConnectionManager = websocketConnectionManager;
+            _sessionManager = sessionManager;
+            _currentUserService = currentUserService;
         }
 
         public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
@@ -51,7 +58,7 @@ namespace Base.API.Service
                     TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time"),
                 }
             );
-                
+
         }
         public void RemoveRecurringJobsAsync(string jobId)
         {

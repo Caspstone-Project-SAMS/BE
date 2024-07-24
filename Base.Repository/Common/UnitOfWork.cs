@@ -36,6 +36,15 @@ public interface IUnitOfWork
 
     IFingerprintRepository FingerprintRepository { get; }
 
+
+    IActivityHistoryRepository ActivityHistoryRepository { get; }
+
+    IPreparationTaskRepository PreparationTaskRepository { get; }
+
+    INotificationRepository NotificationRepository { get; }
+
+    INotificationTypeRepository NotificationTypeRepository { get; }
+
     Task<bool> SaveChangesAsync();
     void Dispose();
 }
@@ -71,6 +80,14 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IFingerprintRepository FingerprintRepository { get; private set;  }
 
+    public IActivityHistoryRepository ActivityHistoryRepository { get; private set; }
+
+    public IPreparationTaskRepository PreparationTaskRepository { get; private set; }
+
+    public INotificationRepository NotificationRepository { get; private set; }
+
+    public INotificationTypeRepository NotificationTypeRepository { get; private set; }
+
     public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
         IRoleRepository roleRepository,
@@ -85,7 +102,11 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         IStudentClassRepository studentClassRepository,
         IModuleRepository moduleRepository,
         IEmployeeRepository employeeRepository,
-        IFingerprintRepository fingerprintRepository)
+        IFingerprintRepository fingerprintRepository,
+        IActivityHistoryRepository activityHistoryRepository,
+        IPreparationTaskRepository preparationTaskRepository,
+        INotificationRepository notificationRepository,
+        INotificationTypeRepository notificationTypeRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -102,6 +123,10 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         ModuleRepository = moduleRepository;
         EmployeeRepository = employeeRepository;
         FingerprintRepository = fingerprintRepository;
+        ActivityHistoryRepository = activityHistoryRepository;
+        PreparationTaskRepository = preparationTaskRepository;
+        NotificationRepository = notificationRepository;
+        NotificationTypeRepository = notificationTypeRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

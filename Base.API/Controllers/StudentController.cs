@@ -3,6 +3,8 @@ using Base.Service.ViewModel.RequestVM;
 using Base.IService.IService;
 using AutoMapper;
 using Base.Service.ViewModel.ResponseVM;
+using Base.API.Service;
+using System.Text.Json;
 
 namespace Base.API.Controllers
 {
@@ -15,12 +17,16 @@ namespace Base.API.Controllers
         //SpreadsheetsResource.ValuesResource _googleSheetValues;
         private readonly IStudentService _studentService;
         private readonly IMapper _mapper;
+        private readonly SessionManager _sessionManager;
+        private readonly WebSocketConnectionManager1 _websocketConnectionManager;
 
-        public StudentController(IStudentService studentService, IMapper mapper)
+        public StudentController(IStudentService studentService, IMapper mapper, SessionManager sessionManager, WebSocketConnectionManager1 webSocketConnectionManager)
         {
             //_googleSheetValues = googleSheetsHelper.Service.Spreadsheets.Values;
             _studentService = studentService;
             _mapper = mapper;
+            _sessionManager = sessionManager;
+            _websocketConnectionManager = webSocketConnectionManager;
         }
         //public class Student
         //{
@@ -245,13 +251,24 @@ namespace Base.API.Controllers
         }
 
         [HttpGet("get-students-by-classId")]
-        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] bool isModule = false)
+        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] int? sessionId, [FromQuery] bool isModule = false)
         {
             if (ModelState.IsValid)
             {
                 var students = await _studentService.GetStudentsByClassID(classID,startPage,endPage,quantity);
                 if (isModule)
                 {
+                    // Update progress
+                    if(sessionId is not null)
+                    {
+                        var completedWorkAmount = students.Count();
+                        if (completedWorkAmount > 0)
+                        {
+                            _ = UpdateAttendancePreparationProgress(completedWorkAmount, sessionId ?? 0);
+                        }
+
+                    }
+
                     return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
                 }
                 return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
@@ -327,6 +344,30 @@ namespace Base.API.Controllers
                 Title = "Get student information failed",
                 Errors = new string[1] { "Invalid input" }
             });
+        }
+
+
+
+        private async Task UpdateAttendancePreparationProgress(int completedWorkAmount, int sessionId)
+        {
+            var updateProgressResult = _sessionManager.UpdateSchedulePreparationProgress(sessionId, completedWorkAmount);
+            if (updateProgressResult)
+            {
+                // Notify job progress
+                var session = _sessionManager.GetSessionById(sessionId);
+                var messageSend = new WebsocketMessage
+                {
+                    Event = "SchedulePreparationProgress",
+                    Data = new
+                    {
+                        ModuleID = session?.ModuleId,
+                        ScheduleID = session?.PrepareAttendance?.ScheduleId,
+                        Progress = session?.PrepareAttendance?.Progress
+                    }
+                };
+                var jsonPayload = JsonSerializer.Serialize(messageSend);
+                await _websocketConnectionManager.SendMessageToClient(jsonPayload, session?.UserID ?? new Guid());
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Threading;
 using static Org.BouncyCastle.Math.EC.ECCurve;
 using Base.API.Common;
+using System.Linq;
 
 namespace Base.API.Controllers;
 
@@ -127,7 +128,7 @@ public class WebSocketController : ControllerBase
                             if(websocketEventHandler is not null)
                                 websocketEventHandler.OnConnectModuleEvent(receiveData);
                         }
-                        else if(receiveData.Contains("Fingerprint registration"))
+                        else if (receiveData.Contains("Fingerprint registration"))
                         {
                             if (websocketEventHandler is not null)
                                 websocketEventHandler.OnRegisterFingerprintEvent(receiveData);
@@ -137,6 +138,56 @@ public class WebSocketController : ControllerBase
                             if(websocketEventHandler is not null)
                             {
                                 websocketEventHandler.OnPrepareAttendanceSession(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Session cancelled"))
+                        {
+                            // Module cancel session itself, because it waited for action too long
+                            int sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            if(sessionId > 0)
+                            {
+                                var session = _sessionManager.GetSessionById(sessionId);
+                                if(session is not null)
+                                {
+                                    _sessionManager.CancelSession(sessionId, session.UserID);
+                                    var messageSend = new WebsocketMessage
+                                    {
+                                        Event = "CancelSession",
+                                        Data = new
+                                        {
+                                            SessionID = sessionId,
+                                            ModuleID = session
+                                        }
+                                    };
+                                    var jsonPayload = JsonSerializer.Serialize(messageSend);
+                                    await _websocketConnectionManager1.SendMessageToClient(jsonPayload, session.UserID);
+                                }
+                            }
+                        }
+                        else if (receiveData.Contains("Cancel session"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnCancelSessionEvent(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Stop attendance"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnStopAttendanceEvent(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Schedule preparation completed"))
+                        {
+                            var sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            if (receiveData.Contains("successfully"))
+                            {
+                                _ = _sessionManager.CompleteSession(sessionId, true);
+                            }
+                            else if (receiveData.Contains("failed"))
+                            {
+                                _ = _sessionManager.CompleteSession(sessionId, false);
                             }
                         }
                     }

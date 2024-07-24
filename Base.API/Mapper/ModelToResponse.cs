@@ -131,6 +131,11 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Modules, opt => opt.MapFrom(src => src.Employee!.Modules));
 
             // For module
+            CreateMap<PreparationTask, PreparationTask_ModuleResponseVM>()
+                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.GetPreparedSchedules()));
+            CreateMap<ActivityHistory, ActivityHistories_ModuleResponseVM>()
+                .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.GetErrors()))
+                .ForMember(dest => dest.PreparationTask, opt => opt.MapFrom(src => src.PreparationTask));
             CreateMap<Employee, Employee_ModuleResponseVM>()
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.User!.Id))
                 .ForMember(dest => dest.EmployeeID, opt => opt.MapFrom(src => src.EmployeeID))
@@ -140,7 +145,8 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
             CreateMap<Module, ModuleResponseVM>()
                 .ForMember(dest => dest.ConnectionStatus, opt => 
-                    opt.MapFrom(src => webSocketConnectionManager.CheckModuleSocket(src.ModuleID) == true ? 1 : 2));
+                    opt.MapFrom(src => webSocketConnectionManager.CheckModuleSocket(src.ModuleID) == true ? 1 : 2))
+                .ForMember(dest => dest.ActivityHistories, opt => opt.MapFrom(src => src.ActivityHistories));
         }
     }
 }

@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeService, EmployeeService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IFingerprintService, FingerprintService>();
+        services.AddScoped<IActivityHistoryService, ActivityHistoryService>();
 
         #endregion
 

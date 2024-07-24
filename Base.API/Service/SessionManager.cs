@@ -1,5 +1,8 @@
-﻿using Base.Service.IService;
+﻿using Base.Service.Common;
+using Base.Service.IService;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using DocumentFormat.OpenXml.Drawing;
 using DocumentFormat.OpenXml.InkML;
 using Microsoft.AspNetCore.Http;
 
@@ -17,7 +20,9 @@ public class SessionManager
         _serviceScopeFactory = serviceScopeFactory;
     }
 
-    public int CreateSession(int moduleId, Guid userId)
+
+    //===================
+    public int CreateSession(int moduleId, Guid userId, int durationinMin)
     {
         var sessionId = _sessions.Count() + 1;
         _sessions.Add(new Session
@@ -25,7 +30,8 @@ public class SessionManager
             SessionId = sessionId,
             UserID = userId,
             ModuleId = moduleId,
-            TimeStamp = DateTime.Now,
+            TimeStamp = ServerDateTime.GetVnDateTime(), 
+            DurationInMin = durationinMin,
         });
         return sessionId;
     }
@@ -38,6 +44,7 @@ public class SessionManager
     }
 
 
+    //====================
     public bool CreateFingerRegistrationSession(int sessionId, int fingerRegistrationMode, Guid userId, Guid studentId)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
@@ -96,16 +103,19 @@ public class SessionManager
         return true;
     }
 
-    public void UpdateSchedulePreparationProgress(int sessionId, int completedWorkAmount)
+    public bool UpdateSchedulePreparationProgress(int sessionId, int completedWorkAmount)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
-        if (session is null) return;
+        if (session is null || session.SessionState != 1 || session.Category != 2) return false;
 
-        if (session.PrepareAttendance is null) return;
+        if (session.PrepareAttendance is null) return false;
 
         session.PrepareAttendance.CompletedWorkAmount = session.PrepareAttendance.CompletedWorkAmount + completedWorkAmount;
         session.PrepareAttendance.Progress = MathF.Round((session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount) * 100);
+        return true;
     }
+
+
 
 
 
@@ -135,23 +145,27 @@ public class SessionManager
 
         return sessions;
     }
-
+    public IEnumerable<Session> GetAllSessions()
+    {
+        return _sessions.ToList();
+    }
     public Session? GetSessionById(int id)
     {
         return _sessions.FirstOrDefault(s => s.SessionId == id);
     }
 
-    public void CancelSession(int sessionId, Guid userId)
-    {
-        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.UserID == userId);
-        if (session is null) return;
-        session.SessionState = 2;
-    }
 
+
+
+    //=================================================================
+    //=================================================================
+
+
+    // Submit session will apply what session did to the database, for fingerprint registration
     public async Task<ServiceResponseVM> SubmitSession(int sessionId, Guid userId)
     {
         var session = _sessions.FirstOrDefault(s => s.UserID == userId && s.SessionId == sessionId);
-        if(session is null)
+        if (session is null)
         {
             return new ServiceResponseVM
             {
@@ -168,7 +182,7 @@ public class SessionManager
         switch (session.Category)
         {
             case 1:
-                if(session.FingerRegistration is null)
+                if (session.FingerRegistration is null)
                 {
                     return new ServiceResponseVM
                     {
@@ -206,7 +220,18 @@ public class SessionManager
     }
 
 
+    // Call this when user want to cancel session or when module itself cancel session because of there is nothing to do
+    // Make the session stop
+    public void CancelSession(int sessionId, Guid userId)
+    {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.UserID == userId);
+        if (session is null) return;
+        session.SessionState = 2;
+    }
 
+
+    // Call this when ever module got problem, such as lost connection => session cancelled because error
+    // Make the session to be cancelled and provide the error that cause it
     public void SessionError(int sessionId, List<string> errors)
     {
         var session = GetSessionById(sessionId);
@@ -215,12 +240,67 @@ public class SessionManager
         session.Errors = errors;
     }
 
-    public IEnumerable<Session> GetAllSessions()
+
+    // Call this when session is completed (this should be called by module event, or by server if the event is timed out)
+    // Only complete session about schedule preparation (both success and failed cases), setup module
+    // This will make a record of module activity and make a notification about that activity
+    public async Task<bool> CompleteSession(int sessionId, bool isSucess)
     {
-        return _sessions.ToList();
+        // Make a notification, activity history of module, and notify the notification to user
+        var existedSession = GetSessionById(sessionId);
+        if (existedSession is null) return false;
+
+        // Create activity
+        var newActivity = new ActivityHistoryVM
+        {
+            UserId = existedSession.UserID,
+            StartTime = existedSession.TimeStamp,
+            EndTime = ServerDateTime.GetVnDateTime(),
+            IsSuccess = isSucess,
+            ModuleID = existedSession.ModuleId
+        };
+        if (!isSucess)
+        {
+            newActivity.Errors = existedSession.Errors;
+        }
+        if(existedSession.Category == 2 || existedSession.Category == 3)
+        {
+            var preparationTask = new PreparationTaskVM
+            {
+                Progress = existedSession.PrepareAttendance?.Progress ?? 0,
+                PreparedScheduleId = existedSession.PrepareAttendance?.ScheduleId,
+                PreparedScheduleIds = existedSession.PrepareAttendance?.ScheduleIds ?? Enumerable.Empty<int>(),
+                PreparedDate = existedSession.PrepareAttendance?.PreparedDate
+            };
+            newActivity.PreparationTaskVM = preparationTask;
+            if(existedSession.Category == 2)
+            {
+                newActivity.Title = "Prepare a schedule";
+            }
+            else
+            {
+                newActivity.Title = "Prepare schedules for a day";
+            }
+        }
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var activityHistoryService = serviceScope.ServiceProvider.GetRequiredService<IActivityHistoryService>();
+        var createNewActivityResult = await activityHistoryService.Create(newActivity);
+        if (!createNewActivityResult.IsSuccess)
+        {
+            return false;
+        }
+
+        // Create notification about the activity
+
+
+        // Notify the notification
+
+        return true;
     }
 
 
+
+    // For test purpose
     public void AddString(string text)
     {
         strings.Add(text);
@@ -261,6 +341,8 @@ public class FingerRegistration
 
 public class PrepareAttendance
 {
+    public IEnumerable<int> ScheduleIds { get; set; } = Enumerable.Empty<int>();
+    public DateOnly? PreparedDate { get; set; }
     public int ScheduleId { get; set; }
     public float Progress { get; set; }
     public int TotalWorkAmount { get; set; }
@@ -271,4 +353,6 @@ public class PrepareAttendance
 // Session state: 1 - onGoing, 2 - End
 // FingerScanState: 1 - finger1, 2 - finger2, 3 - both fingers
 // FingerRegistrationMode: 1 - finger1, 2 - finger2, 3 - both fingers
-// Category: 1 - FingerRegistration, 2 - StartAttendance, 3 - StopAttedance
+// Category: 1 - FingerRegistration, 2 - Prepare a schedule, 3 - Prepare schedules of a day, 4 - Setup
+
+// Session về kết nối module, đăng ký vân tay, chuẩn bị dữ liệu điểm danh

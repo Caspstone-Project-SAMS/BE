@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240724073858_Add activity description of module")]
+    partial class Addactivitydescriptionofmodule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +23,36 @@ namespace Base.Repository.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+
+            modelBuilder.Entity("Base.Repository.Entity.ActivityCategory", b =>
+                {
+                    b.Property<int>("ActivityCategoryID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ActivityCategoryID"), 1L, 1);
+
+                    b.Property<string>("CategoryDescription")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CategoryName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.HasKey("ActivityCategoryID");
+
+                    b.ToTable("ActivityCategory", (string)null);
+                });
 
             modelBuilder.Entity("Base.Repository.Entity.ActivityHistory", b =>
                 {
@@ -30,9 +62,8 @@ namespace Base.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ActivityHistoryId"), 1L, 1);
 
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("ActivityCategoryID")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("EndTime")
                         .HasColumnType("datetime2");
@@ -53,14 +84,12 @@ namespace Base.Repository.Migrations
                     b.Property<DateTime>("StartTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("ActivityHistoryId");
+
+                    b.HasIndex("ActivityCategoryID");
 
                     b.HasIndex("ModuleID");
 
@@ -364,9 +393,6 @@ namespace Base.Repository.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PreparationTaskID"), 1L, 1);
-
-                    b.Property<DateTime?>("PreparedDate")
-                        .HasColumnType("date");
 
                     b.Property<int?>("PreparedScheduleId")
                         .HasColumnType("int");
@@ -837,6 +863,12 @@ namespace Base.Repository.Migrations
 
             modelBuilder.Entity("Base.Repository.Entity.ActivityHistory", b =>
                 {
+                    b.HasOne("Base.Repository.Entity.ActivityCategory", "ActivityCategory")
+                        .WithMany("ActivityHistories")
+                        .HasForeignKey("ActivityCategoryID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Base.Repository.Entity.Module", "Module")
                         .WithMany("ActivityHistories")
                         .HasForeignKey("ModuleID")
@@ -848,6 +880,8 @@ namespace Base.Repository.Migrations
                         .HasForeignKey("PreparationTaskID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("ActivityCategory");
 
                     b.Navigation("Module");
 
@@ -1039,6 +1073,11 @@ namespace Base.Repository.Migrations
                         .HasForeignKey("StudentID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Base.Repository.Entity.ActivityCategory", b =>
+                {
+                    b.Navigation("ActivityHistories");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Class", b =>

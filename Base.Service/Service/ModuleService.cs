@@ -32,10 +32,12 @@ internal class ModuleService : IModuleService
     {
         var includes = new Expression<Func<Module, object?>>[]
         {
-            m => m.Employee!.User
+            m => m.Employee!.User,
+            m => m.ActivityHistories
         };
         return await _unitOfWork.ModuleRepository
             .Get(m => m.ModuleID == moduleId, includes)
+            .Include(nameof(Module.ActivityHistories) + "." + nameof(ActivityHistory.PreparationTask))
             .AsNoTracking()
             .FirstOrDefaultAsync();
     }
