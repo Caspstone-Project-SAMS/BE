@@ -92,7 +92,7 @@ public class SessionManager
 
     public bool RegisterFinger(int sessionId, string fingerprintTemplate, int fingerNumber, Guid studentId)
     {
-        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.Category == 1);
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if(session is null || (session.Category != 1 && session.Category != 8) || session.SessionState != 1 || session.FingerRegistration is null || session.FingerRegistration.StudentId != studentId)
         {
             return false;
@@ -139,7 +139,7 @@ public class SessionManager
         if (session.PrepareAttendance is null) return false;
 
         session.PrepareAttendance.CompletedWorkAmount = session.PrepareAttendance.CompletedWorkAmount + completedWorkAmount;
-        session.PrepareAttendance.Progress = MathF.Round((session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount) * 100);
+        session.PrepareAttendance.Progress = session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount * 100;
 
         // Notify to client about changing of progress of the session
         _ = NotifyPreparationProgress(sessionId, session.PrepareAttendance.Progress, session.UserID);
@@ -378,11 +378,11 @@ public class SessionManager
             if (schedule is not null)
             {
                 description = "Prepare attendance data for class " 
-                    + schedule.Class?.ClassCode ?? "***"
+                    + (schedule.Class?.ClassCode ?? "***")
                     + " at " 
-                    + schedule.Slot?.StartTime.ToString("hh:mm:ss") ?? "***"
-                    + " - " + schedule.Slot?.Endtime.ToString("hh:mm:ss") ?? "***"
-                    + " on " + schedule.Date.ToString("yyyy-MM-dd") ?? "***";
+                    + (schedule.Slot?.StartTime.ToString("hh:mm:ss") ?? "***")
+                    + " - " + (schedule.Slot?.Endtime.ToString("hh:mm:ss") ?? "***")
+                    + " on " + (schedule.Date.ToString("yyyy-MM-dd") ?? "***");
             }
         }
         else if (existedSession.Category == 3)
@@ -391,7 +391,7 @@ public class SessionManager
             var preparedDate = existedSession.PrepareAttendance?.PreparedDate;
             var classCodeList = scheduleService.GetClassCodeList(", ", existedSession.PrepareAttendance?.ScheduleIds.ToList());
             description = "Prepare attendance data for classes "
-                    + classCodeList ?? "***"
+                    + (classCodeList ?? "***")
                     + " on ";
             if(preparedDate is null)
             {
