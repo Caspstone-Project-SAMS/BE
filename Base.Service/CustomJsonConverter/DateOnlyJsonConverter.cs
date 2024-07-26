@@ -3,7 +3,7 @@
 namespace Base.Service.CustomJsonConverter;
 
 // For Serialization to ResponseVM
-internal class DateOnlyJsonConverter : JsonConverter
+public class DateOnlyJsonConverter : JsonConverter
 {
     public override bool CanConvert(Type objectType)
     {

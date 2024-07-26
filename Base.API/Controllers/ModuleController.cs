@@ -274,13 +274,8 @@ public class ModuleController : ControllerBase
                         cts.CancelAfter(TimeSpan.FromSeconds(10));
                         if (WaitForModuleCanceling(cts.Token))
                         {
+                            // Cancel will do a specific work with each category of session
                             _sessionManager.CancelSession(activateModule.SessionId ?? 0, userId);
-                            // If a fingerprint registration session is cancelled, dont delete it
-                            if (sessionMode2.Category == 2 || sessionMode2.Category == 3 || sessionMode2.Category == 4)
-                            {
-                                await _sessionManager.CompleteSession(activateModule.SessionId ?? 0, false);
-                                _sessionManager.DeleteSession(activateModule.SessionId ?? 0);
-                            }
                             return Ok(new
                             {
                                 Title = "Cancel session successfully"
@@ -373,9 +368,7 @@ public class ModuleController : ControllerBase
 
                     // Session got error -> lets complete it, record its activity and delete it.
                     _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
-                    await _sessionManager.CompleteSession(activateModule.SessionId ?? 0, false);
-                    _sessionManager.DeleteSession(activateModule.SessionId ?? 0);
-
+                    _ = _sessionManager.CompleteSession(activateModule.SessionId ?? 0, false);
 
                     if (websocketEventHandler is not null)
                     {
@@ -455,7 +448,6 @@ public class ModuleController : ControllerBase
                     });
 
 
-                /////////
                 // Mode 5 - prepare attendances for a day
                 case 5:
                     break;
@@ -518,15 +510,104 @@ public class ModuleController : ControllerBase
                     });
 
 
-                // Mode 7 - disconnect module
+                // Mode 7 - setup module
                 case 7:
                     break;
 
 
-                // Mode 8 - setup module
+                // Mode 8 - update fingerprint
                 case 8:
-                    break;
+                    if (activateModule.RegisterMode is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input: RegisterMode not valid" }
+                        });
+                    }
+                    if (activateModule.SessionId is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input: Session id not found" }
+                        });
+                    }
 
+                    var existedStudentMode8 = await _studentService.GetById(activateModule.RegisterMode.StudentID);
+                    if (existedStudentMode8 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Student not found" }
+                        });
+                    }
+
+                    var sessionResultMode8 = _sessionManager.CreateFingerUpdateSession(activateModule.SessionId ?? 0,
+                        activateModule.RegisterMode.FingerRegisterMode,
+                        new Guid(_currentUserService.UserId),
+                        activateModule.RegisterMode.StudentID);
+
+                    if (!sessionResultMode8)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Session is not started" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.RegisterFingerprintEvent += OnModuleMode1EventHandler;
+                    }
+                    websocketEventState.SessionId = activateModule.SessionId ?? 0;
+
+                    var messageSendMode8 = new WebsocketMessage
+                    {
+                        Event = "RegisterFingerprint",
+                        Data = new
+                        {
+                            StudentCode = existedStudentMode8.Student?.StudentCode ?? "",
+                            StudentID = existedStudentMode8.Student?.StudentID ?? Guid.Empty,
+                            Mode = activateModule.RegisterMode.FingerRegisterMode,
+                            SessionID = activateModule.SessionId
+                        }
+                    };
+                    var jsonPayloadMode8 = JsonSerializer.Serialize(messageSendMode8);
+                    var resultMode8 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode8, activateModule.ModuleID);
+                    if (resultMode8)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode1(cts.Token))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Activate module successfully",
+                            });
+                        }
+                    }
+
+                    // If a fingerprint registration session is cancelled, dont delete it
+                    // We dont record the activity of fingerprint registration
+                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                    }
+
+                    return BadRequest(new
+                    {
+                        Title = "Activate module failed",
+                        Errors = new string[1] { "Connection times out" }
+                    });
 
 
                 default:
@@ -674,7 +755,7 @@ public class ModuleController : ControllerBase
 
     private void OnModuleMode1EventHandler(object? sender, WebsocketEventArgs e)
     {
-        if(e.Event == ("Fingerprint registration " + websocketEventState.SessionId))
+        if(e.Event == ("Register fingerprint " + websocketEventState.SessionId))
         {
             websocketEventState.ModuleMode1 = true;
         }

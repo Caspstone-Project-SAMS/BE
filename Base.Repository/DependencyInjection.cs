@@ -49,10 +49,10 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IModuleRepository, ModuleRepository>();
         services.AddScoped<IFingerprintRepository, FingerprintRepository>();
-        services.AddScoped<IActivityHistoryRepository, ActivityHistoryRepository>();
         services.AddScoped<IPreparationTaskRepository, PreparationTaskRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationTypeRepository, NotificationTypeRepository>();
+        services.AddScoped<IModuleActivityRepository, ModuleActivityRepository>();
         #endregion
 
         return services;

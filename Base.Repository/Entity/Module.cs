@@ -23,5 +23,5 @@ public class Module : AuditableEntity
     public Employee? Employee { get; set; }
 
     // A module have activities
-    public IEnumerable<ActivityHistory> ActivityHistories { get; set; } = new List<ActivityHistory>();
+    public IEnumerable<ModuleActivity> ModuleActivities { get; set; } = new List<ModuleActivity>();
 }

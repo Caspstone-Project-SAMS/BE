@@ -21,8 +21,6 @@ public class ActivityHistoryVM
     public bool IsSuccess { get; set; } = false;
     public IEnumerable<string> Errors { get; set; } = Enumerable.Empty<string>();
     [Required]
-    public int ActivityCategoryID { get; set; }
-    [Required]
     public int ModuleID { get; set; }
     public PreparationTaskVM? PreparationTaskVM { get; set; }
 }

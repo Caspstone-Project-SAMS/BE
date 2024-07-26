@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Repository;
 
-internal class ActivityHistoryRepository : BaseRepository<ActivityHistory, int>, IActivityHistoryRepository
+internal class ModuleActivityRepository : BaseRepository<ModuleActivity, int>, IModuleActivityRepository
 {
-    public ActivityHistoryRepository(ApplicationDbContext applicationDbContext) : base(applicationDbContext)
-    {
+    public ModuleActivityRepository(ApplicationDbContext dbContext) : base(dbContext)
+    { 
     }
 }

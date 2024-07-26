@@ -36,14 +36,13 @@ public interface IUnitOfWork
 
     IFingerprintRepository FingerprintRepository { get; }
 
-
-    IActivityHistoryRepository ActivityHistoryRepository { get; }
-
     IPreparationTaskRepository PreparationTaskRepository { get; }
 
     INotificationRepository NotificationRepository { get; }
 
     INotificationTypeRepository NotificationTypeRepository { get; }
+
+    IModuleActivityRepository ModuleActivityRepository { get; }
 
     Task<bool> SaveChangesAsync();
     void Dispose();
@@ -80,7 +79,6 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IFingerprintRepository FingerprintRepository { get; private set;  }
 
-    public IActivityHistoryRepository ActivityHistoryRepository { get; private set; }
 
     public IPreparationTaskRepository PreparationTaskRepository { get; private set; }
 
@@ -88,6 +86,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public INotificationTypeRepository NotificationTypeRepository { get; private set; }
 
+    public IModuleActivityRepository ModuleActivityRepository { get; private set; }
     public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
         IRoleRepository roleRepository,
@@ -103,10 +102,10 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         IModuleRepository moduleRepository,
         IEmployeeRepository employeeRepository,
         IFingerprintRepository fingerprintRepository,
-        IActivityHistoryRepository activityHistoryRepository,
         IPreparationTaskRepository preparationTaskRepository,
         INotificationRepository notificationRepository,
-        INotificationTypeRepository notificationTypeRepository)
+        INotificationTypeRepository notificationTypeRepository,
+        IModuleActivityRepository moduleActivityRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -123,10 +122,10 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         ModuleRepository = moduleRepository;
         EmployeeRepository = employeeRepository;
         FingerprintRepository = fingerprintRepository;
-        ActivityHistoryRepository = activityHistoryRepository;
         PreparationTaskRepository = preparationTaskRepository;
         NotificationRepository = notificationRepository;
         NotificationTypeRepository = notificationTypeRepository;
+        ModuleActivityRepository = moduleActivityRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

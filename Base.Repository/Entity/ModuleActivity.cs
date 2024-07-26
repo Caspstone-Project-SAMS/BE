@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Entity;
 
-public class ActivityHistory
+public class ModuleActivity
 {
     [Key]
-    public int ActivityHistoryId { get; set; }
+    public int ModuleActivityId { get; set; }
 
     public string Title { get; set; } = "Activity";
     public string Description { get; set; } = string.Empty;
@@ -19,10 +19,10 @@ public class ActivityHistory
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
     public bool IsSuccess { get; set; }
-    public string Errors { get; set; } = string.Empty;
+    public string? Errors { get; set; } = string.Empty;
 
     // Activity about schedule preparation
-    public int PreparationTaskID { get; set; }
+    public int? PreparationTaskID { get; set; }
     public PreparationTask? PreparationTask { get; set; }
 
     public int ModuleID { get; set; }
@@ -31,6 +31,11 @@ public class ActivityHistory
     public IEnumerable<string> GetErrors()
     {
         return this.Errors.Split(";");
+    }
+
+    public string? GetActivityDate()
+    {
+        return this.StartTime.ToString("yyyy-MM-dd");
     }
 }
 
@@ -42,6 +47,8 @@ public class PreparationTask
     public int? PreparedScheduleId { get; set; }
     public string? PreparedSchedules { get; set; }
     public DateOnly? PreparedDate { get; set; }
+
+    public ModuleActivity? ModuleActivity { get; set; }
 
     public IEnumerable<int> GetPreparedSchedules()
     {

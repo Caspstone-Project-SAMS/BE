@@ -213,7 +213,6 @@ namespace Base.Service.Service
             return result;
         }
 
-
         public async Task<ServiceResponseVM<IEnumerable<Class>>> GetAllClasses(int startPage, int endPage, int quantity, int? semesterId, string? classCode, int? classStatus, int? roomID, int? subjectID, Guid? lecturerId, Guid? studentId, int? scheduleId)
         {
             var result = new ServiceResponseVM<IEnumerable<Class>>()
@@ -303,6 +302,7 @@ namespace Base.Service.Service
                 var lambda = Expression.Lambda(scheduleIdCondition, scheduleParameter);
                 expressions.Add(Expression.Call(anyMethodSchedule, Expression.Property(pe, nameof(Class.Schedules)), lambda));
             }
+
             Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
             Expression<Func<Class, bool>> where = Expression.Lambda<Func<Class, bool>>(combined, pe);
 

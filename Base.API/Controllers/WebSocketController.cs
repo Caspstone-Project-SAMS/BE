@@ -25,6 +25,7 @@ public class WebSocketController : ControllerBase
 
     private event EventHandler<WebsocketEventArgs>? PingPongEvent;
     private bool _pingPongStatus = false;
+    private int currentSessionID = 0;
 
     public WebSocketController(WebSocketConnectionManager webSocketConnectionManager, 
         WebSocketConnectionManager1 websocketConnectionManager1,
@@ -128,7 +129,7 @@ public class WebSocketController : ControllerBase
                             if(websocketEventHandler is not null)
                                 websocketEventHandler.OnConnectModuleEvent(receiveData);
                         }
-                        else if (receiveData.Contains("Fingerprint registration"))
+                        else if (receiveData.Contains("Register fingerprint"))
                         {
                             if (websocketEventHandler is not null)
                                 websocketEventHandler.OnRegisterFingerprintEvent(receiveData);
@@ -138,30 +139,6 @@ public class WebSocketController : ControllerBase
                             if(websocketEventHandler is not null)
                             {
                                 websocketEventHandler.OnPrepareAttendanceSession(receiveData);
-                            }
-                        }
-                        else if (receiveData.Contains("Session cancelled"))
-                        {
-                            // Module cancel session itself, because it waited for action too long
-                            int sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
-                            if(sessionId > 0)
-                            {
-                                var session = _sessionManager.GetSessionById(sessionId);
-                                if(session is not null)
-                                {
-                                    _sessionManager.CancelSession(sessionId, session.UserID);
-                                    var messageSend = new WebsocketMessage
-                                    {
-                                        Event = "CancelSession",
-                                        Data = new
-                                        {
-                                            SessionID = sessionId,
-                                            ModuleID = session
-                                        }
-                                    };
-                                    var jsonPayload = JsonSerializer.Serialize(messageSend);
-                                    await _websocketConnectionManager1.SendMessageToClient(jsonPayload, session.UserID);
-                                }
                             }
                         }
                         else if (receiveData.Contains("Cancel session"))
@@ -178,6 +155,34 @@ public class WebSocketController : ControllerBase
                                 websocketEventHandler.OnStopAttendanceEvent(receiveData);
                             }
                         }
+                        else if (receiveData.Contains("Check current session"))
+                        {
+                            currentSessionID = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                        }
+                        else if (receiveData.Contains("Session cancelled"))
+                        {
+                            // Module cancel session itself, because it waited for action too long
+                            int sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            if (sessionId > 0)
+                            {
+                                var session = _sessionManager.GetSessionById(sessionId);
+                                if (session is not null)
+                                {
+                                    _sessionManager.CancelSession(sessionId, session.UserID);
+                                    var messageSend = new WebsocketMessage
+                                    {
+                                        Event = "CancelSession",
+                                        Data = new
+                                        {
+                                            SessionID = sessionId,
+                                            ModuleID = session
+                                        }
+                                    };
+                                    var jsonPayload = JsonSerializer.Serialize(messageSend);
+                                    await _websocketConnectionManager1.SendMessageToClient(jsonPayload, session.UserID);
+                                }
+                            }
+                        }
                         else if (receiveData.Contains("Schedule preparation completed"))
                         {
                             var sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
@@ -189,6 +194,11 @@ public class WebSocketController : ControllerBase
                             {
                                 _ = _sessionManager.CompleteSession(sessionId, false);
                             }
+                        }
+                        else if (receiveData.Contains("Fingerprint registration completed"))
+                        {
+                            var sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            _sessionManager.FinishSession(sessionId);
                         }
                     }
                 }
@@ -310,9 +320,14 @@ public class WebSocketController : ControllerBase
                     webSocket.Abort();
                     webSocket.Dispose();
 
-                    //Notify to user that module is lost connected
+                    // Notify to user that module is lost connected
                     await Task.Delay(TimeSpan.FromSeconds(1));
                     _ = NotifyModuleLostConnected(moduleId);
+
+                    // If the connection is lost, lets end/complete all ongoing session after 1 min
+                    // For fingerprint registration, lets just end it
+                    // For preparation, complete it
+                    _ = HandleSessionAfterConnectionLost(moduleId);
 
                     break;
                 }
@@ -323,6 +338,13 @@ public class WebSocketController : ControllerBase
             {
                 Console.WriteLine($"KeepAlive exception: {ex}");
                 break;
+            }
+            finally
+            {
+                if(webSocket.State == WebSocketState.Open)
+                {
+                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
+                }
             }
         }
         PingPongEvent -= OnPingPongEventHandler;
@@ -389,5 +411,81 @@ public class WebSocketController : ControllerBase
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+    }
+
+    private async Task HandleSessionAfterConnectionLost(int moduleId)
+    {
+        // Chưa lấy state = 0, thực hiện sau 
+        var session = _sessionManager.GetSessions(null, 1, null, moduleId, null).FirstOrDefault();
+        if (session is not null)
+        {
+            var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromMinutes(1));
+            await HandleSessionCancelled(session, cts.Token);
+        }
+    }
+
+    private async Task HandleSessionCancelled(Session session, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var cts = new CancellationTokenSource();
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var moduleSocket = _websocketConnectionManager1.GetModuleSocket(session.ModuleId);
+                if (moduleSocket is not null)
+                {
+                    // Check whether if the module still holding the session?
+                    var messageSend = new WebsocketMessage
+                    {
+                        Event = "CheckCurrentSession",
+                        Data = null
+                    };
+                    var jsonPayload = JsonSerializer.Serialize(messageSend);
+                    var sendResult = await _websocketConnectionManager1.SendMesageToModule(jsonPayload, session.ModuleId);
+                    if (sendResult)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(6));
+                        if (WaitForCheckCurrentSession(cts.Token, session.SessionId))
+                        {
+                            currentSessionID = 0;
+                            return;
+                        }
+                    }
+                }
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+
+        // Module do not reconnect, or module lost the session track => lets cancel the session
+        if (session.Category == 1)
+        {
+            _sessionManager.FinishSession(session.SessionId);
+        }
+        else if (session.Category == 2 || session.Category == 3 || session.Category == 4)
+        {
+            await _sessionManager.CompleteSession(session.SessionId, false);
+        }
+    }
+
+    private bool WaitForCheckCurrentSession(CancellationToken cancellationToken, int sessionId)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if(currentSessionID == sessionId)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
     }
 }

@@ -19,7 +19,7 @@ public class ModuleResponseVM
     public int? ResetMinAfterSlot { get; set; }
     public TimeOnly? ResetTime { get; set; }
     public Employee_ModuleResponseVM? Employee { get; set; }
-    public IEnumerable<ActivityHistories_ModuleResponseVM> ActivityHistories { get; set; } = new List<ActivityHistories_ModuleResponseVM>();
+    public IEnumerable<ModuleActivity_ModuleResponseVM> ModuleActivities { get; set; } = new List<ModuleActivity_ModuleResponseVM>();
 }
 
 public class Employee_ModuleResponseVM
@@ -33,16 +33,15 @@ public class Employee_ModuleResponseVM
     public string? Department { get; set; }
 }
 
-public class ActivityHistories_ModuleResponseVM
+public class ModuleActivity_ModuleResponseVM
 {
+    public int ModuleActivityId { get; set; }
+    public string? Title { get; set; }
+    public string? Description { get; set; }
     public DateTime? StartTime { get; set; }
     public DateTime? EndTime { get; set; }
     public bool? IsSuccess { get; set; }
     public IEnumerable<string> Errors { get; set; } = new List<string>();
-
-    public int? ActivityCategoryID { get; set; }
-    public string? CategoryName { get; set; }
-    public string? CategoryDescription { get; set; }
 
     public PreparationTask_ModuleResponseVM? PreparationTask { get; set; }
 }

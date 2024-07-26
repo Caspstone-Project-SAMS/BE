@@ -1,5 +1,7 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Repository.Identity;
+using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
@@ -95,5 +97,83 @@ internal class NotificationService : INotificationService
     public async Task<Notification?> GetById(int notificationId)
     {
         return await _unitOfWork.NotificationRepository.Get(n => !n.IsDeleted && n.NotificationID == notificationId).FirstOrDefaultAsync();
+    }
+
+    public async Task<ServiceResponseVM<Notification>> Create(NotificationVM newEntity)
+    {
+        var existedUser = await _unitOfWork.UserRepository.Get(u => !u.Deleted && u.Id == newEntity.UserID).FirstOrDefaultAsync();
+        if(existedUser is null)
+        {
+            return new ServiceResponseVM<Notification>
+            {
+                IsSuccess = false,
+                Title = "Create notification failed",
+                Errors = new string[1] { "User not found" }
+            };
+        }
+
+        var existedNotificationtype = await _unitOfWork.NotificationTypeRepository.Get(n => n.NotificationTypeID == newEntity.NotificationTypeID).FirstOrDefaultAsync();
+        if(existedNotificationtype is null)
+        {
+            return new ServiceResponseVM<Notification>
+            {
+                IsSuccess = false,
+                Title = "Create notification failed",
+                Errors = new string[1] { "Notification type not found" }
+            };
+        }
+
+        var newNotification = new Notification
+        {
+            Title = newEntity.Title,
+            Description = newEntity.Description,
+            TimeStamp = ServerDateTime.GetVnDateTime(),
+            Read = newEntity.Read,
+            UserID = newEntity.UserID,
+            NotificationTypeID = newEntity.NotificationTypeID
+        };
+
+        try
+        {
+            await _unitOfWork.NotificationRepository.AddAsync(newNotification);
+
+            var result = await _unitOfWork.SaveChangesAsync();
+
+            if (result)
+            {
+                return new ServiceResponseVM<Notification>
+                {
+                    IsSuccess = true,
+                    Title = "Create notification successfully",
+                    Result = newNotification
+                };
+            }
+            else
+            {
+                return new ServiceResponseVM<Notification>
+                {
+                    IsSuccess = false,
+                    Title = "Create notification failed",
+                };
+            }
+        }
+        catch (DbUpdateException ex)
+        {
+            return new ServiceResponseVM<Notification>
+            {
+                IsSuccess = false,
+                Title = "Create notification failed",
+                Errors = new string[1] { ex.Message }
+            };
+        }
+        catch (OperationCanceledException ex)
+        {
+            return new ServiceResponseVM<Notification>
+            {
+                IsSuccess = false,
+                Title = "Create notification failed",
+                Errors = new string[2] { "The operation has been cancelled", ex.Message }
+            };
+        }
     }
 }

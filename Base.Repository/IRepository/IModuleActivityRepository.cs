@@ -8,6 +8,6 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.IRepository;
 
-public interface IActivityHistoryRepository : IBaseRepository<ActivityHistory, int>
+public interface IModuleActivityRepository : IBaseRepository<ModuleActivity, int>
 {
 }

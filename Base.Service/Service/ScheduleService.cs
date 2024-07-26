@@ -205,5 +205,25 @@ namespace Base.Service.Service
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
+
+        public string? GetClassCodeList(string deliminate, List<int>? scheduleIds)
+        {
+            if(scheduleIds is null)
+            {
+                return null;
+            }
+            var includes = new Expression<Func<Schedule, object?>>[]
+            {
+                s => s.Class
+            };
+            var classCodeList = _unitOfWork.ScheduleRepository
+                .Get(s => scheduleIds.Any(id => id == s.ScheduleID), includes)
+                .Select(s => s.Class!.ClassCode)
+                .ToList();
+            if (classCodeList is null || classCodeList.Count() == 0) return null;
+            if (classCodeList.Count() == 1) return classCodeList.FirstOrDefault();
+
+            return String.Join(deliminate, classCodeList);
+        }
     }
 }
