@@ -299,7 +299,7 @@ public class WebSocketController : ControllerBase
 
     private async Task KeepAlive(WebSocket webSocket, int moduleId)
     {
-        await Task.Delay(TimeSpan.FromSeconds(15));
+        await Task.Delay(TimeSpan.FromSeconds(10));
         var a = new WebsocketEventArgs();
         PingPongEvent += OnPingPongEventHandler;
         while (webSocket.State == WebSocketState.Open)
@@ -338,13 +338,6 @@ public class WebSocketController : ControllerBase
             {
                 Console.WriteLine($"KeepAlive exception: {ex}");
                 break;
-            }
-            finally
-            {
-                if(webSocket.State == WebSocketState.Open)
-                {
-                    await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None);
-                }
             }
         }
         PingPongEvent -= OnPingPongEventHandler;
