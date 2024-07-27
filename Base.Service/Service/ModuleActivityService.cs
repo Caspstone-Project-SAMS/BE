@@ -67,6 +67,7 @@ internal class ModuleActivityService : IModuleActivityService
                 PreparedDate = newEntity.PreparationTaskVM.PreparedDate
             };
             newActivityHistory.PreparationTask = newPreparationTask;
+            await _unitOfWork.PreparationTaskRepository.AddAsync(newPreparationTask);
         }
 
         try

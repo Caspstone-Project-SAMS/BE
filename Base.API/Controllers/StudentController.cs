@@ -266,9 +266,7 @@ namespace Base.API.Controllers
                         {
                             _ = UpdateAttendancePreparationProgress(completedWorkAmount, sessionId ?? 0);
                         }
-
                     }
-
                     return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
                 }
                 return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
@@ -348,26 +346,12 @@ namespace Base.API.Controllers
 
 
 
-        private async Task UpdateAttendancePreparationProgress(int completedWorkAmount, int sessionId)
+        private Task UpdateAttendancePreparationProgress(int completedWorkAmount, int sessionId)
         {
-            var updateProgressResult = _sessionManager.UpdateSchedulePreparationProgress(sessionId, completedWorkAmount);
-            if (updateProgressResult)
+            return Task.Run(() =>
             {
-                // Notify job progress
-                var session = _sessionManager.GetSessionById(sessionId);
-                var messageSend = new WebsocketMessage
-                {
-                    Event = "SchedulePreparationProgress",
-                    Data = new
-                    {
-                        ModuleID = session?.ModuleId,
-                        ScheduleID = session?.PrepareAttendance?.ScheduleId,
-                        Progress = session?.PrepareAttendance?.Progress
-                    }
-                };
-                var jsonPayload = JsonSerializer.Serialize(messageSend);
-                await _websocketConnectionManager.SendMessageToClient(jsonPayload, session?.UserID ?? new Guid());
-            }
+                _sessionManager.UpdateSchedulePreparationProgress(sessionId, completedWorkAmount);
+            }); 
         }
     }
 }

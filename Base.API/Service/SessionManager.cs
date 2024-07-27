@@ -139,7 +139,7 @@ public class SessionManager
         if (session.PrepareAttendance is null) return false;
 
         session.PrepareAttendance.CompletedWorkAmount = session.PrepareAttendance.CompletedWorkAmount + completedWorkAmount;
-        session.PrepareAttendance.Progress = session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount * 100;
+        session.PrepareAttendance.Progress = MathF.Round(session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount * 100);
 
         // Notify to client about changing of progress of the session
         _ = NotifyPreparationProgress(sessionId, session.PrepareAttendance.Progress, session.UserID);
@@ -556,8 +556,8 @@ public class PrepareAttendance
     public DateOnly? PreparedDate { get; set; }
     public int ScheduleId { get; set; }
     public float Progress { get; set; }
-    public int TotalWorkAmount { get; set; }
-    public int CompletedWorkAmount { get; set; }
+    public float TotalWorkAmount { get; set; }
+    public float CompletedWorkAmount { get; set; }
 }
 
 
