@@ -508,6 +508,26 @@ public class SessionManager
     {
         strings.Clear();
     }
+    public void CreateNewSessionForTest()
+    {
+        var prepareAttendance = new PrepareAttendance
+        {
+            ScheduleId = 47,
+            Progress = 100,
+
+        };
+        var sessionId = _sessions.Count() + 1;
+        _sessions.Add(new Session
+        {
+            SessionId = sessionId,
+            UserID = new Guid("A829C0B5-78DC-4194-A424-08DC8640E68A"),
+            ModuleId = 5,
+            TimeStamp = ServerDateTime.GetVnDateTime(),
+            DurationInMin = 1,
+            SessionState = 2,
+            Category = 2
+        });
+    }
 
 
     private async Task NotifyPreparationProgress(int sessionId, float progress, Guid userId)
