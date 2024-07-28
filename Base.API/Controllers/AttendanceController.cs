@@ -6,6 +6,7 @@ using Base.Service.Service;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.RequestVM.Role;
 using Base.Service.ViewModel.ResponseVM;
+using Duende.IdentityServer.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -18,12 +19,17 @@ namespace Base.API.Controllers
     {
         private readonly IAttendanceService _attendanceService;
         private readonly IMapper _mapper;
-        private readonly WebSocketConnectionManager _webSocketConnectionManager;
-        public AttendanceController(IAttendanceService attendanceService, IMapper mapper, WebSocketConnectionManager webSocketConnectionManager)
+        private readonly WebSocketConnectionManager1 _webSocketConnectionManager;
+        private readonly IScheduleService _scheduleService;
+        public AttendanceController(IAttendanceService attendanceService, 
+            IMapper mapper, 
+            WebSocketConnectionManager1 webSocketConnectionManager,
+            IScheduleService scheduleService)
         {
             _attendanceService = attendanceService;
             _webSocketConnectionManager = webSocketConnectionManager;
             _mapper = mapper;
+            _scheduleService = scheduleService;
         }
         
         [HttpGet]
@@ -50,22 +56,7 @@ namespace Base.API.Controllers
                 var result = await _attendanceService.UpdateAttendanceStatus(scheduleID, attendanceStatus, attendanceTime, studentID);
                 if (result.IsSuccess)
                 {
-
-                    /*// Make a real-time update using websocket here
-                    var dataSend = new DataSend
-                    {
-                        studentID = studentID.ToString(),
-                        status = 1
-                    };
-                    var dataSendString = JsonSerializer.Serialize(dataSend);
-                    var messageSend = new WebsocketMessage
-                    {
-                        Event = "statusChange",
-                        Data = dataSendString
-                    };
-                    var messageSendString = JsonSerializer.Serialize(messageSend);
-                    _webSocketConnectionManager.SendMessagesToAll(messageSendString);*/
-
+                    _ = UpdateAttendanceStatus(scheduleID, studentID);
 
                     return Ok(new
                     {
@@ -106,6 +97,14 @@ namespace Base.API.Controllers
                     var messageSendString = JsonSerializer.Serialize(messageSend);
                     _webSocketConnectionManager.SendMessagesToAll(messageSendString);
                 }*/
+                var newobject = new
+                {
+                    Event = "StudentAttended",
+                    Data = new
+                    {
+                        studentIDs = new List<string>() { "aaaa", "aaaa" }
+                    }
+                };
 
                 return Ok(new
                 {
@@ -173,6 +172,40 @@ namespace Base.API.Controllers
                 Title = "Get attendances failed",
                 Errors = new string[1] { "Invalid input" }
             });
+        }
+
+        private async Task UpdateAttendanceStatus(int scheduleID, Guid studentID)
+        {
+            var existedClass = (await _scheduleService.GetById(scheduleID))?.Class;
+            if (existedClass is null) return;
+            var messageSend = new WebsocketMessage
+            {
+                Event = "StudentAttended",
+                Data = new
+                {
+                    studentIDs = new List<string>() { studentID.ToString() },
+                    scheduleID = scheduleID,
+                }
+            };
+            var jsonPayload = JsonSerializer.Serialize(messageSend);
+            await _webSocketConnectionManager.SendMessageToClient(jsonPayload, existedClass.LecturerID);
+        }
+
+        private async Task UpdateAttendancesStatus(int scheduleID, List<Guid> studentIDs)
+        {
+            var existedClass = (await _scheduleService.GetById(scheduleID))?.Class;
+            if (existedClass is null) return;
+            var messageSend = new WebsocketMessage
+            {
+                Event = "StudentAttended",
+                Data = new
+                {
+                    studentIDs = new List<string>(studentIDs.Select(s => s.ToString())),
+                    scheduleID = scheduleID,
+                }
+            };
+            var jsonPayload = JsonSerializer.Serialize(messageSend);
+            await _webSocketConnectionManager.SendMessageToClient(jsonPayload, existedClass.LecturerID);
         }
     }
 }

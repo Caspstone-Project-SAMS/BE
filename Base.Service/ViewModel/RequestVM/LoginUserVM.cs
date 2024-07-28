@@ -21,6 +21,6 @@ public class LoginUserVM
 public class LoginGoogleVM
 {
     [Required]
-    public string IdToken { get; set; } = default!;
+    public string AccessToken { get; set; } = string.Empty;
     public string? DeviceToken { get; set; }
 }

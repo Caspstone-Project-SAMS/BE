@@ -18,6 +18,7 @@ public class SessionManager
 {
     private IList<Session> _sessions = new List<Session>();
     private IList<string> strings = new List<string>();
+    private IList<int> OnCompletingSession = new List<int>();
 
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly WebSocketConnectionManager1 _webSocketConnectionManager;
@@ -514,7 +515,8 @@ public class SessionManager
         {
             ScheduleId = 47,
             Progress = 100,
-
+            PreparedDate = null,
+            ScheduleIds = Enumerable.Empty<int>()
         };
         var sessionId = _sessions.Count() + 1;
         _sessions.Add(new Session
@@ -525,7 +527,8 @@ public class SessionManager
             TimeStamp = ServerDateTime.GetVnDateTime(),
             DurationInMin = 1,
             SessionState = 2,
-            Category = 2
+            Category = 2,
+            PrepareAttendance = prepareAttendance
         });
     }
 
