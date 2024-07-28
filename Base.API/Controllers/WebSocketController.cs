@@ -321,7 +321,6 @@ public class WebSocketController : ControllerBase
                     webSocket.Dispose();
 
                     // Notify to user that module is lost connected
-                    await Task.Delay(TimeSpan.FromSeconds(1));
                     _ = NotifyModuleLostConnected(moduleId);
 
                     // If the connection is lost, lets end/complete all ongoing session after 1 min

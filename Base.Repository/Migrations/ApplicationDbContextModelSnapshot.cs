@@ -833,7 +833,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("ClassID");
 
-                    b.ToTable("StudentClass");
+                    b.ToTable("StudentClass", (string)null);
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Attendance", b =>

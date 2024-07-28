@@ -18,6 +18,7 @@ public class SessionManager
 {
     private IList<Session> _sessions = new List<Session>();
     private IList<string> strings = new List<string>();
+    private IList<int> OnCompletingSession = new List<int>();
 
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly WebSocketConnectionManager1 _webSocketConnectionManager;
@@ -92,7 +93,7 @@ public class SessionManager
 
     public bool RegisterFinger(int sessionId, string fingerprintTemplate, int fingerNumber, Guid studentId)
     {
-        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId && s.Category == 1);
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if(session is null || (session.Category != 1 && session.Category != 8) || session.SessionState != 1 || session.FingerRegistration is null || session.FingerRegistration.StudentId != studentId)
         {
             return false;
@@ -139,7 +140,7 @@ public class SessionManager
         if (session.PrepareAttendance is null) return false;
 
         session.PrepareAttendance.CompletedWorkAmount = session.PrepareAttendance.CompletedWorkAmount + completedWorkAmount;
-        session.PrepareAttendance.Progress = MathF.Round((session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount) * 100);
+        session.PrepareAttendance.Progress = MathF.Round(session.PrepareAttendance.CompletedWorkAmount / session.PrepareAttendance.TotalWorkAmount * 100);
 
         // Notify to client about changing of progress of the session
         _ = NotifyPreparationProgress(sessionId, session.PrepareAttendance.Progress, session.UserID);
@@ -378,11 +379,11 @@ public class SessionManager
             if (schedule is not null)
             {
                 description = "Prepare attendance data for class " 
-                    + schedule.Class?.ClassCode ?? "***"
+                    + (schedule.Class?.ClassCode ?? "***")
                     + " at " 
-                    + schedule.Slot?.StartTime.ToString("hh:mm:ss") ?? "***"
-                    + " - " + schedule.Slot?.Endtime.ToString("hh:mm:ss") ?? "***"
-                    + " on " + schedule.Date.ToString("yyyy-MM-dd") ?? "***";
+                    + (schedule.Slot?.StartTime.ToString("hh:mm:ss") ?? "***")
+                    + " - " + (schedule.Slot?.Endtime.ToString("hh:mm:ss") ?? "***")
+                    + " on " + (schedule.Date.ToString("yyyy-MM-dd") ?? "***");
             }
         }
         else if (existedSession.Category == 3)
@@ -391,7 +392,7 @@ public class SessionManager
             var preparedDate = existedSession.PrepareAttendance?.PreparedDate;
             var classCodeList = scheduleService.GetClassCodeList(", ", existedSession.PrepareAttendance?.ScheduleIds.ToList());
             description = "Prepare attendance data for classes "
-                    + classCodeList ?? "***"
+                    + (classCodeList ?? "***")
                     + " on ";
             if(preparedDate is null)
             {
@@ -508,6 +509,28 @@ public class SessionManager
     {
         strings.Clear();
     }
+    public void CreateNewSessionForTest()
+    {
+        var prepareAttendance = new PrepareAttendance
+        {
+            ScheduleId = 47,
+            Progress = 100,
+            PreparedDate = null,
+            ScheduleIds = Enumerable.Empty<int>()
+        };
+        var sessionId = _sessions.Count() + 1;
+        _sessions.Add(new Session
+        {
+            SessionId = sessionId,
+            UserID = new Guid("A829C0B5-78DC-4194-A424-08DC8640E68A"),
+            ModuleId = 5,
+            TimeStamp = ServerDateTime.GetVnDateTime(),
+            DurationInMin = 1,
+            SessionState = 2,
+            Category = 2,
+            PrepareAttendance = prepareAttendance
+        });
+    }
 
 
     private async Task NotifyPreparationProgress(int sessionId, float progress, Guid userId)
@@ -556,8 +579,8 @@ public class PrepareAttendance
     public DateOnly? PreparedDate { get; set; }
     public int ScheduleId { get; set; }
     public float Progress { get; set; }
-    public int TotalWorkAmount { get; set; }
-    public int CompletedWorkAmount { get; set; }
+    public float TotalWorkAmount { get; set; }
+    public float CompletedWorkAmount { get; set; }
 }
 
 

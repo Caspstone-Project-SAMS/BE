@@ -3,7 +3,7 @@ name: Build, publish, test and containerize to image
 on:
   push:
     branches:
-      - khoa
+      - khoa11111
   workflow_dispatch:
 
 jobs:
@@ -24,6 +24,6 @@ jobs:
 
       - name: Build docker image and push it to docker hub
         run: |
-          docker build -t khoale111/sams-project:latest44 .
+          docker build -t khoale111/sams-project:latest .
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push khoale111/sams-project:latest44
+          docker push khoale111/sams-project:latest

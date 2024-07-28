@@ -1,7 +1,9 @@
 ﻿using Base.Repository.Common;
+using Base.Repository.Entity;
 using Base.Repository.Identity;
 using Base.Service.Common;
 using Base.Service.IService;
+using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using CloudinaryDotNet;
@@ -11,7 +13,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq.Expressions;
+using System.Reflection;
 using Role = Base.Repository.Identity.Role;
+using Expression = System.Linq.Expressions.Expression;
+using HttpMethod = System.Net.Http.HttpMethod;
+using Azure.Core;
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 namespace Base.Service.Service;
 
@@ -21,16 +29,19 @@ public class UserService : IUserService
     private readonly IUnitOfWork _unitOfWork;
     private readonly Cloudinary _cloudinary;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IValidateGet _validateGet;
 
     public UserService(UserManager<User> userManager, 
         IUnitOfWork unitOfWork, 
         Cloudinary cloudinary,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        IValidateGet validateGet)
     {
         _userManager = userManager;
         _unitOfWork = unitOfWork;
         _cloudinary = cloudinary;
         _currentUserService = currentUserService;
+        _validateGet = validateGet;
     }
 
     public async Task<ServiceResponseVM<User>> CreateNewUser(UserVM newEntity)
@@ -235,9 +246,9 @@ public class UserService : IUserService
 
     }
 
-    public async Task<LoginUserManagement> LoginWithGoogle(string idToken)
+    public async Task<LoginUserManagement> LoginWithGoogle(string accessToken)
     {
-        var handler = new JwtSecurityTokenHandler();
+        /*var handler = new JwtSecurityTokenHandler();
         var jwtSecurityToken = handler.ReadJwtToken(idToken);
         var claims = jwtSecurityToken.Claims;
 
@@ -260,36 +271,73 @@ public class UserService : IUserService
                 Title = "Login failed",
                 Errors = new string[1] { "Invalid email or email not found" }
             };
-        }
+        }*/
 
-        var existedUser = await _userManager.FindByEmailAsync(email);
-        if(existedUser is not null)
+        var _httpClient = new HttpClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, "https://www.googleapis.com/oauth2/v2/userinfo");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        var response = await _httpClient.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
         {
-            if (existedUser.LockoutEnabled)
-            {
-                return new LoginUserManagement
-                {
-                    IsSuccess = false,
-                    Title = "Login failed",
-                    Errors = new string[1] { "Account is blocked" }
-                };
-            }
-
-            var role = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.RoleId.Equals(existedUser.RoleID)).FirstOrDefaultAsync();
-            if(role is not null)
-            {
-                existedUser.Role = role;
-            }
             return new LoginUserManagement
             {
-                IsSuccess = true,
-                Title = "Login Successfully",
-                LoginUser = existedUser,
-                RoleNames = new string[1] { role?.Name ?? "" }
+                IsSuccess = false,
+                Title = "Login failed",
+                Errors = new string[1] { "Account does not exist" }
             };
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+
+        var googleAccount = JsonSerializer.Deserialize<GoogleAccount>(content);
+        if(googleAccount is null)
+        {
+            return new LoginUserManagement
+            {
+                IsSuccess = false,
+                Title = "Login failed",
+                Errors = new string[1] { "Account does not exist" }
+            };
+        }
+        //Get email here
+
+        var existedUser = await _userManager.FindByEmailAsync(googleAccount.email);
+
+        if(existedUser is null)
+        {
+            return new LoginUserManagement
+            {
+                IsSuccess = false,
+                Title = "Login failed",
+                Errors = new string[1] { "Account does not exist" }
+            };
+        }
+
+        if (existedUser.LockoutEnabled)
+        {
+            return new LoginUserManagement
+            {
+                IsSuccess = false,
+                Title = "Login failed",
+                Errors = new string[1] { "Account is blocked" }
+            };
+        }
+
+        var role = await _unitOfWork.RoleRepository.Get(r => !r.Deleted && r.RoleId.Equals(existedUser.RoleID)).FirstOrDefaultAsync();
+        if (role is not null)
+        {
+            existedUser.Role = role;
+        }
+        return new LoginUserManagement
+        {
+            IsSuccess = true,
+            Title = "Login Successfully",
+            LoginUser = existedUser,
+            RoleNames = new string[1] { role?.Name ?? "" }
         };
 
-        User newUser = new User
+        /*User newUser = new User
         {
             UserName = "Undefined",
             DisplayName = claims.FirstOrDefault(c => c.Type == "name")?.Value,
@@ -342,6 +390,36 @@ public class UserService : IUserService
                 Title = "Login failed",
                 Errors = new string[2] { "The operation has been cancelled", "Create user failed" }
             };
-        }
+        }*/
     }
+
+    /*public async Task<ServiceResponseVM<IEnumerable<User>>> GetAll(int startPage, int endPage, int quantity, )
+    {
+        var result = new ServiceResponseVM<IEnumerable<User>>()
+        {
+            IsSuccess = false
+        };
+        var errors = new List<string>();
+
+        int quantityResult = 0;
+        _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+        if (quantityResult == 0)
+        {
+            errors.Add("Invalid get quantity");
+            result.Errors = errors;
+            return result;
+        }
+
+        var expressions = new List<Expression>();
+        ParameterExpression pe = Expression.Parameter(typeof(User), "u");
+        MethodInfo? containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
+
+        if (containsMethod is null)
+        {
+            errors.Add("Method Contains can not found from string type");
+            return result;
+        }
+
+        expressions.Add(Expression.Equal(Expression.Property(pe, nameof(User.Deleted)), Expression.Constant(false)));
+    }*/
 }

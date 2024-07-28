@@ -30,7 +30,7 @@ public class ModuleActivity
 
     public IEnumerable<string> GetErrors()
     {
-        return this.Errors.Split(";");
+        return this.Errors?.Split(";") ?? new string[0];
     }
 
     public string? GetActivityDate()
@@ -58,10 +58,13 @@ public class PreparationTask
         {
             foreach (var item in preparedSchedules)
             {
-                var scheduleId = int.Parse(item);
-                if(scheduleId > 0)
+                int scheduleId = 0;
+                if (int.TryParse(item, out scheduleId))
                 {
-                    scheduleIds.Add(scheduleId);
+                    if (scheduleId > 0)
+                    {
+                        scheduleIds.Add(scheduleId);
+                    }
                 }
             }
         }
