@@ -131,6 +131,11 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Modules, opt => opt.MapFrom(src => src.Employee!.Modules));
 
             // For module
+            CreateMap<PreparationTask, PreparationTask_ModuleResponseVM>()
+                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.GetPreparedSchedules()));
+            CreateMap<ModuleActivity, ModuleActivity_ModuleResponseVM>()
+                .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.GetErrors()))
+                .ForMember(dest => dest.PreparationTask, opt => opt.MapFrom(src => src.PreparationTask));
             CreateMap<Employee, Employee_ModuleResponseVM>()
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.User!.Id))
                 .ForMember(dest => dest.EmployeeID, opt => opt.MapFrom(src => src.EmployeeID))
@@ -140,7 +145,29 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User!.PhoneNumber));
             CreateMap<Module, ModuleResponseVM>()
                 .ForMember(dest => dest.ConnectionStatus, opt => 
-                    opt.MapFrom(src => webSocketConnectionManager.CheckModuleSocket(src.ModuleID) == true ? 1 : 2));
+                    opt.MapFrom(src => webSocketConnectionManager.CheckModuleSocket(src.ModuleID) == true ? 1 : 2))
+                .ForMember(dest => dest.ModuleActivities, opt => opt.MapFrom(src => src.ModuleActivities));
+
+            // For notification
+            CreateMap<NotificationType, NotificationType_NotificationResponseVM>();
+            CreateMap<User, User_NotificationResponseVM>();
+            CreateMap<Notification, NotificationResponseVM>()
+                .ForMember(dest => dest.NotificationType, opt => opt.MapFrom(src => src.NotificationType))
+                .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
+
+            // For notification type
+            CreateMap<Notification, Notification_NotificationTypeResponseVM>();
+            CreateMap<NotificationType, NotificationTypeResponseVM>()
+                .ForMember(dest => dest.Notifications, opt => opt.MapFrom(src => src.Notifications));
+
+            // For module activity
+            CreateMap<PreparationTask, PreparationTask_ModuleActivityResponseVM>()
+                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.GetPreparedSchedules()));
+            CreateMap<Module, Module_ModuleActivityResponseVM>();
+            CreateMap<ModuleActivity, ModuleActivityResponseVM>()
+                .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.GetErrors()))
+                .ForMember(dest => dest.PreparationTask, opt => opt.MapFrom(src => src.PreparationTask))
+                .ForMember(dest => dest.Module, opt => opt.MapFrom(src => src.Module));
         }
     }
 }

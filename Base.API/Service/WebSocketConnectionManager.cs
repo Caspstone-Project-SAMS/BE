@@ -164,7 +164,7 @@ public class WebSocketConnectionManager1
         {
             return false;
         }
-        if(existedWebsocket.Socket.State != WebSocketState.Open || existedWebsocket.Socket.State != WebSocketState.Connecting)
+        if(existedWebsocket.Socket.State == WebSocketState.Open)
         {
             return true;
         }

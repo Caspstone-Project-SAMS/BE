@@ -1,4 +1,5 @@
 ﻿using Base.Repository.Common;
+using Base.Repository.Entity;
 using Base.Repository.IRepository;
 using Base.Repository.Repository;
 using Microsoft.EntityFrameworkCore;
@@ -48,6 +49,10 @@ public static class DependencyInjection
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IModuleRepository, ModuleRepository>();
         services.AddScoped<IFingerprintRepository, FingerprintRepository>();
+        services.AddScoped<IPreparationTaskRepository, PreparationTaskRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationTypeRepository, NotificationTypeRepository>();
+        services.AddScoped<IModuleActivityRepository, ModuleActivityRepository>();
         #endregion
 
         return services;

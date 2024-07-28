@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240725163448_Rename to table module activity")]
+    partial class Renametotablemoduleactivity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -235,11 +237,11 @@ namespace Base.Repository.Migrations
 
             modelBuilder.Entity("Base.Repository.Entity.ModuleActivity", b =>
                 {
-                    b.Property<int>("ModuleActivityId")
+                    b.Property<int>("ActivityHistoryId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ModuleActivityId"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ActivityHistoryId"), 1L, 1);
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -271,7 +273,7 @@ namespace Base.Repository.Migrations
                     b.Property<Guid?>("UserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.HasKey("ModuleActivityId");
+                    b.HasKey("ActivityHistoryId");
 
                     b.HasIndex("ModuleID");
 

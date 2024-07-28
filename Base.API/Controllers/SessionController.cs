@@ -33,7 +33,7 @@ namespace Base.API.Controllers
 
         [HttpGet]
         public IActionResult GetSessions([FromQuery] Guid? userId, 
-            [FromQuery] int category, 
+            [FromQuery] int? category, 
             [FromQuery] int? state,
             [FromQuery] int? moduleId, 
             [FromQuery] Guid? studentId)

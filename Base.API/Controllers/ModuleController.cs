@@ -197,6 +197,8 @@ public class ModuleController : ControllerBase
                         }
                     }
 
+                    // If a fingerprint registration session is cancelled, dont delete it
+                    // We dont record the activity of fingerprint registration
                     _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
 
                     if (websocketEventHandler is not null)
@@ -272,6 +274,7 @@ public class ModuleController : ControllerBase
                         cts.CancelAfter(TimeSpan.FromSeconds(10));
                         if (WaitForModuleCanceling(cts.Token))
                         {
+                            // Cancel will do a specific work with each category of session
                             _sessionManager.CancelSession(activateModule.SessionId ?? 0, userId);
                             return Ok(new
                             {
@@ -362,7 +365,10 @@ public class ModuleController : ControllerBase
                         }
                     }
 
+
+                    // Session got error -> lets complete it, record its activity and delete it.
                     _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+                    _ = _sessionManager.CompleteSession(activateModule.SessionId ?? 0, false);
 
                     if (websocketEventHandler is not null)
                     {
@@ -377,6 +383,7 @@ public class ModuleController : ControllerBase
 
 
                 // Mode 4 - stop attendance session
+                // call this just for stop the attendance of module - does not effect to the session management of the system
                 case 4:
                     if (activateModule.StopAttendance is null)
                     {
@@ -395,20 +402,45 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Schedule not found" }
                         });
                     }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.StopAttendance += OnModuleMode4EventHandler;
+                    }
+                    websocketEventState.ScheduleId = activateModule.StopAttendance.ScheduleID;
+
                     var messageSendMode4 = new WebsocketMessage
                     {
                         Event = "StopAttendance",
-                        Data = existedSscheduleMode4.ScheduleID.ToString()
+                        Data = new
+                        {
+                            ScheduleID = existedSscheduleMode4.ScheduleID
+                        }
                     };
                     var jsonPayloadMode4 = JsonSerializer.Serialize(messageSendMode4);
                     var resultMode4 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode4, activateModule.ModuleID);
                     if (resultMode4)
                     {
-                        return Ok(new
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode4(cts.Token))
                         {
-                            Title = "Activate module successfully"
-                        });
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.StopAttendance -= OnModuleMode4EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Stop attendance successfully",
+                            });
+                        }
                     }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.StopAttendance -= OnModuleMode4EventHandler;
+                    }
+
                     return BadRequest(new
                     {
                         Title = "Activate module failed",
@@ -422,8 +454,9 @@ public class ModuleController : ControllerBase
 
 
                 // Mode 6 - connect module
+                // If connect module failed, there is no session created and no activity recorded
                 case 6:
-                    var sessionIdMode6 = _sessionManager.CreateSession(activateModule.ModuleID, new Guid(_currentUserService.UserId));
+                    var sessionIdMode6 = _sessionManager.CreateSession(activateModule.ModuleID, new Guid(_currentUserService.UserId), 1);
 
                     if (websocketEventHandler is not null)
                     {
@@ -437,7 +470,8 @@ public class ModuleController : ControllerBase
                         Data = new
                         {
                             SessionID = sessionIdMode6,
-                            User = _currentUserService.UserName
+                            User = _currentUserService.UserName,
+                            DurationInMin = 1
                         }
                     };
                     var jsonPayloadMode6 = JsonSerializer.Serialize(messageSendMode6);
@@ -476,6 +510,106 @@ public class ModuleController : ControllerBase
                     });
 
 
+                // Mode 7 - setup module
+                case 7:
+                    break;
+
+
+                // Mode 8 - update fingerprint
+                case 8:
+                    if (activateModule.RegisterMode is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input: RegisterMode not valid" }
+                        });
+                    }
+                    if (activateModule.SessionId is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input: Session id not found" }
+                        });
+                    }
+
+                    var existedStudentMode8 = await _studentService.GetById(activateModule.RegisterMode.StudentID);
+                    if (existedStudentMode8 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Student not found" }
+                        });
+                    }
+
+                    var sessionResultMode8 = _sessionManager.CreateFingerUpdateSession(activateModule.SessionId ?? 0,
+                        activateModule.RegisterMode.FingerRegisterMode,
+                        new Guid(_currentUserService.UserId),
+                        activateModule.RegisterMode.StudentID);
+
+                    if (!sessionResultMode8)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Session is not started" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.RegisterFingerprintEvent += OnModuleMode1EventHandler;
+                    }
+                    websocketEventState.SessionId = activateModule.SessionId ?? 0;
+
+                    var messageSendMode8 = new WebsocketMessage
+                    {
+                        Event = "RegisterFingerprint",
+                        Data = new
+                        {
+                            StudentCode = existedStudentMode8.Student?.StudentCode ?? "",
+                            StudentID = existedStudentMode8.Student?.StudentID ?? Guid.Empty,
+                            Mode = activateModule.RegisterMode.FingerRegisterMode,
+                            SessionID = activateModule.SessionId
+                        }
+                    };
+                    var jsonPayloadMode8 = JsonSerializer.Serialize(messageSendMode8);
+                    var resultMode8 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode8, activateModule.ModuleID);
+                    if (resultMode8)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode1(cts.Token))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Activate module successfully",
+                            });
+                        }
+                    }
+
+                    // If a fingerprint registration session is cancelled, dont delete it
+                    // We dont record the activity of fingerprint registration
+                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                    }
+
+                    return BadRequest(new
+                    {
+                        Title = "Activate module failed",
+                        Errors = new string[1] { "Connection times out" }
+                    });
+
+
                 default:
                     // Undefined mode
                     return BadRequest(new
@@ -506,8 +640,10 @@ public class ModuleController : ControllerBase
             {
                 _hangFireService.ConfigureRecurringJobsAsync($"Prepare for module {id}", prepareTime, id);
             }
-
-            _hangFireService.RemoveRecurringJobsAsync($"Prepare for module {id}");
+            else
+            {
+                _hangFireService.RemoveRecurringJobsAsync($"Prepare for module {id}");
+            }
             
             return Ok(result.Title);
         }
@@ -588,6 +724,24 @@ public class ModuleController : ControllerBase
         return false;
     }
 
+    private bool WaitForModuleMode4(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode4)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
 
 
     private void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
@@ -601,7 +755,7 @@ public class ModuleController : ControllerBase
 
     private void OnModuleMode1EventHandler(object? sender, WebsocketEventArgs e)
     {
-        if(e.Event == ("Fingerprint registration " + websocketEventState.SessionId))
+        if(e.Event == ("Register fingerprint " + websocketEventState.SessionId))
         {
             websocketEventState.ModuleMode1 = true;
         }
@@ -622,16 +776,26 @@ public class ModuleController : ControllerBase
             websocketEventState.ModuleMode3 = true;
         }
     }
+
+    private void OnModuleMode4EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event == ("Stop attendance " + websocketEventState.ScheduleId))
+        {
+            websocketEventState.ModuleMode4 = true;
+        }
+    }
 }
 
 
 public class WebsocketEventState
 {
     public int SessionId { get; set; }
+    public int ScheduleId { get; set; }
     public bool ModuleConnected { get; set; } = false;
     public bool ModuleMode1 { get; set; } = false;
     public bool ModuleMode2 { get; set; } = false;
     public bool ModuleMode3 { get; set; } = false;
+    public bool ModuleMode4 { get; set; } = false;
 }
 
 public class ActivateModule

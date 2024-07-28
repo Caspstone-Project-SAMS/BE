@@ -19,6 +19,7 @@ public class ModuleResponseVM
     public int? ResetMinAfterSlot { get; set; }
     public TimeOnly? ResetTime { get; set; }
     public Employee_ModuleResponseVM? Employee { get; set; }
+    public IEnumerable<ModuleActivity_ModuleResponseVM> ModuleActivities { get; set; } = new List<ModuleActivity_ModuleResponseVM>();
 }
 
 public class Employee_ModuleResponseVM
@@ -30,4 +31,24 @@ public class Employee_ModuleResponseVM
     public string? Email { get; set; }
     public string? PhoneNumber { get; set; }
     public string? Department { get; set; }
+}
+
+public class ModuleActivity_ModuleResponseVM
+{
+    public int ModuleActivityId { get; set; }
+    public string? Title { get; set; }
+    public string? Description { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    public bool? IsSuccess { get; set; }
+    public IEnumerable<string> Errors { get; set; } = new List<string>();
+
+    public PreparationTask_ModuleResponseVM? PreparationTask { get; set; }
+}
+
+public class PreparationTask_ModuleResponseVM
+{
+    public float? Progress { get; set; }
+    public int? PreparedScheduleId { get; set; }
+    public IEnumerable<int> PreparedSchedules { get; set; } = new List<int>();
 }
