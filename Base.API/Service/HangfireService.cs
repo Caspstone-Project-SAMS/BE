@@ -6,6 +6,7 @@ using Base.Repository.Entity;
 using Base.Service.Common;
 using Base.Service.IService;
 using Hangfire;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,9 +26,7 @@ public class HangfireService
     private readonly ICurrentUserService _currentUserService;
     private readonly WebsocketEventManager _websocketEventManager;
     private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
-    private readonly IScheduleService _scheduleService;
-    private readonly IStudentService _studentService;
-    private readonly IModuleService _moduleService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public HangfireService(IBackgroundJobClient backgroundJobClient,
                            IRecurringJobManager recurringJobManager,
@@ -35,9 +34,7 @@ public class HangfireService
                            SessionManager sessionManager,
                            ICurrentUserService currentUserService,
                            WebsocketEventManager websocketEventManager,
-                           IScheduleService scheduleService,
-                           IStudentService studentService,
-                           IModuleService moduleService)
+                           IServiceScopeFactory serviceScopeFactory)
     {
         _backgroundJobClient = backgroundJobClient;
         _recurringJobManager = recurringJobManager;
@@ -45,9 +42,7 @@ public class HangfireService
         _sessionManager = sessionManager;
         _currentUserService = currentUserService;
         _websocketEventManager = websocketEventManager;
-        _scheduleService = scheduleService;
-        _studentService = studentService;
-        _moduleService = moduleService;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
@@ -144,9 +139,12 @@ public class HangfireService
 
     public async Task<int?> ConnectModule(int moduleId)
     {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var moduleService = serviceScope.ServiceProvider.GetRequiredService<IModuleService>();
+
         var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(moduleId);
 
-        var module = await _moduleService.GetById(moduleId);
+        var module = await moduleService.GetById(moduleId);
         var userId = module?.Employee?.User?.Id ?? Guid.Empty;
 
         var sessionId = _sessionManager.CreateSession(moduleId, userId, 1);
@@ -227,7 +225,12 @@ public class HangfireService
         return false;*/
         #endregion
 
-        var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, null, null, preparedDate, preparedDate);
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+        var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
+
+        var session = _sessionManager.GetSessionById(sessionId);
+        var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, session.UserID, null, preparedDate, preparedDate);
         if (!getSchedulesResult.IsSuccess) return false;
 
         var schedules = getSchedulesResult.Result;
@@ -257,7 +260,6 @@ public class HangfireService
             return false;
         }
 
-        var session = _sessionManager.GetSessionById(sessionId);
         var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(session.ModuleId);
 
         if (websocketEventHandler is not null)
