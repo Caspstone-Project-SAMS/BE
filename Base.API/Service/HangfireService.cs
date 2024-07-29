@@ -27,6 +27,7 @@ public class HangfireService
     private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
     private readonly IScheduleService _scheduleService;
     private readonly IStudentService _studentService;
+    private readonly IModuleService _moduleService;
 
     public HangfireService(IBackgroundJobClient backgroundJobClient,
                            IRecurringJobManager recurringJobManager,
@@ -35,7 +36,8 @@ public class HangfireService
                            ICurrentUserService currentUserService,
                            WebsocketEventManager websocketEventManager,
                            IScheduleService scheduleService,
-                           IStudentService studentService)
+                           IStudentService studentService,
+                           IModuleService moduleService)
     {
         _backgroundJobClient = backgroundJobClient;
         _recurringJobManager = recurringJobManager;
@@ -45,6 +47,7 @@ public class HangfireService
         _websocketEventManager = websocketEventManager;
         _scheduleService = scheduleService;
         _studentService = studentService;
+        _moduleService = moduleService;
     }
 
     public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
@@ -143,7 +146,10 @@ public class HangfireService
     {
         var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(moduleId);
 
-        var sessionId = _sessionManager.CreateSession(moduleId, new Guid(_currentUserService.UserId), 1);
+        var module = await _moduleService.GetById(moduleId);
+        var userId = module?.Employee?.User?.Id ?? Guid.Empty;
+
+        var sessionId = _sessionManager.CreateSession(moduleId, userId, 1);
         if (websocketEventHandler is not null)
         {
             websocketEventHandler.ConnectModuleEvent += OnModuleConnectingEventHandler;
