@@ -1,5 +1,6 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Repository.Identity;
 using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.Validation;
@@ -183,6 +184,7 @@ namespace Base.Service.Service
             }
 
             var schedules = query
+                .OrderBy(s => s.Slot!.Order)
                 .Skip((startPage - 1) * quantityResult)
                 .Take((endPage - startPage + 1) * quantityResult);
                 
@@ -224,6 +226,76 @@ namespace Base.Service.Service
             if (classCodeList.Count() == 1) return classCodeList.FirstOrDefault();
 
             return String.Join(deliminate, classCodeList);
+        }
+
+        public async Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate)
+        {
+            var result = new ServiceResponseVM<IEnumerable<Schedule>>()
+            {
+                IsSuccess = false
+            };
+            var errors = new List<string>();
+
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                errors.Add("Invalid get quantity");
+                result.Errors = errors;
+                return result;
+            }
+
+            var expressions = new List<Expression>();
+            ParameterExpression pe = Expression.Parameter(typeof(Schedule), "s");
+
+            expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Schedule.IsDeleted)), Expression.Constant(false)));
+
+            if(lecturerId is not null)
+            {
+                var classProperty = Expression.Property(pe, "Class");
+                var employeeIdProperty = Expression.Property(classProperty, "LecturerID");
+                expressions.Add(Expression.Equal(employeeIdProperty, Expression.Constant(lecturerId)));
+            }
+
+            if(semesterId is not null)
+            {
+                var classProperty = Expression.Property(pe, "Class");
+                var semesterIdProperty = Expression.Property(classProperty, "SemesterID");
+                expressions.Add(Expression.Equal(semesterIdProperty, Expression.Constant(semesterId)));
+            }
+
+            if(startDate is not null)
+            {
+                expressions.Add(Expression.GreaterThanOrEqual(Expression.Property(pe, nameof(Schedule.Date)), Expression.Constant(startDate)));
+            }
+
+            if(endDate is not null)
+            {
+                expressions.Add(Expression.LessThanOrEqual(Expression.Property(pe, nameof(Schedule.Date)), Expression.Constant(endDate)));
+            }
+
+            Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
+            Expression<Func<Schedule, bool>> where = Expression.Lambda<Func<Schedule, bool>>(combined, pe);
+
+            var includes = new Expression<Func<Schedule, object?>>[]
+            {
+                s => s.Class,
+                s => s.Slot
+            };
+
+            var schedules = await _unitOfWork.ScheduleRepository
+                .Get(where, includes)
+                .OrderBy(s => s.Slot!.Order)
+                .AsNoTracking()
+                .Skip((startPage - 1) * quantityResult)
+                .Take((endPage - startPage + 1) * quantityResult)
+                .ToArrayAsync();
+
+            result.IsSuccess = true;
+            result.Result = schedules;
+            result.Title = "Get successfully";
+
+            return result;
         }
     }
 }

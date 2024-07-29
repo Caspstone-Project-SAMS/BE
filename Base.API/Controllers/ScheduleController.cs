@@ -19,6 +19,7 @@ namespace Base.API.Controllers
             _mapper = mapper;
         }
 
+
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ScheduleResponse))]
         [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ScheduleResponse))]
@@ -37,6 +38,7 @@ namespace Base.API.Controllers
             }
             return BadRequest();
         }
+
 
         [HttpPost]
         public async Task<IActionResult> CreateSchedules(List<ScheduleVM> resources)
@@ -80,6 +82,51 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Get schedule information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+
+        [HttpGet("test-get-all")]
+        public async Task<IActionResult> GetALlSchedules(
+            [FromQuery] int startPage,
+            [FromQuery] int endPage,
+            [FromQuery] int quantity,
+            [FromQuery] Guid? lecturerId,
+            [FromQuery] int? semesterId,
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
+        {
+            if (ModelState.IsValid)
+            {
+                DateOnly? startDateOnly = null;
+                DateOnly? endDateOnly = null;
+                if (startDate is not null)
+                {
+                    startDateOnly = DateOnly.FromDateTime(startDate.Value);
+                }
+                if(endDate is not null)
+                {
+                    endDateOnly = DateOnly.FromDateTime(endDate.Value);
+                }
+                var result = await _scheduleService.GetAllSchedules(startPage, endPage, quantity, lecturerId, semesterId, startDateOnly, endDateOnly);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = result.Result
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = "Get schedules falied",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get schedules failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }

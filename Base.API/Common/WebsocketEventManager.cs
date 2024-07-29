@@ -33,6 +33,7 @@ public class WebsocketEventHandler
     public event EventHandler<WebsocketEventArgs>? CancelSessionEvent;
     public event EventHandler<WebsocketEventArgs>? PrepareAttendanceSession;
     public event EventHandler<WebsocketEventArgs>? StopAttendance;
+    public event EventHandler<WebsocketEventArgs>? PrepareSchedules;
 
     public void OnConnectModuleEvent(string receivedEvent)
     {
@@ -69,6 +70,14 @@ public class WebsocketEventHandler
     public void OnStopAttendanceEvent(string receivedEvent)
     {
         StopAttendance?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnPrepareSchedules(string receivedEvent)
+    {
+        PrepareSchedules?.Invoke(this, new WebsocketEventArgs
         {
             Event = receivedEvent
         });

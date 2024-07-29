@@ -144,6 +144,13 @@ public class WebSocketController : ControllerBase
                                 websocketEventHandler.OnPrepareAttendanceSession(receiveData);
                             }
                         }
+                        else if (receiveData.Contains("Prepare schedules"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnPrepareSchedules(receiveData);
+                            }
+                        }
                         else if (receiveData.Contains("Cancel session"))
                         {
                             if (websocketEventHandler is not null)

@@ -15,5 +15,6 @@ namespace Base.Service.IService
         Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities);
         Task<Schedule?> GetById(int scheduleId);
         string? GetClassCodeList(string deliminate, List<int>? scheduleIds);
+        Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate);
     }
 }
