@@ -627,8 +627,8 @@ public class ModuleController : ControllerBase
     }
 
 
-    [HttpPut]
-    public async Task<IActionResult> UpdateModule(ModuleVM resource,int id)
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateModule(ModuleVM resource, int id)
     {
         var result = await _moduleService.Update(resource,id);
 

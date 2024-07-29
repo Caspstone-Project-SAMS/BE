@@ -51,7 +51,7 @@ namespace Base.API.Service
 
             _recurringJobManager.AddOrUpdate(
                 jobName,
-                () => SenDataToModule(date, moduleId),
+                () => SetupPreparationForModule(date, moduleId),
                 cronExpression,
                 new RecurringJobOptions
                 {
@@ -60,12 +60,13 @@ namespace Base.API.Service
             );
 
         }
+
         public void RemoveRecurringJobsAsync(string jobId)
         {
             _recurringJobManager.RemoveIfExists(jobId);
         }
 
-        public async Task<string> SenDataToModule(DateOnly? date, int moduleId)
+        public async Task<string> SetupPreparationForModule(DateOnly? date, int moduleId)
         {
             var messageSendMode = new WebsocketMessage
             {
@@ -92,6 +93,11 @@ namespace Base.API.Service
             }
         }
 
+        /*public int ConnectModule(int moduleId)
+        {
+            var sessionId = _sessionManager.CreateSession(moduleId, new Guid(_currentUserService.UserId), 1);
+
+        }*/
 
         private static string ConvertToCronExpression(TimeOnly? prepareTime)
         {
