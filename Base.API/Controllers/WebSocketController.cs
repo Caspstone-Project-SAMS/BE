@@ -420,6 +420,8 @@ public class WebSocketController : ControllerBase
             }
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
+
+        await Task.Delay(TimeSpan.FromSeconds(10));
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
     }
 

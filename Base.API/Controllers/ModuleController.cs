@@ -309,7 +309,7 @@ public class ModuleController : ControllerBase
                         });
                     }
 
-                    var totalStudents = await _studentService.GetStudentsByClassID(existedSschedule.ClassID, 1, 100, 50);
+                    var totalStudents = await _studentService.GetStudentsByClassID(existedSschedule.ClassID, 1, 100, 50, null);
                     int totalWorkAmount = 0;
                     if(totalStudents is not null)
                     {

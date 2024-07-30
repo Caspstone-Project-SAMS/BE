@@ -245,7 +245,7 @@ public class HangfireService
         var classeIds = schedules.Select(s => s.ClassID).ToHashSet();
         foreach (var item in classeIds)
         {
-            var totalStudents = await _studentService.GetStudentsByClassID(item, 1, 100, 50);
+            var totalStudents = await _studentService.GetStudentsByClassID(item, 1, 100, 50, null);
             if (totalStudents is not null)
             {
                 totalWorkCount = totalWorkCount + totalStudents.Count();
