@@ -51,6 +51,52 @@ public class HangfireService
         _unitOfWork = unitOfWork;
     }
 
+    public void CheckAbsenceRoutine()
+    {
+        _recurringJobManager.AddOrUpdate(
+            "Check Absence Routine",
+            () => SendAbsenceEmails(),
+            "53 16 * * *",
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+            }
+        );
+    }
+
+    public async Task SendAbsenceEmails()
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var mailService = serviceScope.ServiceProvider.GetRequiredService<IMailService>();
+
+        var entities = await _unitOfWork.StudentClassRepository.GetStudentClassInfoAsync();
+
+        foreach (var entity in entities)
+        {
+            var emailMessage = new Message
+            {
+                To = entity.Email,
+                Subject = "Your Absence Report",
+                Content = $@"<html>
+                    <body>
+                    <p>Dear Student,</p>
+                    <p>Here is your attendance report:</p>
+                    <ul>
+                        <li><strong>Student Code:</strong> {entity.StudentCode}</li>
+                        <li><strong>Class Code:</strong> {entity.ClassCode}</li>
+                        <li><strong>Absence Percentage:</strong> {entity.AbsencePercentage}%</li>
+                    </ul>
+                    <p>Best regards,<br>SAMS Team</p>
+                    </body>
+                    </html>"
+            };
+
+
+
+            await mailService.SendMailAsync(emailMessage);
+        }
+    }
+
     public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
     {
         DateTime vnDateTime = ServerDateTime.GetVnDateTime();
@@ -317,6 +363,7 @@ public class HangfireService
         }
         return false;
     }
+
     public void OnModulePrepareScheduls(object? sender, WebsocketEventArgs e)
     {
         if (e.Event == ("Prepare schedules " + websocketEventState.SessionId))
