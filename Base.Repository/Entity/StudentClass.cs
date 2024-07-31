@@ -11,6 +11,7 @@ namespace Base.Repository.Entity;
 public class StudentClass : AuditableEntity
 {
     public int AbsencePercentage { get; set; }
+    public bool IsSendEmail { get; set; } = false;
     public int ClassID { get; set; }
     public Guid StudentID { get; set; }
 }

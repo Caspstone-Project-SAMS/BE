@@ -41,6 +41,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
 
 
 
+
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = new CancellationToken())
     {
         var result = await base.SaveChangesAsync(cancellationToken);
@@ -243,6 +244,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
         builder.Entity<PreparationTask>().ToTable("PreparationTask");
 
         builder.Entity<ModuleActivity>().ToTable("ModuleActivity");
+
 
 
         builder.Ignore<IdentityUserClaim<Guid>>();
