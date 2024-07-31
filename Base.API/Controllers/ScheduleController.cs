@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Google.Cloud.Vision.V1;
 using System.ComponentModel.DataAnnotations;
 using DocumentFormat.OpenXml.Bibliography;
+using DocumentFormat.OpenXml.Vml.Spreadsheet;
 
 namespace Base.API.Controllers
 {
@@ -167,6 +168,16 @@ namespace Base.API.Controllers
                     }
 
                     texts.Add(blockText);
+
+
+                    // Get the bounding box for the block
+                    var boundingBox = block.BoundingBox;
+                    Console.WriteLine($"Detected block text: {blockText.Trim()}");
+                    Console.WriteLine("Bounding Box Vertices:");
+                    foreach (var vertex in boundingBox.Vertices)
+                    {
+                        Console.WriteLine($"({vertex.X}, {vertex.Y})");
+                    }
                 }
             }
 
@@ -204,6 +215,15 @@ namespace Base.API.Controllers
                     }
 
                     texts.Add(blockText);
+
+                    // Get the bounding box for the block
+                    var boundingBox = block.BoundingBox;
+                    Console.WriteLine($"Detected block text: {blockText.Trim()}");
+                    Console.WriteLine("Bounding Box Vertices:");
+                    foreach (var vertex in boundingBox.Vertices)
+                    {
+                        Console.WriteLine($"({vertex.X}, {vertex.Y})");
+                    }
                 }
             }
 
@@ -240,7 +260,7 @@ namespace Base.API.Controllers
                             texts.Add(blockText);
                         }
                     }
-                    
+
                 }
             }
 
