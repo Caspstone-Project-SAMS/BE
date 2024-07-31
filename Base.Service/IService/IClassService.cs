@@ -14,5 +14,6 @@ namespace Base.Service.IService
         Task<ServiceResponseVM<Class>> Create(ClassVM newEntity);
         Task<Class?> GetById(int classId);
         Task<ServiceResponseVM<IEnumerable<Class>>> GetAllClasses(int startPage, int endPage, int quantity, int? semesterId, string? classCode, int? classStatus, int? roomID, int? subjectID, Guid? lecturerId, Guid? studentId, int? scheduleId);
+        Task<IEnumerable<string>> GetAllClassCodes(int? semesterId, Guid? userId);
     }
 }

@@ -5,6 +5,8 @@ using Base.Service.ViewModel.ResponseVM;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.AspNetCore.Mvc;
 using Google.Cloud.Vision.V1;
+using System.ComponentModel.DataAnnotations;
+using DocumentFormat.OpenXml.Bibliography;
 
 namespace Base.API.Controllers
 {
@@ -133,81 +135,9 @@ namespace Base.API.Controllers
             });
         }
 
-        [HttpPost("import")]
-        public async Task<IActionResult> ImportSchedule([FromForm] ImportSchedule resource)
-        {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
 
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            int year = 0;
-            int slotCount = 0;
-            int dayCount = 0;
-
-            var dateList = new List<DateOnly>();
-
-            var slots = new List<Slot>();
-            Slot? slot = null;
-
-            DateOnly day;
-
-            foreach (var page in response.Pages)
-            {
-                foreach (var block in page.Blocks)
-                {
-                    string blockText = "";
-                    foreach (var paragraph in block.Paragraphs)
-                    {
-                        foreach (var word in paragraph.Words)
-                        {
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                            blockText += "::"; // Add space after each word
-                        }
-                    }
-                    //Console.WriteLine($"Detected block text: {blockText.Trim()}");
-                    //texts.Add(blockText);
-                    if (blockText.Contains("YEAR"))
-                    {
-                        texts.Add(blockText.Substring(0, 8));
-                    }
-                    else if (DateOnly.TryParseExact(blockText, "dd/MM", out day))
-                    {
-                        dateList.Add(day);
-                        dayCount++;
-                    }
-                    else if (blockText.ToUpper().Contains("SLOT"))
-                    {
-                        slotCount++;
-                        // lets add schedule
-                        if (slot is not null)
-                        {
-                            slots.Add(slot);
-                        }
-                        else
-                        {
-                            slot = new Slot();
-                            slot.SlotNumber = blockText;
-                        }
-                    }
-                    
-                    var testClassCode = blockText.ToUpper().Split("::")[1];
-                }
-            }
-
-            return Ok(texts);
-        }
-
-        [HttpPost("importsss")]
-        public async Task<IActionResult> ImportSchedulessss([FromForm] ImportSchedule resource)
+        [HttpPost("import-v1/block/with-space")]
+        public async Task<IActionResult> ImportSchedulesV1([FromForm] ImportSchedule resource)
         {
             var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
             ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
@@ -235,23 +165,86 @@ namespace Base.API.Controllers
                             blockText += " "; // Add space after each word
                         }
                     }
-                    //Console.WriteLine($"Detected block text: {blockText.Trim()}");
-                    texts.Add(blockText.Trim());
+
+                    texts.Add(blockText);
                 }
             }
 
             return Ok(texts);
         }
-    }
 
-    public class ImportSchedule
-    {
-        public IFormFile? Image { get; set; }
-    }
 
-    public class Slot
-    {
-        public string SlotNumber { get; set; } = "";
-        public IEnumerable<string> ClassCode { get; set; } = new List<string>();
+        [HttpPost("import-v2/block/no-space")]
+        public async Task<IActionResult> ImportSchedulesV2([FromForm] ImportSchedule resource)
+        {
+            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
+            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
+            imageAnnotatorClientBuilder.Credential = credential;
+            var client = imageAnnotatorClientBuilder.Build();
+            Image image = Image.FromStream(resource.Image!.OpenReadStream());
+
+            // Perform text detection on the image
+            var response = await client.DetectDocumentTextAsync(image);
+            var texts = new List<string>();
+
+            foreach (var page in response.Pages)
+            {
+                foreach (var block in page.Blocks)
+                {
+                    string blockText = "";
+                    foreach (var paragraph in block.Paragraphs)
+                    {
+                        foreach (var word in paragraph.Words)
+                        {
+                            foreach (var symbol in word.Symbols)
+                            {
+                                blockText += symbol.Text;
+                            }
+                        }
+                    }
+
+                    texts.Add(blockText);
+                }
+            }
+
+            return Ok(texts);
+        }
+
+
+        [HttpPost("import-v3/word")]
+        public async Task<IActionResult> ImportSchedulesV3([FromForm] ImportSchedule resource)
+        {
+            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
+            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
+            imageAnnotatorClientBuilder.Credential = credential;
+            var client = imageAnnotatorClientBuilder.Build();
+            Image image = Image.FromStream(resource.Image!.OpenReadStream());
+
+            // Perform text detection on the image
+            var response = await client.DetectDocumentTextAsync(image);
+            var texts = new List<string>();
+
+            foreach (var page in response.Pages)
+            {
+                foreach (var block in page.Blocks)
+                {
+                    foreach (var paragraph in block.Paragraphs)
+                    {
+                        foreach (var word in paragraph.Words)
+                        {
+                            string blockText = "";
+                            foreach (var symbol in word.Symbols)
+                            {
+                                blockText += symbol.Text;
+                            }
+                            texts.Add(blockText);
+                        }
+                    }
+                    
+                }
+            }
+
+            return Ok(texts);
+        }
     }
 }
