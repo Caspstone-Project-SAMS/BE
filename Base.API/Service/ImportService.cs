@@ -7,6 +7,7 @@ using Google.Cloud.Vision.V1;
 using Google.Type;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
+using System.Text.RegularExpressions;
 
 
 namespace Base.API.Service;
@@ -24,7 +25,7 @@ public class ImportService
         _classService = classService;
     }
 
-    public async Task<Import_Result> ImportScheduleUsingImage(IFormFile imageResource, int semesterId, Guid lecturerId, int? recommendationRate)
+    public async Task<Import_Result> ImportScheduleUsingImageV2(IFormFile imageResource, int semesterId, Guid lecturerId, int? recommendationRate)
     {
         var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
         ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
@@ -219,7 +220,7 @@ public class ImportService
         };
     }
 
-    public async Task<Import_Result> ImportScheduleUsingImageV2(IFormFile imageResource, int semesterId, Guid lecturerId, int? recommendationRate)
+    public async Task<Import_Result> ImportScheduleUsingImage(IFormFile imageResource, int semesterId, Guid lecturerId, int? recommendationRate)
     {
         var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
         ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
@@ -298,6 +299,10 @@ public class ImportService
         var yearTextBlock = adjustedTextBlocks.Where(b => b.Paragraphs.Any(p => p.Words.Any(w => w.Text.ToUpper() == "YEAR"))).FirstOrDefault();
         int getYear = 0;
         var tryGetYear = int.TryParse(yearTextBlock?.Paragraphs.SelectMany(p => p.Words).Where(w => w.Text.ToUpper() != "YEAR").FirstOrDefault()?.Text, out getYear);
+        if (tryGetYear)
+        {
+            year = getYear;
+        }
         if (yearTextBlock is not null)
             adjustedTextBlocks.Remove(yearTextBlock);
 
@@ -321,6 +326,26 @@ public class ImportService
         {
             adjustedTextBlocks.RemoveAt(index);
         }
+        dateBlock = dateBlock.Where(b => b.Paragraphs.Any(p => !p.Words.Any(w => w.Text.ToUpper() == "TO" || w.Text.ToUpper() == "WEEK"))).ToList();
+        foreach(var block in dateBlock)
+        {
+            DateOnly date;
+            foreach (var paragraph in block.Paragraphs)
+            {
+                foreach(var word in paragraph.Words)
+                {
+                    if (DateOnly.TryParseExact(word.Text, "dd/MM", out date))
+                    {
+                        weeklyDates.Add(new Import_Date
+                        {
+                            DateString = word.Text,
+                            Date = date,
+                            Vertex_X = block.StartGeometricCoordinates.Vertex_X
+                        });
+                    }
+                }
+            }
+        }
 
 
         // Get TextBlock of slot
@@ -341,7 +366,64 @@ public class ImportService
         {
             adjustedTextBlocks.RemoveAt(index);
         }
+        foreach(var block in slotBlock)
+        {
+            int slotNumber = 0;
+            if (IdentifySlot(block.Text, out slotNumber))
+            {
+                slots.Add(new Import_Slot
+                {
+                    SlotNumber = slotNumber,
+                    Vertex_Y = block.StartGeometricCoordinates.Vertex_Y
+                });
+            }
+        }
 
+
+
+        // Remake schedule data
+        foreach(var block in adjustedTextBlocks)
+        {
+            foreach (var paragraph in block.Paragraphs)
+            {
+                var words = paragraph.Words.ToList();
+                foreach(var word in paragraph.Words)
+                {
+                    if(word.Text.ToUpper() == "AT" || word.Text.ToUpper() == "ATTENDED" || word.Text == "(" || word.Text == ")")
+                    {
+                        words.Remove(word);
+                    }
+                    else if (IsMatchRoomFormat(word.Text))
+                    {
+                        word.Text = ";;;";
+                    }
+                }
+                paragraph.Words = words;
+            }
+            block.Text = String.Join("", block.Paragraphs.SelectMany(p => p.Words).Select(w => w.Text));
+        }
+
+
+        // Validate schedule (class code) information
+
+
+
+        // Sort schedules into each slot
+        var slotPosition = slots.Select(s => s.Vertex_Y);
+
+
+        // Sort
+        weeklyDates = weeklyDates.OrderBy(s => s.Date).ToList();
+        slots = slots.OrderBy(s => s.SlotOrder).ToList();
+
+        return new Import_Result
+        {
+            Year = year ?? 0,
+            DatesCount = weeklyDates.Count,
+            SlotsCount = slots.Count,
+            Dates = weeklyDates,
+            Slots = slots
+        };
 
         // Sort 
 
@@ -506,14 +588,7 @@ public class ImportService
             slot.ClassSlots = Enumerable.Empty<Import_Class>().ToList();
         });
 
-        return new Import_Result
-        {
-            Year = year ?? 0,
-            DatesCount = weeklyDates.Count,
-            SlotsCount = slots.Count,
-            Dates = weeklyDates,
-            Slots = slots
-        };
+        
     }
 
     private string DeleteAttendedWord(string text)
@@ -645,6 +720,18 @@ public class ImportService
         return textBlocks.OrderBy(b => b.StartGeometricCoordinates.Vertex_Y)
                          .ThenBy(b => b.StartGeometricCoordinates.Vertex_X)
                          .ToList();
+    }
+
+    private bool IsMatchRoomFormat(string input)
+    {
+        // Define the regex pattern
+        string pattern = @"^P\.\d{3}$";
+
+        // Create a regex object
+        Regex regex = new Regex(pattern);
+
+        // Check if the input matches the pattern
+        return regex.IsMatch(input);
     }
 }
 
