@@ -35,11 +35,12 @@ internal class ModuleService : IModuleService
             m => m.Employee!.User,
             m => m.ModuleActivities
         };
-        return await _unitOfWork.ModuleRepository
+        var module = await _unitOfWork.ModuleRepository
             .Get(m => m.ModuleID == moduleId, includes)
             .Include(nameof(Module.ModuleActivities) + "." + nameof(ModuleActivity.PreparationTask))
             .AsNoTracking()
             .FirstOrDefaultAsync();
+        return module;
     }
 
     public async Task<ServiceResponseVM<IEnumerable<Module>>> Get(int startPage, int endPage, int? quantity, int? mode, int? status, string? key, Guid? employeeId)

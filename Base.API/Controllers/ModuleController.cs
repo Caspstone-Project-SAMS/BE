@@ -309,7 +309,7 @@ public class ModuleController : ControllerBase
                         });
                     }
 
-                    var totalStudents = await _studentService.GetStudentsByClassID(existedSschedule.ClassID, 1, 100, 50);
+                    var totalStudents = await _studentService.GetStudentsByClassID(existedSschedule.ClassID, 1, 100, 50, null);
                     int totalWorkAmount = 0;
                     if(totalStudents is not null)
                     {
@@ -627,8 +627,8 @@ public class ModuleController : ControllerBase
     }
 
 
-    [HttpPut]
-    public async Task<IActionResult> UpdateModule(ModuleVM resource,int id)
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateModule(ModuleVM resource, int id)
     {
         var result = await _moduleService.Update(resource,id);
 

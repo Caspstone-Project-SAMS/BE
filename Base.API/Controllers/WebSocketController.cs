@@ -22,6 +22,7 @@ public class WebSocketController : ControllerBase
     private readonly IUserService _userService;
     private readonly SessionManager _sessionManager;
     private readonly WebsocketEventManager _websocketEventManager;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     private event EventHandler<WebsocketEventArgs>? PingPongEvent;
     private bool _pingPongStatus = false;
@@ -33,7 +34,8 @@ public class WebSocketController : ControllerBase
         ICurrentUserService currentUserService,
         IUserService userService,
         SessionManager sessionManager,
-        WebsocketEventManager websocketEventManager)
+        WebsocketEventManager websocketEventManager,
+        IServiceScopeFactory serviceScopeFactory)
     {
         _websocketConnectionManager = webSocketConnectionManager;
         _websocketConnectionManager1 = websocketConnectionManager1;
@@ -42,6 +44,7 @@ public class WebSocketController : ControllerBase
         _userService = userService;
         _sessionManager = sessionManager;
         _websocketEventManager = websocketEventManager;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     [HttpGet("/ws")]
@@ -139,6 +142,13 @@ public class WebSocketController : ControllerBase
                             if(websocketEventHandler is not null)
                             {
                                 websocketEventHandler.OnPrepareAttendanceSession(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Prepare schedules"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnPrepareSchedules(receiveData);
                             }
                         }
                         else if (receiveData.Contains("Cancel session"))
@@ -320,6 +330,8 @@ public class WebSocketController : ControllerBase
                     webSocket.Abort();
                     webSocket.Dispose();
 
+                    await Task.Delay(TimeSpan.FromSeconds(1));
+
                     // Notify to user that module is lost connected
                     _ = NotifyModuleLostConnected(moduleId);
 
@@ -371,7 +383,10 @@ public class WebSocketController : ControllerBase
 
     private async Task NotifyModuleLostConnected(int moduleId)
     {
-        var module = await _moduleService.GetById(moduleId);
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var moduleService = serviceScope.ServiceProvider.GetRequiredService<IModuleService>();
+
+        var module = await moduleService.GetById(moduleId);
         if (module is null || module.Employee?.User is null) return;
         var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
         if (clientSocket is null) return;
@@ -389,7 +404,10 @@ public class WebSocketController : ControllerBase
 
     private async Task NotifyModuleConnected(int moduleId)
     {
-        var module = await _moduleService.GetById(moduleId);
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var moduleService = serviceScope.ServiceProvider.GetRequiredService<IModuleService>();
+
+        var module = await moduleService.GetById(moduleId);
         if (module is null || module.Employee?.User is null) return;
         var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
         if (clientSocket is null) return;
@@ -402,6 +420,8 @@ public class WebSocketController : ControllerBase
             }
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
+
+        await Task.Delay(TimeSpan.FromSeconds(10));
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
     }
 

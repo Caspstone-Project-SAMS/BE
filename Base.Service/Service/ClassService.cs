@@ -325,5 +325,31 @@ namespace Base.Service.Service
 
             return result;
         }
+
+        public async Task<IEnumerable<string>> GetAllClassCodes(int? semesterId, Guid? userId)
+        {
+            var expressions = new List<Expression>();
+            ParameterExpression pe = Expression.Parameter(typeof(Class), "c");
+
+            expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.IsDeleted)), Expression.Constant(false)));
+
+            if (semesterId is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.SemesterID)), Expression.Constant(semesterId)));
+            }
+
+            if (userId is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Class.LecturerID)), Expression.Constant(userId)));
+            }
+
+            Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
+            Expression<Func<Class, bool>> where = Expression.Lambda<Func<Class, bool>>(combined, pe);
+
+            return await _unitOfWork.ClassRepository
+                .Get(where)
+                .Select(c => c.ClassCode.ToUpper())
+                .ToArrayAsync();
+        }
     }
 }

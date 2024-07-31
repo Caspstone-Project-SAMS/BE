@@ -329,6 +329,7 @@ builder.Services.AddSingleton<WebsocketEventManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager1>();
 builder.Services.AddSingleton<SessionManager>();
+builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<HangfireService>();
 builder.Services.AddSingleton<HangfireServiceSingleton>();
 
