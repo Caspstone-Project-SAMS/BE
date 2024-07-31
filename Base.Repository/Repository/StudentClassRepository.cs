@@ -1,6 +1,8 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Repository.IRepository;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,5 +27,18 @@ namespace Base.Repository.Repository
         {
             return base.Get(entityTypeName, where);
         }
+
+        public async Task<List<StudentClassInfoDto>> GetStudentClassInfoAsync()
+        {
+            var result = await _applicationDbContext
+            .Set<StudentClassInfoDto>()
+            .FromSqlRaw("EXEC GetStudentClassInfo")
+            .ToListAsync();
+
+            return result;
+        }
     }
+
+
+    
 }

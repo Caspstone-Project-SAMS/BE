@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240728083317_Add AbsenceRecord table")]
+    partial class AddAbsenceRecordtable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,6 +23,28 @@ namespace Base.Repository.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder, 1L, 1);
+
+            modelBuilder.Entity("Base.Repository.Entity.AbsenceRecord", b =>
+                {
+                    b.Property<int>("AbsenceRecordID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AbsenceRecordID"), 1L, 1);
+
+                    b.Property<int>("ClassID")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentID")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("AbsenceRecordID");
+
+                    b.ToTable("AbsenceRecord", (string)null);
+                });
 
             modelBuilder.Entity("Base.Repository.Entity.Attendance", b =>
                 {
@@ -829,14 +853,11 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<bool>("IsSendEmail")
-                        .HasColumnType("bit");
-
                     b.HasKey("StudentID", "ClassID");
 
                     b.HasIndex("ClassID");
 
-                    b.ToTable("StudentClass", (string)null);
+                    b.ToTable("StudentClass");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Attendance", b =>

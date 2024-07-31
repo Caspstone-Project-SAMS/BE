@@ -61,7 +61,7 @@ builder.Services.AddSingleton(cloudinary);
 #region Email Service
 var emailConfig = Configuration.GetSection("EmailConfig").Get<Base.Service.Common.EmailConfig>();
 builder.Services.AddSingleton(emailConfig);
-builder.Services.AddTransient<IMailService, MailService>();
+builder.Services.AddScoped<IMailService, MailService>();
 #endregion
 
 builder.Services.AddSingleton<IPushNotificationService, PushNotificationService>();
@@ -329,7 +329,8 @@ builder.Services.AddSingleton<WebsocketEventManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager1>();
 builder.Services.AddSingleton<SessionManager>();
-builder.Services.AddSingleton<HangfireService>();
+builder.Services.AddScoped<HangfireService>();
+builder.Services.AddSingleton<HangfireServiceSingleton>();
 
 var app = builder.Build();
 

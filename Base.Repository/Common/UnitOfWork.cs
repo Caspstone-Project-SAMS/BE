@@ -87,6 +87,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
     public INotificationTypeRepository NotificationTypeRepository { get; private set; }
 
     public IModuleActivityRepository ModuleActivityRepository { get; private set; }
+
+
     public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
         IRoleRepository roleRepository,

@@ -12,6 +12,7 @@ public interface IBaseRepository<T, TKey> where T : class
 {
     Task<T?> FindAsync(TKey id);
     IQueryable<T> FindAll();
+    IQueryable<T> GetAll(string entityTypeName);
     IQueryable<T> Get(Expression<Func<T, bool>> where);
     IQueryable<T> Get(Expression<Func<T, bool>> where, params Expression<Func<T, object?>>[] includes);
     IQueryable<T> Get(string entityTypeName, Expression<Func<T, bool>> where);
@@ -90,5 +91,10 @@ public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
     public virtual void Update(T entity)
     {
         _applicationDbContext.Entry<T>(entity).State = EntityState.Modified;
+    }
+
+    public virtual IQueryable<T> GetAll(string entityTypeName)
+    {
+        return _applicationDbContext.Set<T>(entityTypeName);
     }
 }
