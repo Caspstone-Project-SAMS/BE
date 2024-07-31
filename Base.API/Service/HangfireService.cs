@@ -3,13 +3,16 @@ using Base.API.Controllers;
 using Base.IService.IService;
 using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Repository.Identity;
 using Base.Service.Common;
 using Base.Service.IService;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -26,6 +29,7 @@ public class HangfireService
     private readonly ICurrentUserService _currentUserService;
     private readonly WebsocketEventManager _websocketEventManager;
     private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public HangfireService(IBackgroundJobClient backgroundJobClient,
@@ -34,6 +38,7 @@ public class HangfireService
                            SessionManager sessionManager,
                            ICurrentUserService currentUserService,
                            WebsocketEventManager websocketEventManager,
+                           IUnitOfWork unitOfWork,
                            IServiceScopeFactory serviceScopeFactory)
     {
         _backgroundJobClient = backgroundJobClient;
@@ -43,6 +48,7 @@ public class HangfireService
         _currentUserService = currentUserService;
         _websocketEventManager = websocketEventManager;
         _serviceScopeFactory = serviceScopeFactory;
+        _unitOfWork = unitOfWork;
     }
 
     public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
@@ -191,40 +197,6 @@ public class HangfireService
 
     public async Task<bool> StartPrepareSchedules(int sessionId, DateOnly preparedDate)
     {
-        #region test
-        /*var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, null, null, preparedDate, preparedDate);
-        if (!getSchedulesResult.IsSuccess) return false;
-
-        var schedules = getSchedulesResult?.Result?.ToHashSet();
-        if (schedules is null) return false;
-
-        var classeIds = schedules.Where(s => s.Class != null).Select(s => s.ClassID).ToHashSet();
-
-        if (classeIds is not null && classeIds.Count() > 4)
-        {
-            // Try to get as many as much of first schedules
-            var newSchedules = new HashSet<Schedule>();
-            var addedClasses = new HashSet<int>();
-            foreach (var item in schedules)
-            {
-                if (addedClasses.Any(id => id == item.ClassID))
-                {
-                    newSchedules.Add(item);
-                }
-                else
-                {
-                    if (addedClasses.Count < 4)
-                    {
-                        addedClasses.Add(item.ClassID);
-                        newSchedules.Add(item);
-                    }
-                }
-            }
-            schedules = newSchedules;
-        }
-        return false;*/
-        #endregion
-
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
         var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();

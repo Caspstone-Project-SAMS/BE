@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240728094302_Add isSendEmail")]
+    partial class AddisSendEmail
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -836,7 +838,7 @@ namespace Base.Repository.Migrations
 
                     b.HasIndex("ClassID");
 
-                    b.ToTable("StudentClass", (string)null);
+                    b.ToTable("StudentClass");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Attendance", b =>
