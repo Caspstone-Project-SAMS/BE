@@ -233,13 +233,10 @@ public class ImportService
 
         //===============================Other datas to work with===============================
         // year
-        bool isYear = false;
         int? year = null;
 
         // Date
         var weeklyDates = new List<Import_Date>();
-        bool loadDate = true;
-        bool isDate = false;
 
         // Slot
         var slots = new List<Import_Slot>();
@@ -380,8 +377,7 @@ public class ImportService
         }
 
 
-
-        // Remake schedule data
+        // Remake schedule data, remove words that seems not to be class code
         foreach(var block in adjustedTextBlocks)
         {
             foreach (var paragraph in block.Paragraphs)
@@ -400,137 +396,13 @@ public class ImportService
                 }
                 paragraph.Words = words;
             }
-            block.Text = String.Join("", block.Paragraphs.SelectMany(p => p.Words).Select(w => w.Text));
+            block.Text = string.Join("", block.Paragraphs.SelectMany(p => p.Words).Select(w => w.Text));
         }
 
 
-        // Validate schedule (class code) information
-
-
-
-        // Sort schedules into each slot
-        var slotPosition = slots.Select(s => s.Vertex_Y);
-
-
-        // Sort
-        weeklyDates = weeklyDates.OrderBy(s => s.Date).ToList();
-        slots = slots.OrderBy(s => s.SlotOrder).ToList();
-
-        return new Import_Result
-        {
-            Year = year ?? 0,
-            DatesCount = weeklyDates.Count,
-            SlotsCount = slots.Count,
-            Dates = weeklyDates,
-            Slots = slots
-        };
-
-        // Sort 
-
-
-        foreach (var page in response.Pages)
-        {
-            foreach (var block in page.Blocks)
-            {
-                string blockText = "";
-                string text = "";
-                foreach (var paragraph in block.Paragraphs)
-                {
-                    foreach (var word in paragraph.Words)
-                    {
-                        string wordText = "";
-                        foreach (var symbol in word.Symbols)
-                        {
-                            blockText += symbol.Text;
-                            wordText += symbol.Text;
-                        }
-
-                        // Identify whether if it is year
-                        if (isYear)
-                        {
-                            year = IdentifyYear(wordText);
-                            isYear = false;
-                        }
-                        if (wordText == "YEAR")
-                        {
-                            isYear = true;
-                        }
-
-                        //blockText += " "; // Add space after each word
-                    }
-                }
-
-
-                // =================================HANDLE BLOCK TEXT HERE=================================
-                blockText = blockText.Trim();
-                text = blockText;
-
-
-                // =================================Handle date only data in weekly timetable=================================
-                // The data for date of weekly timetable seems only appear on 15 first string
-                if (loadDate)
-                {
-                    DateOnly date;
-                    var checkDateOnly = DateOnly.TryParseExact(blockText, "dd/MM", out date);
-                    if (checkDateOnly)
-                    {
-                        weeklyDates.Add(new Import_Date
-                        {
-                            DateString = blockText,
-                            Date = date,
-                            Vertex_X = block.BoundingBox.Vertices[0].X
-                        });
-                        isDate = true;
-                        continue;
-                    }
-                    else
-                    {
-                        if (isDate)
-                        {
-                            isDate = false;
-                            loadDate = false;
-                        }
-                    }
-                }
-
-
-                // =================================Handle slot data in weekly timetable=================================
-                int slotNumber = 0;
-                if (IdentifySlot(blockText, out slotNumber))
-                {
-                    slots.Add(new Import_Slot
-                    {
-                        SlotNumber = slotNumber,
-                        Vertex_Y = block.BoundingBox.Vertices[0].Y
-                    });
-                    continue;
-                }
-
-
-                // =================================Handle attendance word=================================
-                blockText = DeleteAttendedWord(blockText);
-
-
-                // =================================Handle class slot here=================================
-                if (blockText is not null && blockText != string.Empty && blockText != "")
-                {
-                    var vertex_y = block.BoundingBox.Vertices[0].Y;
-                    var slot = slots.Where(s => s.CheckVertex_Y(vertex_y, 10)).FirstOrDefault();
-                    if (slot is not null)
-                    {
-                        slot.ClassSlots.Add(new Import_Class
-                        {
-                            ClassCode = blockText,
-                            Vertex_X = block.BoundingBox.Vertices[0].X
-                        });
-                    }
-                }
-            }
-        }
-
-        // All data is ready to validate from here
-        // Validate slot
-        foreach (var slot in slots)
+        // Verify slot information
+        var copySlots = slots.ToList();
+        foreach (var slot in copySlots)
         {
             var getSlotResult = await _slotService.GetAllSlots(1, 1, 10, slot.SlotNumber, null, null);
             if (getSlotResult.IsSuccess)
@@ -551,7 +423,94 @@ public class ImportService
             }
         }
 
-        // Validate schedule of each slot
+
+        // Lets split a single textBlock contains 2 or more schedules to many textBlocks
+        var datesVertex_x_List = weeklyDates.Select(d => d.Vertex_X);
+        var copyAdjustedTextBlocks = adjustedTextBlocks.ToList();
+        foreach (var block in copyAdjustedTextBlocks)
+        {
+            var containedDateVertex_x = new List<int>();
+            foreach(var vertex_x in datesVertex_x_List)
+            {
+                if((block.StartGeometricCoordinates.Vertex_X <= vertex_x && vertex_x <= block.EndGeometricCoordinates.Vertex_X) ||
+                    ((block.StartGeometricCoordinates.Vertex_X - 10) <= vertex_x && vertex_x <= (block.StartGeometricCoordinates.Vertex_X + 10)) ||
+                    ((block.EndGeometricCoordinates.Vertex_X - 10) <= vertex_x && vertex_x <= (block.EndGeometricCoordinates.Vertex_X + 10)))
+                {
+                    containedDateVertex_x.Add(vertex_x);
+                }
+            }
+            if(containedDateVertex_x.Count > 1)
+            {
+                var classCode = block.Text.Split(";;;");
+                if (classCode.Length == 0) continue;
+
+                int index = 0;
+                foreach(var vertex_x in containedDateVertex_x)
+                {
+                    if(index > classCode.Length - 1)
+                    {
+                        break;
+                    }
+                    if (classCode[index] == "-")
+                    {
+                        continue;
+                    }
+                    if (classCode[index].Contains(";;;"))
+                    {
+                        var removedIndex = classCode[index].IndexOf(";;;");
+                        classCode[index] = classCode[index].Remove(removedIndex, 3);
+                    }
+                    adjustedTextBlocks.Add(new TextBlock
+                    {
+                        Text = classCode[index],
+                        StartGeometricCoordinates = new GeometricCoordinates(vertex_x, block.StartGeometricCoordinates.Vertex_Y)
+                    });
+                    index++;
+                }
+                adjustedTextBlocks.Remove(block);
+            }
+        }
+
+
+        // Remove seperator word ";;;"
+        foreach (var block in adjustedTextBlocks)
+        {
+            if (block.Text.Contains(";;;"))
+            {
+                var removedIndex = block.Text.IndexOf(";;;");
+                block.Text = block.Text.Remove(removedIndex, 3);
+            }
+        }
+
+
+        // Remove empty text block
+        var copyTextBlocks = adjustedTextBlocks.ToList();
+        foreach (var block in copyTextBlocks)
+        {
+            if (block.Text == string.Empty || block.Text == "")
+            {
+                adjustedTextBlocks.Remove(block);
+            }
+        }
+
+
+        // Sort schedules into each slot
+        foreach (var block in adjustedTextBlocks)
+        {
+            var vertex_y = block.StartGeometricCoordinates.Vertex_Y;
+            var slot = slots.Where(s => s.CheckVertex_Y(vertex_y, 10)).FirstOrDefault();
+            if (slot is not null)
+            {
+                slot.ClassSlots.Add(new Import_Class
+                {
+                    ClassCode = block.Text,
+                    Vertex_X = block.StartGeometricCoordinates.Vertex_X
+                });
+            }
+        }
+
+
+        // Validate schedule (class code) information of each slot
         var existedClassCode = await _classService.GetAllClassCodes(semesterId, lecturerId);
         var validateSchedulesTasks = new List<Task<Import_Slot>>();
         foreach (var slot in slots)
@@ -563,6 +522,7 @@ public class ImportService
         {
             slots = validateSchedulesResult.ToList();
         }
+
 
         // Sort
         weeklyDates = weeklyDates.OrderBy(s => s.Date).ToList();
@@ -581,14 +541,22 @@ public class ImportService
             var adjustedClassSlots = new Import_Class?[totalDates];
             for (int i = 0; i < totalDates - 1; i++)
             {
-                var acceptedClassSlot = slot.ClassSlots.Where(c => c != null && c.CheckVertex_X(weeklyDatesPosition.ElementAt(i), 10)).FirstOrDefault();
+                var acceptedClassSlot = slot.ClassSlots.Where(c => c != null && c.CheckVertex_X(weeklyDatesPosition.ElementAt(i), 30)).FirstOrDefault();
                 adjustedClassSlots[i] = acceptedClassSlot;
             }
             slot.AdjustedClassSlots = adjustedClassSlots.ToList();
             slot.ClassSlots = Enumerable.Empty<Import_Class>().ToList();
         });
 
-        
+
+        return new Import_Result
+        {
+            Year = year ?? 0,
+            DatesCount = weeklyDates.Count,
+            SlotsCount = slots.Count,
+            Dates = weeklyDates,
+            Slots = slots
+        };
     }
 
     private string DeleteAttendedWord(string text)
@@ -652,6 +620,10 @@ public class ImportService
 
             Parallel.ForEach(slot.ClassSlots, parallelOptions, (classSlot, state) =>
             {
+                if(slot.SlotNumber == 4)
+                {
+                    Console.WriteLine("Slot 4:" + classSlot.ClassCode.ToUpper());
+                }
                 if (existedClassCodes.Any(c => c == classSlot.ClassCode.ToUpper()))
                 {
                     classes.Add(classSlot);
@@ -715,6 +687,7 @@ public class ImportService
 
 
 
+
     private List<TextBlock> SortTextBlocks(List<TextBlock> textBlocks)
     {
         return textBlocks.OrderBy(b => b.StartGeometricCoordinates.Vertex_Y)
@@ -734,6 +707,8 @@ public class ImportService
         return regex.IsMatch(input);
     }
 }
+
+
 
 public class Import_Slot
 {
@@ -783,6 +758,7 @@ public class Import_Result
     public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();
     public IEnumerable<Import_Slot> Slots { get; set; } = new List<Import_Slot>();
 }
+
 
 
 public class TextBlock
