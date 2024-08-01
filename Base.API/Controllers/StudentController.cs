@@ -278,6 +278,36 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpGet("get-students-by-classId-v2")]
+        public async Task<IActionResult> GetAllStudentsv2([FromQuery] int? classID, [FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] int quantity, [FromQuery] int? sessionId, [FromQuery] Guid? userId, [FromQuery] bool isModule = false)
+        {
+            if (ModelState.IsValid)
+            {
+                var students = await _studentService.GetStudentsByClassIdv2(startPage, endPage, quantity, userId, classID);
+                if (isModule)
+                {
+                    // Update progress
+                    if (sessionId is not null)
+                    {
+                        var completedWorkAmount = students.Count();
+                        if (completedWorkAmount > 0)
+                        {
+                            _ = UpdateAttendancePreparationProgress(completedWorkAmount, sessionId ?? 0);
+                        }
+                    }
+                    return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
+                }
+                return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
+            }
+
+            return BadRequest(new
+            {
+                Title = "Get Students information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteStudent(Guid id)
         {

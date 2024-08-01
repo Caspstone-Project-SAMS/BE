@@ -9,7 +9,9 @@ using Base.Service.ViewModel.ResponseVM;
 using Google.Api.Gax;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -294,6 +296,163 @@ namespace Base.Service.Service
             result.IsSuccess = true;
             result.Result = schedules;
             result.Title = "Get successfully";
+
+            return result;
+        }
+
+        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID)
+        {
+            var result = new ImportServiceResposneVM<Schedule>()
+            {
+                IsSuccess = false
+            };
+            var errors = new List<string>();
+
+            var existedSemester = _unitOfWork.SemesterRepository.Get(s => !s.IsDeleted && s.SemesterID == semesterId).FirstOrDefault();
+            if(existedSemester is null)
+            {
+                errors.Add("Semester not found");
+            }
+
+            if(errors.Count > 0)
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                return result;
+            }
+
+            List<Slot> slots = await _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted)
+                .ToListAsync();
+            List<Class> classes = await _unitOfWork.ClassRepository
+                .Get(c => !c.IsDeleted && c.SemesterID == semesterId && c.LecturerID == userID)
+                .ToListAsync();
+
+            ConcurrentBag<Schedule> importedSchedules = new ConcurrentBag<Schedule>();
+            ConcurrentBag<ImportErrorEntity<Schedule>> errorSchedules = new ConcurrentBag<ImportErrorEntity<Schedule>>();
+
+            // Lets filter schedules have correct class code and slot information
+            // Verify the scheduling date is valid or not
+            var startDate = existedSemester?.StartDate ?? new DateOnly();
+            var endDate = existedSemester?.EndDate ?? new DateOnly();
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.4 * 2))
+            };
+            Parallel.ForEach(schedules, parallelOptions, (schedule, state) =>
+            {
+                var errors = new List<string>();
+                var matchedSlot = slots.FirstOrDefault(s => s.SlotNumber == schedule.Slot?.SlotNumber);
+                var matchedClass = classes.FirstOrDefault(c => c.ClassCode.ToUpper() == schedule.Class?.ClassCode.ToUpper());
+
+                if(matchedSlot is null)
+                {
+                    errors.Add("Slot " + schedule.Slot?.SlotNumber + " not found");
+                }
+                if(matchedClass is null)
+                {
+                    errors.Add("Class code " + schedule.Class?.ClassCode + " not found");
+                }
+                if(schedule.Date < startDate || schedule.Date > endDate)
+                {
+                    errors.Add("The scheduling date is not associated with semester " + existedSemester?.SemesterCode);
+                }
+
+                if(errors.Count > 0)
+                {
+                    errorSchedules.Add(new ImportErrorEntity<Schedule>
+                    {
+                        ErrorEntity = schedule,
+                        Errors = errors
+                    });
+                }
+                else
+                {
+                    schedule.SlotID = matchedSlot?.SlotID ?? 0;
+                    schedule.ClassID = matchedClass?.ClassID ?? 0;
+                    importedSchedules.Add(schedule);
+                }
+            });
+
+
+            // Lets check whether if the schedule is already added
+            var verifiedSchedules = importedSchedules.ToList();
+            var copySchedules = verifiedSchedules.ToList();
+            foreach(var schedule in copySchedules)
+            {
+                var existedSchedule = await _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && 
+                        s.Date == schedule.Date && 
+                        s.ClassID == schedule.ClassID && 
+                        s.SlotID == schedule.SlotID)
+                    .FirstOrDefaultAsync();
+                if(existedSchedule is not null)
+                {
+                    verifiedSchedules.Remove(schedule);
+                }
+            }
+
+
+            // Lets check whether if the schedule overlap the existed schedule
+            DbContextFactory dbFactory = new DbContextFactory();
+            importedSchedules = new ConcurrentBag<Schedule>();
+            Parallel.ForEach(verifiedSchedules, parallelOptions, (schedule, state) =>
+            {
+                using (var context = dbFactory.CreateDbContext(Array.Empty<string>()))
+                {
+                    var overlapSchedule = context
+                        .Set<Schedule>()
+                        .Where(s => !s.IsDeleted &&
+                            s.Date == schedule.Date &&
+                            s.SlotID == schedule.SlotID &&
+                            s.ClassID != schedule.ClassID)
+                        .Include(s => s.Class)
+                        .FirstOrDefault();
+                    if(overlapSchedule is not null)
+                    {
+                        errorSchedules.Add(new ImportErrorEntity<Schedule>
+                        {
+                            ErrorEntity = schedule,
+                            Errors = new List<string>() 
+                            { 
+                                "There is already a class " + overlapSchedule.Class?.ClassCode + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + " - " + schedule.Slot?.Endtime.ToString("hh:mm:ss")
+                            }
+                        });
+                    }
+                    else
+                    {
+                        importedSchedules.Add(schedule);
+                    }
+                }
+            });
+
+
+            // Lets create schedules
+            var createSchedules = importedSchedules.ToList();
+            try
+            {
+                await _unitOfWork.ScheduleRepository.AddRangeAsync(createSchedules);
+                var saveResult = await _unitOfWork.SaveChangesAsync();
+                if (!saveResult)
+                {
+                    result.IsSuccess = false;
+                    result.Title = "Import schedule failed";
+                    result.Errors = new List<string> { "Error when saving changes" };
+                    return result;
+                }
+            }
+            catch(Exception ex)
+            {
+                result.IsSuccess = false;
+                result.Title = "Import schedule failed";
+                result.Errors = new List<string> { "Error when saving changes", ex.Message };
+                return result;
+            }
+
+            result.IsSuccess = true;
+            result.Title = "Import schedules successfully";
+            result.ImportedEntities = importedSchedules.ToImmutableArray();
+            result.ErrorEntities = errorSchedules.ToImmutableArray();
 
             return result;
         }

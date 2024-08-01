@@ -8,6 +8,12 @@ using Google.Cloud.Vision.V1;
 using System.ComponentModel.DataAnnotations;
 using DocumentFormat.OpenXml.Bibliography;
 using DocumentFormat.OpenXml.Vml.Spreadsheet;
+using Base.API.Service;
+using Base.Repository.Entity;
+using Google.Type;
+using DateTime = System.DateTime;
+using System.Collections.Concurrent;
+using Base.Service.Common;
 
 namespace Base.API.Controllers
 {
@@ -17,11 +23,13 @@ namespace Base.API.Controllers
     {
         private readonly IScheduleService _scheduleService;
         private readonly IMapper _mapper;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ScheduleController(IScheduleService scheduleService, IMapper mapper)
+        public ScheduleController(IScheduleService scheduleService, IMapper mapper, ICurrentUserService currentUserService)
         {
             _scheduleService = scheduleService;
             _mapper = mapper;
+            _currentUserService = currentUserService;
         }
 
 
@@ -132,6 +140,72 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Get schedules failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+
+        [HttpPost("import-schedule")]
+        public async Task<IActionResult> ImportSchedules([FromBody] ScheduleImport resource)
+        {
+            if (ModelState.IsValid)
+            {
+                ConcurrentBag<Schedule> schedules = new ConcurrentBag<Schedule>();
+                var importedDates = resource.Dates.Select(d => new DateOnly(resource.Year, d.Date.Month, d.Date.Day)).ToList();
+                if(importedDates is null || importedDates.Count == 0)
+                {
+                    return BadRequest(new
+                    {
+                        Title = "Import schedules failed",
+                        Errors = new string[1] { "Invalid input" }
+                    });
+                }
+
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.3 * 2))
+                };
+                Parallel.ForEach(resource.Slots, parallelOptions, (slot, state) =>
+                {
+                    Slot slotEntity = new Slot
+                    {
+                        SlotNumber = slot.SlotNumber
+                    };
+                    int indexCount = 0;
+                    foreach (var importedClass in slot.AdjustedClassSlots)
+                    {
+                        if(importedClass is not null)
+                        {
+                            var schedule = new Schedule
+                            {
+                                Date = importedDates.ElementAt(indexCount),
+                                DateOfWeek = (int)importedDates.ElementAt(indexCount).DayOfWeek,
+                                Class = new Class
+                                {
+                                    ClassCode = importedClass?.ClassCode ?? string.Empty
+                                },
+                                Slot = slotEntity,
+                                RoomID = null,
+                                CreatedBy = _currentUserService.UserId,
+                                CreatedAt = ServerDateTime.GetVnDateTime(),
+                            };
+                            schedules.Add(schedule);
+                        }
+                        indexCount++;
+                    }
+                });
+
+                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID);
+                if (result.IsSuccess)
+                {
+                    return Ok(result);
+                }
+
+                return BadRequest(result);
+            }
+            return BadRequest(new
+            {
+                Title = "Import schedules failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }
@@ -266,5 +340,21 @@ namespace Base.API.Controllers
 
             return Ok(texts);
         }
+    }
+
+    public class ScheduleImport
+    {
+        [Required]
+        public Guid UserID { get; set; }
+        [Required]
+        public int SemesterID { get; set; }
+        [Required]
+        public int Year { get; set; }
+        public int DatesCount { get; set; }
+        public int SlotsCount { get; set; }
+        [Required]
+        public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();
+        [Required]
+        public IEnumerable<Import_Slot> Slots { get; set; } = new List<Import_Slot>();
     }
 }

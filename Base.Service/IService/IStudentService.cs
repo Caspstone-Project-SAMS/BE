@@ -18,5 +18,6 @@ namespace Base.IService.IService
         Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities);
         Task<ServiceResponseVM<List<StudentClassVM>>> AddStudentToClass(List<StudentClassVM> newEntities, int semesterId);
         Task<User?> GetById(Guid id);
+        Task<IEnumerable<Student>> GetStudentsByClassIdv2(int startPage, int endPage, int quantity, Guid? userId, int? classID);
     }
 }
