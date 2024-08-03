@@ -30,10 +30,14 @@ public class WebsocketEventHandler
 
     public event EventHandler<WebsocketEventArgs>? ConnectModuleEvent;
     public event EventHandler<WebsocketEventArgs>? RegisterFingerprintEvent;
+    public event EventHandler<WebsocketEventArgs>? UpdateFingerprintEvent;
     public event EventHandler<WebsocketEventArgs>? CancelSessionEvent;
     public event EventHandler<WebsocketEventArgs>? PrepareAttendanceSession;
     public event EventHandler<WebsocketEventArgs>? StopAttendance;
     public event EventHandler<WebsocketEventArgs>? PrepareSchedules;
+    public event EventHandler<WebsocketEventArgs>? CheckCurrentSession;
+    public event EventHandler<WebsocketEventArgs>? StartAttendance;
+    public event EventHandler<WebsocketEventArgs>? CheckUploadedScheduleEvent;
 
     public void OnConnectModuleEvent(string receivedEvent)
     {
@@ -46,6 +50,14 @@ public class WebsocketEventHandler
     public void OnRegisterFingerprintEvent(string receivedEvent)
     {
         RegisterFingerprintEvent?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnUpdateFingerprintEvent(string receivedEvent)
+    {
+        UpdateFingerprintEvent?.Invoke(this, new WebsocketEventArgs
         {
             Event = receivedEvent
         });
@@ -78,6 +90,30 @@ public class WebsocketEventHandler
     public void OnPrepareSchedules(string receivedEvent)
     {
         PrepareSchedules?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnCheckCurrentSession(string receivedEvent)
+    {
+        CheckCurrentSession?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnStartAttendanceEvent(string receivedEvent)
+    {
+        StartAttendance?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnCheckUploadedScheduleEvent(string receivedEvent)
+    {
+        CheckUploadedScheduleEvent?.Invoke(this, new WebsocketEventArgs
         {
             Event = receivedEvent
         });

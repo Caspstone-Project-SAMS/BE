@@ -32,4 +32,6 @@ public class PreparationTaskVM
     public int? PreparedScheduleId { get; set; }
     public IEnumerable<int> PreparedScheduleIds { get; set; } = Enumerable.Empty<int>();
     public DateOnly? PreparedDate { get; set; }
+    public int UploadedFingers { get; set; }
+    public int TotalFingers { get; set; }
 }

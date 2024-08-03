@@ -64,7 +64,9 @@ internal class ModuleActivityService : IModuleActivityService
                 Progress = newEntity.PreparationTaskVM.Progress,
                 PreparedScheduleId = newEntity.PreparationTaskVM.PreparedScheduleId,
                 PreparedSchedules = String.Join(";", newEntity.PreparationTaskVM.PreparedScheduleIds),
-                PreparedDate = newEntity.PreparationTaskVM.PreparedDate
+                PreparedDate = newEntity.PreparationTaskVM.PreparedDate,
+                TotalFingers = newEntity.PreparationTaskVM.TotalFingers,
+                UploadedFingers = newEntity.PreparationTaskVM.UploadedFingers
             };
             newActivityHistory.PreparationTask = newPreparationTask;
             await _unitOfWork.PreparationTaskRepository.AddAsync(newPreparationTask);
@@ -173,10 +175,16 @@ internal class ModuleActivityService : IModuleActivityService
             expressions.Add(Expression.Equal(Expression.Property(pe, nameof(ModuleActivity.ModuleID)), Expression.Constant(moduleId)));
         }
 
+        var includes = new Expression<Func<ModuleActivity, object?>>[]
+        {
+            m => m.Module,
+            m => m.PreparationTask
+        };
+
         Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
         Expression<Func<ModuleActivity, bool>> where = Expression.Lambda<Func<ModuleActivity, bool>>(combined, pe);
         var moduleActivities = await _unitOfWork.ModuleActivityRepository
-                .Get(where)
+                .Get(where, includes)
                 .AsNoTracking()
                 .Skip((startPage - 1) * quantityResult)
                 .Take((endPage - startPage + 1) * quantityResult)

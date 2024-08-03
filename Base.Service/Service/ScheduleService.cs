@@ -308,6 +308,11 @@ namespace Base.Service.Service
             };
             var errors = new List<string>();
 
+            if(schedules.Count == 0)
+            {
+                errors.Add("No schedules found");
+            }
+
             var existedSemester = _unitOfWork.SemesterRepository.Get(s => !s.IsDeleted && s.SemesterID == semesterId).FirstOrDefault();
             if(existedSemester is null)
             {
@@ -318,6 +323,7 @@ namespace Base.Service.Service
             {
                 result.Title = "Import schedules failed";
                 result.IsSuccess = false;
+                result.Errors = errors;
                 return result;
             }
 
@@ -373,6 +379,14 @@ namespace Base.Service.Service
                     importedSchedules.Add(schedule);
                 }
             });
+            if(importedSchedules.Count == 0)
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                result.Errors = new List<string> { "Invalid schedules" };
+                result.ErrorEntities = errorSchedules.ToList();
+                return result;
+            }
 
 
             // Lets check whether if the schedule is already added
@@ -388,8 +402,21 @@ namespace Base.Service.Service
                     .FirstOrDefaultAsync();
                 if(existedSchedule is not null)
                 {
+                    errorSchedules.Add(new ImportErrorEntity<Schedule>
+                    {
+                        ErrorEntity = schedule,
+                        Errors = new List<string> { "Schedule is already added" }
+                    });
                     verifiedSchedules.Remove(schedule);
                 }
+            }
+            if (verifiedSchedules.Count == 0)
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                result.Errors = new List<string> { "Invalid schedules" };
+                result.ErrorEntities = errorSchedules.ToList();
+                return result;
             }
 
 
@@ -421,10 +448,21 @@ namespace Base.Service.Service
                     }
                     else
                     {
+                        schedule.Class = null;
+                        schedule.Slot = null;
+                        schedule.Room = null;
                         importedSchedules.Add(schedule);
                     }
                 }
             });
+            if (importedSchedules.Count == 0)
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                result.Errors = new List<string> { "Invalid schedules" };
+                result.ErrorEntities = errorSchedules.ToList();
+                return result;
+            }
 
 
             // Lets create schedules
@@ -451,8 +489,8 @@ namespace Base.Service.Service
 
             result.IsSuccess = true;
             result.Title = "Import schedules successfully";
-            result.ImportedEntities = importedSchedules.ToImmutableArray();
-            result.ErrorEntities = errorSchedules.ToImmutableArray();
+            result.ImportedEntities = createSchedules;
+            result.ErrorEntities = errorSchedules.ToList();
 
             return result;
         }

@@ -260,18 +260,20 @@ public class HangfireService
 
         // Count total work amount
         int totalWorkCount = 0;
+        int totalFingers = 0;
         var classeIds = schedules.Select(s => s.ClassID).ToHashSet();
         foreach (var item in classeIds)
         {
-            var totalStudents = await _studentService.GetStudentsByClassID(item, 1, 100, 50, null);
+            var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, item);
             if (totalStudents is not null)
             {
                 totalWorkCount = totalWorkCount + totalStudents.Count();
+                totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
             }
         }
 
         var sessionResult = _sessionManager.CreatePrepareSchedulesSession(sessionId,
-                        preparedDate, schedules.Select(s => s.ScheduleID), totalWorkCount);
+                        preparedDate, schedules.Select(s => s.ScheduleID), totalWorkCount, totalFingers);
 
         if (!sessionResult)
         {

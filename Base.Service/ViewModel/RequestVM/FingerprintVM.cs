@@ -18,3 +18,16 @@ public class FingerprintVM
     [Required]
     public int FingerNumber { get; set; }
 }
+
+
+public class FingerprintUpdateVM
+{
+    [Required]
+    public string FingerprintTemplate { get; set; } = string.Empty;
+    [Required]
+    public Guid StudentID { get; set; }
+    [Required]
+    public int SessionID { get; set; }
+    [Required]
+    public int FingerTemplateId { get; set; }
+}

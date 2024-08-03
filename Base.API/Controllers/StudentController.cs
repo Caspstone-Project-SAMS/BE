@@ -375,7 +375,6 @@ namespace Base.API.Controllers
         }
 
 
-
         private Task UpdateAttendancePreparationProgress(int completedWorkAmount, int sessionId)
         {
             return Task.Run(() =>

@@ -145,7 +145,7 @@ namespace Base.API.Controllers
         }
 
 
-        [HttpPost("import-schedule")]
+        [HttpPost("import-schedules")]
         public async Task<IActionResult> ImportSchedules([FromBody] ScheduleImport resource)
         {
             if (ModelState.IsValid)
@@ -198,147 +198,16 @@ namespace Base.API.Controllers
                 var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID);
                 if (result.IsSuccess)
                 {
-                    return Ok(result);
+                    return Ok(_mapper.Map<ImportScheduleServiceResponseVM>(result));
                 }
 
-                return BadRequest(result);
+                return BadRequest(_mapper.Map<ImportScheduleServiceResponseVM>(result));
             }
             return BadRequest(new
             {
                 Title = "Import schedules failed",
                 Errors = new string[1] { "Invalid input" }
             });
-        }
-
-
-        [HttpPost("import-v1/block/with-space")]
-        public async Task<IActionResult> ImportSchedulesV1([FromForm] ImportSchedule resource)
-        {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
-
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            foreach (var page in response.Pages)
-            {
-                foreach (var block in page.Blocks)
-                {
-                    string blockText = "";
-                    foreach (var paragraph in block.Paragraphs)
-                    {
-                        foreach (var word in paragraph.Words)
-                        {
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                            blockText += " "; // Add space after each word
-                        }
-                    }
-
-                    texts.Add(blockText);
-
-
-                    // Get the bounding box for the block
-                    var boundingBox = block.BoundingBox;
-                    Console.WriteLine($"Detected block text: {blockText.Trim()}");
-                    Console.WriteLine("Bounding Box Vertices:");
-                    foreach (var vertex in boundingBox.Vertices)
-                    {
-                        Console.WriteLine($"({vertex.X}, {vertex.Y})");
-                    }
-                }
-            }
-
-            return Ok(texts);
-        }
-
-
-        [HttpPost("import-v2/block/no-space")]
-        public async Task<IActionResult> ImportSchedulesV2([FromForm] ImportSchedule resource)
-        {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
-
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            foreach (var page in response.Pages)
-            {
-                foreach (var block in page.Blocks)
-                {
-                    string blockText = "";
-                    foreach (var paragraph in block.Paragraphs)
-                    {
-                        foreach (var word in paragraph.Words)
-                        {
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                        }
-                    }
-
-                    texts.Add(blockText);
-
-                    // Get the bounding box for the block
-                    var boundingBox = block.BoundingBox;
-                    Console.WriteLine($"Detected block text: {blockText.Trim()}");
-                    Console.WriteLine("Bounding Box Vertices:");
-                    foreach (var vertex in boundingBox.Vertices)
-                    {
-                        Console.WriteLine($"({vertex.X}, {vertex.Y})");
-                    }
-                }
-            }
-
-            return Ok(texts);
-        }
-
-
-        [HttpPost("import-v3/word")]
-        public async Task<IActionResult> ImportSchedulesV3([FromForm] ImportSchedule resource)
-        {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
-
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            foreach (var page in response.Pages)
-            {
-                foreach (var block in page.Blocks)
-                {
-                    foreach (var paragraph in block.Paragraphs)
-                    {
-                        foreach (var word in paragraph.Words)
-                        {
-                            string blockText = "";
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                            texts.Add(blockText);
-                        }
-                    }
-
-                }
-            }
-
-            return Ok(texts);
         }
     }
 
