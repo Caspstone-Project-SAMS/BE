@@ -19,5 +19,21 @@ namespace Base.Service.IService
         Task<ServiceResponseVM<IEnumerable<Attendance>>> GetAttendanceList(int startPage, int endPage, int quantity, int? attendanceStatus, int? scheduleID, Guid? studentId, int? classId);
 
         Task<Attendance?> GetAttendanceById(int attendanceID);
+
+        Task<IEnumerable<AttendanceReportResponse>> GetAttendanceReport(int classId);
+    }
+
+    public class AttendanceReportResponse
+    {
+        public string? StudentCode { get; set; }
+        public string? StudentName { get; set; }
+        public int AbsencePercentage { get; set; }
+        public List<AttendanceRecord>? AttendanceRecords { get; set; }
+    }
+
+    public class AttendanceRecord
+    {
+        public DateOnly Date { get; set; }
+        public int Status { get; set; }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Repository.IRepository;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,6 @@ namespace Base.Repository.Repository
     {
         public AttendanceRepository(ApplicationDbContext applicationDbContext) : base(applicationDbContext)
         {
-        }
-    }
+        }      
+    } 
 }

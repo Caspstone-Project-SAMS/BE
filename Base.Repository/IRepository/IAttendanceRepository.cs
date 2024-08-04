@@ -1,5 +1,6 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Repository.Repository;
 using System;
 using System.Collections.Generic;
 using System.Linq;
