@@ -127,7 +127,7 @@ internal class NotificationTypeService : INotificationTypeService
 
         if(typeDescription is not null)
         {
-            expressions.Add(Expression.Call(containsMethod, Expression.Property(pe, nameof(NotificationType.TypeDescription)), Expression.Constant(typeDescription)));
+            expressions.Add(Expression.Call(Expression.Property(pe, nameof(NotificationType.TypeDescription)), containsMethod, Expression.Constant(typeDescription)));
         }
 
         Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));

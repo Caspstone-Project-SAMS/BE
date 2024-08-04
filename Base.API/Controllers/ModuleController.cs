@@ -544,6 +544,15 @@ public class ModuleController : ControllerBase
                         });
                     }
 
+                    if(activateModule.UpdateMode.FingerprintTemplateId1 is null && activateModule.UpdateMode.FingerprintTemplateId2 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "No fingerprints required to update" }
+                        });
+                    }
+
                     var existedStudentMode8 = await _studentService.GetById(activateModule.UpdateMode.StudentID);
                     if (existedStudentMode8 is null)
                     {
@@ -563,21 +572,27 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Student does not have any fingers to update" }
                         });
                     }
-                    if(!existedFingerIdsMode8.Any(i => i == activateModule.UpdateMode.FingerprintTemplateId1))
+                    if(activateModule.UpdateMode.FingerprintTemplateId1 is not null)
                     {
-                        return BadRequest(new
+                        if (!existedFingerIdsMode8.Any(i => i == activateModule.UpdateMode.FingerprintTemplateId1))
                         {
-                            Title = "Activate module failed",
-                            Errors = new string[1] { "Student's first finger not found" }
-                        });
+                            return BadRequest(new
+                            {
+                                Title = "Activate module failed",
+                                Errors = new string[1] { "Student's first finger not found" }
+                            });
+                        }
                     }
-                    if (!existedFingerIdsMode8.Any(i => i == activateModule.UpdateMode.FingerprintTemplateId2))
+                    if(activateModule.UpdateMode.FingerprintTemplateId2 is not null)
                     {
-                        return BadRequest(new
+                        if (!existedFingerIdsMode8.Any(i => i == activateModule.UpdateMode.FingerprintTemplateId2))
                         {
-                            Title = "Activate module failed",
-                            Errors = new string[1] { "Student's second finger not found" }
-                        });
+                            return BadRequest(new
+                            {
+                                Title = "Activate module failed",
+                                Errors = new string[1] { "Student's second finger not found" }
+                            });
+                        }
                     }
 
                     var sessionResultMode8 = _sessionManager.CreateFingerUpdateSession(activateModule.SessionId ?? 0,

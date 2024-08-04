@@ -646,7 +646,7 @@ public class PrepareAttendance
 {
     public IEnumerable<int> ScheduleIds { get; set; } = Enumerable.Empty<int>();
     public DateOnly? PreparedDate { get; set; }
-    public int ScheduleId { get; set; }
+    public int? ScheduleId { get; set; }
     public float Progress { get; set; }
     public float TotalWorkAmount { get; set; }
     public float CompletedWorkAmount { get; set; }

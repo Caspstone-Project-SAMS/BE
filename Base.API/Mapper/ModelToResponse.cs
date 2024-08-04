@@ -170,6 +170,9 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Module, opt => opt.MapFrom(src => src.Module));
 
             // For import service
+            CreateMap<ImportErrorEntity<Schedule>, ImportErrorEntity<Schedule_ImportScheduleServiceResponseVM>>()
+                .ForMember(dest => dest.ErrorEntity, opt => opt.MapFrom(src => src.ErrorEntity))
+                .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.Errors));
             CreateMap<Schedule, Schedule_ImportScheduleServiceResponseVM>()
                 .ForMember(dest => dest.SlotNumber, opt => opt.MapFrom(src => src.Slot != null ? src.Slot.SlotNumber : 0))
                 .ForMember(dest => dest.ClassCode, opt => opt.MapFrom(src => src.Class != null ? src.Class.ClassCode : "***"));
