@@ -29,11 +29,12 @@ namespace Base.API.Controllers
             [FromQuery] Guid? userId,
             [FromQuery] DateTime? activityDate,
             [FromQuery] bool? IsSuccess,
-            [FromQuery] int? moduleId)
+            [FromQuery] int? moduleId,
+            [FromQuery] int? scheduleId)
         {
             if (ModelState.IsValid)
             {
-                var result = await _moduleActivityService.GetAll(startPage, endPage, quantity, title, description, userId, activityDate, IsSuccess, moduleId);
+                var result = await _moduleActivityService.GetAll(startPage, endPage, quantity, title, description, userId, activityDate, IsSuccess, moduleId, scheduleId);
                 if (result.IsSuccess)
                 {
                     return Ok(new

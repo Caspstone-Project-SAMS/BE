@@ -51,4 +51,6 @@ public class PreparationTask_ModuleResponseVM
     public float? Progress { get; set; }
     public int? PreparedScheduleId { get; set; }
     public IEnumerable<int> PreparedSchedules { get; set; } = new List<int>();
+    public int TotalFingers { get; set; }
+    public int UploadedFingers { get; set; }
 }

@@ -63,8 +63,10 @@ internal class ModuleActivityService : IModuleActivityService
             {
                 Progress = newEntity.PreparationTaskVM.Progress,
                 PreparedScheduleId = newEntity.PreparationTaskVM.PreparedScheduleId,
-                PreparedSchedules = String.Join(";", newEntity.PreparationTaskVM.PreparedScheduleIds),
-                PreparedDate = newEntity.PreparationTaskVM.PreparedDate
+                PreparedSchedules = newEntity.PreparationTaskVM.PreparedScheduleIds.Count() == 0 ? null : ";" + String.Join(";", newEntity.PreparationTaskVM.PreparedScheduleIds) + ";",
+                PreparedDate = newEntity.PreparationTaskVM.PreparedDate,
+                TotalFingers = newEntity.PreparationTaskVM.TotalFingers,
+                UploadedFingers = newEntity.PreparationTaskVM.UploadedFingers
             };
             newActivityHistory.PreparationTask = newPreparationTask;
             await _unitOfWork.PreparationTaskRepository.AddAsync(newPreparationTask);
@@ -114,7 +116,17 @@ internal class ModuleActivityService : IModuleActivityService
         }
     }
 
-    public async Task<ServiceResponseVM<IEnumerable<ModuleActivity>>> GetAll(int startPage, int endPage, int quantity, string? title, string? description, Guid? userId, DateTime? activityDate, bool? IsSuccess, int? moduleId)
+    public async Task<ServiceResponseVM<IEnumerable<ModuleActivity>>> GetAll(
+        int startPage, 
+        int endPage, 
+        int quantity, 
+        string? title, 
+        string? description, 
+        Guid? userId, 
+        DateTime? activityDate, 
+        bool? IsSuccess, 
+        int? moduleId,
+        int? scheduleId)
     {
         var result = new ServiceResponseVM<IEnumerable<ModuleActivity>>()
         {
@@ -150,12 +162,12 @@ internal class ModuleActivityService : IModuleActivityService
 
         if(title is not null)
         {
-            expressions.Add(Expression.Call(containsMethod, Expression.Property(pe, nameof(ModuleActivity.Title)), Expression.Constant(title)));
+            expressions.Add(Expression.Call(Expression.Property(pe, nameof(ModuleActivity.Title)), containsMethod, Expression.Constant(title)));
         }
 
         if(description is not null)
         {
-            expressions.Add(Expression.Call(containsMethod, Expression.Property(pe, nameof(ModuleActivity.Description)), Expression.Constant(description)));
+            expressions.Add(Expression.Call(Expression.Property(pe, nameof(ModuleActivity.Description)), containsMethod, Expression.Constant(description)));
         }
 
         if(userId is not null)
@@ -173,10 +185,36 @@ internal class ModuleActivityService : IModuleActivityService
             expressions.Add(Expression.Equal(Expression.Property(pe, nameof(ModuleActivity.ModuleID)), Expression.Constant(moduleId)));
         }
 
+        if(scheduleId is not null)
+        {
+            var preparationTaskProperty = Expression.Property(pe, "PreparationTask");
+            var preparedScheduleIdProperty = Expression.Property(preparationTaskProperty, "PreparedScheduleId");
+
+            // Check for null and then compare
+            var hasValueExpression = Expression.Property(preparedScheduleIdProperty, "HasValue");
+            var valueExpression = Expression.Property(preparedScheduleIdProperty, "Value");
+
+            var firstExpression = Expression.AndAlso(
+                hasValueExpression,
+                Expression.Equal(valueExpression, Expression.Constant(scheduleId))
+            );
+
+            string searchString = ";" + scheduleId.ToString() + ";";
+            var preparedSchedulesProperty = Expression.Property(preparationTaskProperty, "PreparedSchedules");
+            var secondExpression = Expression.Call(preparedSchedulesProperty, containsMethod, Expression.Constant(searchString));
+            expressions.Add(Expression.Or(firstExpression, secondExpression));
+        }
+
+        var includes = new Expression<Func<ModuleActivity, object?>>[]
+        {
+            m => m.Module,
+            m => m.PreparationTask
+        };
+
         Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
         Expression<Func<ModuleActivity, bool>> where = Expression.Lambda<Func<ModuleActivity, bool>>(combined, pe);
         var moduleActivities = await _unitOfWork.ModuleActivityRepository
-                .Get(where)
+                .Get(where, includes)
                 .AsNoTracking()
                 .Skip((startPage - 1) * quantityResult)
                 .Take((endPage - startPage + 1) * quantityResult)

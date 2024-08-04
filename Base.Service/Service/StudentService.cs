@@ -412,5 +412,35 @@ namespace Base.Service.Service
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<IEnumerable<Student>> GetStudentsByClassIdv2(int startPage, int endPage, int quantity, Guid? userId, int? classID)
+        {
+            int quantityResult = 0;
+            _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
+            if (quantityResult == 0)
+            {
+                quantityResult = 1;
+            }
+
+            var result = await _unitOfWork.StudentRepository
+                .Get(s => !s.IsDeleted)
+                .Include(s => s.FingerprintTemplates)
+                .Include(s => s.User!.StudentClasses)
+                .ToListAsync();
+
+            if(userId is not null)
+            {
+                result = result.Where(s => s.User != null && s.User.Id == userId).ToList();
+            }
+
+            if(classID is not null)
+            {
+                result = result.Where(s => s.User != null && s.User.StudentClasses.Any(c => c.ClassID == classID)).ToList();
+            }
+
+            return result
+                .Skip((startPage - 1) * quantityResult)
+                .Take((endPage - startPage + 1) * quantityResult);
+        }
     }
 }

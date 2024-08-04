@@ -1,5 +1,6 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.Validation;
 using Base.Service.ViewModel.ResponseVM;
@@ -56,7 +57,7 @@ internal class FingerprintService : IFingerprintService
         {
             Status = 1,
             FingerprintTemplateData = fingerprintTemplate,
-            CreatedAt = DateTime.Now,
+            CreatedAt = ServerDateTime.GetVnDateTime(),
         };
         fingers.Add(newFinger);
         existedStudent.FingerprintTemplates = fingers;
@@ -99,7 +100,7 @@ internal class FingerprintService : IFingerprintService
         }
     }
 
-    public async Task<ServiceResponseVM> RegisterFingerprintTemplate(Guid studentId, string fingerprintTemplate1, DateTime? fingerprint1Timestamp, string fingerprintTemplate2, DateTime? fingerprint2Timestamp)
+    public async Task<ServiceResponseVM> RegisterFingerprintTemplate(Guid studentId, string? fingerprintTemplate1, DateTime? fingerprint1Timestamp, string? fingerprintTemplate2, DateTime? fingerprint2Timestamp)
     {
         var includes = new Expression<Func<Student, object?>>[]
         {
@@ -128,23 +129,23 @@ internal class FingerprintService : IFingerprintService
         }
 
         var fingers = new List<FingerprintTemplate>();
-        if(fingerprintTemplate1 != string.Empty)
+        if(fingerprintTemplate1 != null && fingerprintTemplate1 != string.Empty)
         {
             var newFinger1 = new FingerprintTemplate
             {
                 Status = 1,
                 FingerprintTemplateData = fingerprintTemplate1,
-                CreatedAt = fingerprint1Timestamp ?? DateTime.Now,
+                CreatedAt = fingerprint1Timestamp ?? ServerDateTime.GetVnDateTime(),
             };
             fingers.Add(newFinger1);
         }
-        if(fingerprintTemplate2 != string.Empty)
+        if(fingerprintTemplate2 != null && fingerprintTemplate2 != string.Empty)
         {
             var newFinger2 = new FingerprintTemplate
             {
                 Status = 1,
                 FingerprintTemplateData = fingerprintTemplate2,
-                CreatedAt = fingerprint2Timestamp ?? DateTime.Now,
+                CreatedAt = fingerprint2Timestamp ?? ServerDateTime.GetVnDateTime(),
             };
             fingers.Add(newFinger2);
         }
@@ -191,7 +192,14 @@ internal class FingerprintService : IFingerprintService
         }
     }
 
-    public async Task<ServiceResponseVM> UpdateFingerprintTemplate(Guid studentId, string fingerprintTemplate1, DateTime? fingerprint1Timestamp, string fingerprintTemplate2, DateTime? fingerprint2Timestamp)
+    public async Task<ServiceResponseVM> UpdateFingerprintTemplate(
+        Guid studentId,
+        int? FingerprintTemplateId1,
+        string? fingerprintTemplate1, 
+        DateTime? fingerprint1Timestamp,
+        int? FingerprintTemplateId2,
+        string? fingerprintTemplate2, 
+        DateTime? fingerprint2Timestamp)
     {
         var includes = new Expression<Func<Student, object?>>[]
         {
@@ -207,36 +215,54 @@ internal class FingerprintService : IFingerprintService
 
         if (existedStudent is null)
         {
-            result.Title = "Register fingerprint failed";
+            result.Title = "Update fingerprint failed";
             result.Errors = new string[1] { "Student not found" };
             return result;
         }
 
-        var fingers = new List<FingerprintTemplate>();
-        if (fingerprintTemplate1 != string.Empty)
+        if (FingerprintTemplateId1 is null && FingerprintTemplateId2 is null)
         {
-            var newFinger1 = new FingerprintTemplate
-            {
-                Status = 1,
-                FingerprintTemplateData = fingerprintTemplate1,
-                CreatedAt = fingerprint1Timestamp ?? DateTime.Now,
-            };
-            fingers.Add(newFinger1);
-        }
-        if (fingerprintTemplate2 != string.Empty)
-        {
-            var newFinger2 = new FingerprintTemplate
-            {
-                Status = 1,
-                FingerprintTemplateData = fingerprintTemplate2,
-                CreatedAt = fingerprint2Timestamp ?? DateTime.Now,
-            };
-            fingers.Add(newFinger2);
+            result.Title = "Update fingerprint failed";
+            result.Errors = new string[1] { "No fingerprint updated" };
+            return result;
         }
 
-        if (fingers.Count > 0)
+        if (FingerprintTemplateId1 is not null)
         {
-            existedStudent.FingerprintTemplates = fingers;
+            var finger1 = existedStudent.FingerprintTemplates.FirstOrDefault(f => f.FingerprintTemplateID == FingerprintTemplateId1);
+            if (finger1 is null)
+            {
+                result.Title = "Update fingerprint failed";
+                result.Errors = new string[1] { "Fingerprint 1 not found" };
+                return result;
+            }
+            if(fingerprintTemplate1 is null)
+            {
+                result.Title = "Update fingerprint failed";
+                result.Errors = new string[1] { "Updated fingerprint 1 is invalid" };
+                return result;
+            }
+            finger1.FingerprintTemplateData = fingerprintTemplate1;
+            finger1.CreatedAt = fingerprint1Timestamp ?? ServerDateTime.GetVnDateTime();
+        }
+
+        if(FingerprintTemplateId2 is not null)
+        {
+            var finger2 = existedStudent.FingerprintTemplates.FirstOrDefault(f => f.FingerprintTemplateID == FingerprintTemplateId2);
+            if (finger2 is null)
+            {
+                result.Title = "Update fingerprint failed";
+                result.Errors = new string[1] { "Fingerprint 2 not found" };
+                return result;
+            }
+            if (fingerprintTemplate2 is null)
+            {
+                result.Title = "Update fingerprint failed";
+                result.Errors = new string[1] { "Updated fingerprint 2 is invalid" };
+                return result;
+            }
+            finger2.FingerprintTemplateData = fingerprintTemplate2;
+            finger2.CreatedAt = fingerprint2Timestamp ?? ServerDateTime.GetVnDateTime();
         }
 
         try
@@ -246,12 +272,12 @@ internal class FingerprintService : IFingerprintService
             if (saveResult)
             {
                 result.IsSuccess = true;
-                result.Title = "Register fingerprint successfully";
+                result.Title = "Update fingerprint successfully";
                 return result;
             }
             else
             {
-                result.Title = "Register fingerprint failed";
+                result.Title = "Update fingerprint failed";
                 result.Errors = new string[1] { "Save changes failed" };
                 return result;
             }
@@ -261,7 +287,7 @@ internal class FingerprintService : IFingerprintService
             return new ServiceResponseVM
             {
                 IsSuccess = false,
-                Title = "Register fingerprint failed",
+                Title = "Update fingerprint failed",
                 Errors = new string[1] { ex.Message }
             };
         }
@@ -270,7 +296,7 @@ internal class FingerprintService : IFingerprintService
             return new ServiceResponseVM
             {
                 IsSuccess = false,
-                Title = "Register fingerprint failed",
+                Title = "Update fingerprint failed",
                 Errors = new string[2] { "The operation has been cancelled", ex.Message }
             };
         }

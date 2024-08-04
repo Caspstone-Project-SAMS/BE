@@ -96,7 +96,7 @@ public class UserService : IUserService
             EmailConfirmed = false,
             PhoneNumberConfirmed = false,
             TwoFactorEnabled = false,
-            CreatedAt = DateTime.Now,
+            CreatedAt = ServerDateTime.GetVnDateTime(),
             CreatedBy = _currentUserService.UserId
         };
 

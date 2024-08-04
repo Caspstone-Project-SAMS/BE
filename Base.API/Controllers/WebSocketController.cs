@@ -127,7 +127,7 @@ public class WebSocketController : ControllerBase
                     }
                     else if(receiveResult.MessageType == WebSocketMessageType.Text)
                     {
-                        if (receiveData.Contains("Connected"))
+                        if (receiveData.Contains("Connected") || receiveData == "Connected by other")
                         {
                             if(websocketEventHandler is not null)
                                 websocketEventHandler.OnConnectModuleEvent(receiveData);
@@ -136,6 +136,11 @@ public class WebSocketController : ControllerBase
                         {
                             if (websocketEventHandler is not null)
                                 websocketEventHandler.OnRegisterFingerprintEvent(receiveData);
+                        }
+                        else if (receiveData.Contains("Update fingerprint"))
+                        {
+                            if (websocketEventHandler is not null)
+                                websocketEventHandler.OnUpdateFingerprintEvent(receiveData);
                         }
                         else if (receiveData.Contains("Prepare attendance"))
                         {
@@ -163,6 +168,27 @@ public class WebSocketController : ControllerBase
                             if (websocketEventHandler is not null)
                             {
                                 websocketEventHandler.OnStopAttendanceEvent(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Start attendance"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnStartAttendanceEvent(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Check current session"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnCheckCurrentSession(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Check uploaded schedule"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnCheckUploadedScheduleEvent(receiveData);
                             }
                         }
                         else if (receiveData.Contains("Check current session"))
@@ -195,10 +221,12 @@ public class WebSocketController : ControllerBase
                         }
                         else if (receiveData.Contains("Schedule preparation completed"))
                         {
-                            var sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            var splitStrings = receiveData.Split(";;;");
+                            var sessionId = int.Parse(splitStrings[1] ?? "0");
+                            var uploadedFingers = int.Parse(splitStrings[2] ?? "0");
                             if (receiveData.Contains("successfully"))
                             {
-                                _ = _sessionManager.CompleteSession(sessionId, true);
+                                _ = _sessionManager.CompleteSession(sessionId, true, uploadedFingers);
                             }
                             else if (receiveData.Contains("failed"))
                             {
@@ -208,6 +236,13 @@ public class WebSocketController : ControllerBase
                         else if (receiveData.Contains("Fingerprint registration completed"))
                         {
                             var sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            // finish session to ready to submit
+                            _sessionManager.FinishSession(sessionId);
+                        }
+                        else if (receiveData.Contains("Fingerprint update completed"))
+                        {
+                            var sessionId = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");
+                            // finish session to ready to submit
                             _sessionManager.FinishSession(sessionId);
                         }
                     }

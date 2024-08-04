@@ -70,4 +70,48 @@ public class FingerprintController : ControllerBase
             Errors = new string[1] { "Invalid input" }
         });
     }
+
+    [HttpPost("update")]
+    public async Task<IActionResult> UpdateFingerprint([FromBody] FingerprintUpdateVM resource)
+    {
+        if (ModelState.IsValid)
+        {
+            // Need to check session, add finger to session
+            var sessionCheck = _sessionManager.UpdateFinger(resource.SessionID, resource.FingerprintTemplate, resource.FingerTemplateId, resource.StudentID);
+            if (!sessionCheck)
+            {
+                return BadRequest(new
+                {
+                    Title = "Invalid session",
+                    Errors = new string[1] { "Invalid session" }
+                });
+            }
+
+            // Notify to admin
+            var messageSend = new WebsocketMessage()
+            {
+                Event = "UpdateFingerSuccessfully",
+                Data = new
+                {
+                    SessionID = resource.SessionID,
+                    StudentID = resource.StudentID,
+                    FingerID = resource.FingerTemplateId
+                }
+            };
+            var messageSendString = JsonSerializer.Serialize(messageSend);
+            // Send to admin who have the session
+            var session = _sessionManager.GetSessionById(resource.SessionID);
+            await _webSocketConnectionManager.SendMessageToClient(messageSendString, session?.UserID ?? Guid.Empty);
+
+            return Ok(new
+            {
+                Title = "Update successfully"
+            });
+        }
+        return BadRequest(new
+        {
+            Title = "Update fingerprint failed",
+            Errors = new string[1] { "Invalid input" }
+        });
+    }
 }

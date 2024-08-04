@@ -7,6 +7,13 @@ using Microsoft.AspNetCore.Mvc;
 using Google.Cloud.Vision.V1;
 using System.ComponentModel.DataAnnotations;
 using DocumentFormat.OpenXml.Bibliography;
+using DocumentFormat.OpenXml.Vml.Spreadsheet;
+using Base.API.Service;
+using Base.Repository.Entity;
+using Google.Type;
+using DateTime = System.DateTime;
+using System.Collections.Concurrent;
+using Base.Service.Common;
 
 namespace Base.API.Controllers
 {
@@ -16,11 +23,13 @@ namespace Base.API.Controllers
     {
         private readonly IScheduleService _scheduleService;
         private readonly IMapper _mapper;
+        private readonly ICurrentUserService _currentUserService;
 
-        public ScheduleController(IScheduleService scheduleService, IMapper mapper)
+        public ScheduleController(IScheduleService scheduleService, IMapper mapper, ICurrentUserService currentUserService)
         {
             _scheduleService = scheduleService;
             _mapper = mapper;
+            _currentUserService = currentUserService;
         }
 
 
@@ -136,115 +145,85 @@ namespace Base.API.Controllers
         }
 
 
-        [HttpPost("import-v1/block/with-space")]
-        public async Task<IActionResult> ImportSchedulesV1([FromForm] ImportSchedule resource)
+        [HttpPost("import-schedules")]
+        public async Task<IActionResult> ImportSchedules([FromBody] ScheduleImport resource)
         {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
-
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            foreach (var page in response.Pages)
+            if (ModelState.IsValid)
             {
-                foreach (var block in page.Blocks)
+                ConcurrentBag<Schedule> schedules = new ConcurrentBag<Schedule>();
+                var importedDates = resource.Dates.Select(d => new DateOnly(resource.Year, d.Date.Month, d.Date.Day)).ToList();
+                if(importedDates is null || importedDates.Count == 0)
                 {
-                    string blockText = "";
-                    foreach (var paragraph in block.Paragraphs)
+                    return BadRequest(new
                     {
-                        foreach (var word in paragraph.Words)
-                        {
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                            blockText += " "; // Add space after each word
-                        }
-                    }
-
-                    texts.Add(blockText);
+                        Title = "Import schedules failed",
+                        Errors = new string[1] { "Invalid input" }
+                    });
                 }
+
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.3 * 2))
+                };
+                Parallel.ForEach(resource.Slots, parallelOptions, (slot, state) =>
+                {
+                    Slot slotEntity = new Slot
+                    {
+                        SlotNumber = slot.SlotNumber
+                    };
+                    int indexCount = 0;
+                    foreach (var importedClass in slot.AdjustedClassSlots)
+                    {
+                        if(importedClass is not null)
+                        {
+                            var schedule = new Schedule
+                            {
+                                Date = importedDates.ElementAt(indexCount),
+                                DateOfWeek = (int)importedDates.ElementAt(indexCount).DayOfWeek,
+                                Class = new Class
+                                {
+                                    ClassCode = importedClass?.ClassCode ?? string.Empty
+                                },
+                                Slot = slotEntity,
+                                RoomID = null,
+                                CreatedBy = _currentUserService.UserId,
+                                CreatedAt = ServerDateTime.GetVnDateTime(),
+                            };
+                            schedules.Add(schedule);
+                        }
+                        indexCount++;
+                    }
+                });
+
+                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID);
+                if (result.IsSuccess)
+                {
+                    return Ok(_mapper.Map<ImportScheduleServiceResponseVM>(result));
+                }
+
+                return BadRequest(_mapper.Map<ImportScheduleServiceResponseVM>(result));
             }
-
-            return Ok(texts);
-        }
-
-
-        [HttpPost("import-v2/block/no-space")]
-        public async Task<IActionResult> ImportSchedulesV2([FromForm] ImportSchedule resource)
-        {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
-
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            foreach (var page in response.Pages)
+            return BadRequest(new
             {
-                foreach (var block in page.Blocks)
-                {
-                    string blockText = "";
-                    foreach (var paragraph in block.Paragraphs)
-                    {
-                        foreach (var word in paragraph.Words)
-                        {
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                        }
-                    }
-
-                    texts.Add(blockText);
-                }
-            }
-
-            return Ok(texts);
+                Title = "Import schedules failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
+    }
 
-
-        [HttpPost("import-v3/word")]
-        public async Task<IActionResult> ImportSchedulesV3([FromForm] ImportSchedule resource)
-        {
-            var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
-            ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
-            imageAnnotatorClientBuilder.Credential = credential;
-            var client = imageAnnotatorClientBuilder.Build();
-            Image image = Image.FromStream(resource.Image!.OpenReadStream());
-
-            // Perform text detection on the image
-            var response = await client.DetectDocumentTextAsync(image);
-            var texts = new List<string>();
-
-            foreach (var page in response.Pages)
-            {
-                foreach (var block in page.Blocks)
-                {
-                    foreach (var paragraph in block.Paragraphs)
-                    {
-                        foreach (var word in paragraph.Words)
-                        {
-                            string blockText = "";
-                            foreach (var symbol in word.Symbols)
-                            {
-                                blockText += symbol.Text;
-                            }
-                            texts.Add(blockText);
-                        }
-                    }
-                    
-                }
-            }
-
-            return Ok(texts);
-        }
+    public class ScheduleImport
+    {
+        [Required]
+        public Guid UserID { get; set; }
+        [Required]
+        public int SemesterID { get; set; }
+        [Required]
+        public int Year { get; set; }
+        public int DatesCount { get; set; }
+        public int SlotsCount { get; set; }
+        [Required]
+        public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();
+        [Required]
+        public IEnumerable<Import_Slot> Slots { get; set; } = new List<Import_Slot>();
     }
 }

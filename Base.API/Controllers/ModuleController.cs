@@ -125,7 +125,7 @@ public class ModuleController : ControllerBase
                         return BadRequest(new
                         {
                             Title = "Activate module failed",
-                            Errors = new string[1] { "Invalid input: RegisterMode not valid" }
+                            Errors = new string[1] { "Invalid input: Register information not valid" }
                         });
                     }
                     if(activateModule.SessionId is null)
@@ -149,7 +149,6 @@ public class ModuleController : ControllerBase
 
                     var sessionResultMode1 = _sessionManager.CreateFingerRegistrationSession(activateModule.SessionId ?? 0, 
                         activateModule.RegisterMode.FingerRegisterMode, 
-                        new Guid(_currentUserService.UserId), 
                         activateModule.RegisterMode.StudentID);
 
                     if (!sessionResultMode1)
@@ -309,18 +308,19 @@ public class ModuleController : ControllerBase
                         });
                     }
 
-                    var totalStudents = await _studentService.GetStudentsByClassID(existedSschedule.ClassID, 1, 100, 50, null);
+                    var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, existedSschedule.ClassID);
                     int totalWorkAmount = 0;
+                    int totalFingers = 0;
                     if(totalStudents is not null)
                     {
                         totalWorkAmount = totalStudents.Count();
-
+                        totalFingers = totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
                     }
 
                     var sessionResultMode3 = _sessionManager.CreatePrepareAScheduleSession(activateModule.SessionId ?? 0,
                         activateModule.PrepareAttendance.ScheduleID,
-                        totalWorkAmount
-                        );
+                        totalWorkAmount,
+                        totalFingers);
 
                     if (!sessionResultMode3)
                     {
@@ -464,6 +464,7 @@ public class ModuleController : ControllerBase
                     }
                     websocketEventState.SessionId = sessionIdMode6;
 
+                    string error = string.Empty;
                     var messageSendMode6 = new WebsocketMessage
                     {
                         Event = "ConnectModule",
@@ -479,7 +480,7 @@ public class ModuleController : ControllerBase
                     if (resultMode6)
                     {
                         cts.CancelAfter(TimeSpan.FromSeconds(10));
-                        if (WaitForModuleConnecting(cts.Token))
+                        if (WaitForModuleConnecting(cts.Token, ref error))
                         {
                             if (websocketEventHandler is not null)
                             {
@@ -503,6 +504,15 @@ public class ModuleController : ControllerBase
                         websocketEventHandler.ConnectModuleEvent -= OnModuleConnectingEventHandler;
                     }
 
+                    if(error != string.Empty)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Connect module failed",
+                            Errors = new string[1] { error }
+                        });
+                    }
+
                     return BadRequest(new
                     {
                         Title = "Connect module failed",
@@ -517,12 +527,12 @@ public class ModuleController : ControllerBase
 
                 // Mode 8 - update fingerprint
                 case 8:
-                    if (activateModule.RegisterMode is null)
+                    if (activateModule.UpdateMode is null)
                     {
                         return BadRequest(new
                         {
                             Title = "Activate module failed",
-                            Errors = new string[1] { "Invalid input: RegisterMode not valid" }
+                            Errors = new string[1] { "Invalid input: Update information not valid" }
                         });
                     }
                     if (activateModule.SessionId is null)
@@ -534,7 +544,16 @@ public class ModuleController : ControllerBase
                         });
                     }
 
-                    var existedStudentMode8 = await _studentService.GetById(activateModule.RegisterMode.StudentID);
+                    if(activateModule.UpdateMode.FingerprintTemplateId1 is null && activateModule.UpdateMode.FingerprintTemplateId2 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "No fingerprints required to update" }
+                        });
+                    }
+
+                    var existedStudentMode8 = await _studentService.GetById(activateModule.UpdateMode.StudentID);
                     if (existedStudentMode8 is null)
                     {
                         return BadRequest(new
@@ -544,10 +563,42 @@ public class ModuleController : ControllerBase
                         });
                     }
 
+                    var existedFingerIdsMode8 = existedStudentMode8.Student?.FingerprintTemplates.Select(f => f.FingerprintTemplateID);
+                    if(existedFingerIdsMode8 is null || existedFingerIdsMode8.Count() == 0)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Student does not have any fingers to update" }
+                        });
+                    }
+                    if(activateModule.UpdateMode.FingerprintTemplateId1 is not null)
+                    {
+                        if (!existedFingerIdsMode8.Any(i => i == activateModule.UpdateMode.FingerprintTemplateId1))
+                        {
+                            return BadRequest(new
+                            {
+                                Title = "Activate module failed",
+                                Errors = new string[1] { "Student's first finger not found" }
+                            });
+                        }
+                    }
+                    if(activateModule.UpdateMode.FingerprintTemplateId2 is not null)
+                    {
+                        if (!existedFingerIdsMode8.Any(i => i == activateModule.UpdateMode.FingerprintTemplateId2))
+                        {
+                            return BadRequest(new
+                            {
+                                Title = "Activate module failed",
+                                Errors = new string[1] { "Student's second finger not found" }
+                            });
+                        }
+                    }
+
                     var sessionResultMode8 = _sessionManager.CreateFingerUpdateSession(activateModule.SessionId ?? 0,
-                        activateModule.RegisterMode.FingerRegisterMode,
-                        new Guid(_currentUserService.UserId),
-                        activateModule.RegisterMode.StudentID);
+                        activateModule.UpdateMode.StudentID,
+                        activateModule.UpdateMode.FingerprintTemplateId1,
+                        activateModule.UpdateMode.FingerprintTemplateId2);
 
                     if (!sessionResultMode8)
                     {
@@ -560,19 +611,20 @@ public class ModuleController : ControllerBase
 
                     if (websocketEventHandler is not null)
                     {
-                        websocketEventHandler.RegisterFingerprintEvent += OnModuleMode1EventHandler;
+                        websocketEventHandler.UpdateFingerprintEvent += OnModuleMode8EventHandler;
                     }
                     websocketEventState.SessionId = activateModule.SessionId ?? 0;
 
                     var messageSendMode8 = new WebsocketMessage
                     {
-                        Event = "RegisterFingerprint",
+                        Event = "UpdateFingerprint",
                         Data = new
                         {
                             StudentCode = existedStudentMode8.Student?.StudentCode ?? "",
                             StudentID = existedStudentMode8.Student?.StudentID ?? Guid.Empty,
-                            Mode = activateModule.RegisterMode.FingerRegisterMode,
-                            SessionID = activateModule.SessionId
+                            SessionID = activateModule.SessionId,
+                            FingerId1 = activateModule.UpdateMode?.FingerprintTemplateId1 ?? 0,
+                            FingerId2 = activateModule.UpdateMode?.FingerprintTemplateId2 ?? 0,
                         }
                     };
                     var jsonPayloadMode8 = JsonSerializer.Serialize(messageSendMode8);
@@ -580,11 +632,11 @@ public class ModuleController : ControllerBase
                     if (resultMode8)
                     {
                         cts.CancelAfter(TimeSpan.FromSeconds(10));
-                        if (WaitForModuleMode1(cts.Token))
+                        if (WaitForModuleMode8(cts.Token))
                         {
                             if (websocketEventHandler is not null)
                             {
-                                websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                                websocketEventHandler.UpdateFingerprintEvent -= OnModuleMode8EventHandler;
                             }
 
                             return Ok(new
@@ -594,18 +646,191 @@ public class ModuleController : ControllerBase
                         }
                     }
 
-                    // If a fingerprint registration session is cancelled, dont delete it
+                    // If a fingerprint update session is cancelled, dont delete it
                     // We dont record the activity of fingerprint registration
                     _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
 
                     if (websocketEventHandler is not null)
                     {
-                        websocketEventHandler.RegisterFingerprintEvent -= OnModuleMode1EventHandler;
+                        websocketEventHandler.UpdateFingerprintEvent -= OnModuleMode8EventHandler;
                     }
 
                     return BadRequest(new
                     {
                         Title = "Activate module failed",
+                        Errors = new string[1] { "Connection times out" }
+                    });
+
+
+                // Mode 9 - check current session
+                case 9:
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.CheckCurrentSession += OnModuleMode9EventHandler;
+                    }
+
+                    var messageSendMode9 = new WebsocketMessage
+                    {
+                        Event = "CheckCurrentSession",
+                        Data = null
+                    };
+                    var jsonPayloadMode9 = JsonSerializer.Serialize(messageSendMode9);
+                    var resultMode9 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode9, activateModule.ModuleID);
+                    if (resultMode9)
+                    {
+                        int sessionId = 0;
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode9(cts.Token, out sessionId))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.CheckCurrentSession -= OnModuleMode9EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Check module successfullly",
+                                Result = new
+                                {
+                                    // If sessionId == 0 => no session available
+                                    SessionId = sessionId
+                                }
+                            });
+                        }
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.CheckCurrentSession -= OnModuleMode9EventHandler;
+                    }
+                    return BadRequest(new
+                    {
+                        Title = "Check module failed",
+                        Errors = new string[1] { "Connection timed out" }
+                    });
+
+
+                // Mode 10 - start attendance session
+                case 10:
+                    if (activateModule.StartAttendance is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input" }
+                        });
+                    }
+                    var existedSscheduleMode10 = await _scheduleService.GetById(activateModule.StartAttendance.ScheduleID);
+                    if (existedSscheduleMode10 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Schedule not found" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.StartAttendance += OnModuleMode10EventHandler;
+                    }
+                    websocketEventState.ScheduleId = activateModule.StartAttendance.ScheduleID;
+
+                    var messageSendMode10 = new WebsocketMessage
+                    {
+                        Event = "StartAttendance",
+                        Data = new
+                        {
+                            ScheduleID = existedSscheduleMode10.ScheduleID
+                        }
+                    };
+                    var jsonPayloadMode10 = JsonSerializer.Serialize(messageSendMode10);
+                    var resultMode10 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode10, activateModule.ModuleID);
+                    if (resultMode10)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode10(cts.Token))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.StartAttendance -= OnModuleMode10EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Start attendance successfully",
+                            });
+                        }
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.StartAttendance -= OnModuleMode10EventHandler;
+                    }
+
+                    return BadRequest(new
+                    {
+                        Title = "Activate module failed",
+                        Errors = new string[1] { "Module is not being connected" }
+                    });
+
+
+                // Mode 11 - check uploaded schedule information
+                case 11:
+                    if (activateModule.CheckSchedule is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input: Schedule information not valid" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.CheckUploadedScheduleEvent += OnModuleMode11EventHandler;
+                    }
+
+                    var messageSendMode11 = new WebsocketMessage
+                    {
+                        Event = "CheckUploadedSchedule",
+                        Data = new
+                        {
+                            ScheduleId = activateModule.CheckSchedule.ScheduleID
+                        }
+                    };
+                    var jsonPayloadMode11 = JsonSerializer.Serialize(messageSendMode11);
+                    var resultMode11 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode11, activateModule.ModuleID);
+                    if (resultMode11)
+                    {
+                        bool check = false;
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode11(cts.Token, out check))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.CheckUploadedScheduleEvent -= OnModuleMode11EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Check schedule information successfullly",
+                                Result = new
+                                {
+                                    ScheduleId = activateModule.CheckSchedule.ScheduleID,
+                                    Status = check
+                                }
+                            });
+                        }
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.CheckUploadedScheduleEvent -= OnModuleMode11EventHandler;
+                    }
+                    return BadRequest(new
+                    {
+                        Title = "Check schedule information failed",
                         Errors = new string[1] { "Connection times out" }
                     });
 
@@ -670,7 +895,7 @@ public class ModuleController : ControllerBase
         return false;
     }
 
-    private bool WaitForModuleConnecting(CancellationToken cancellationToken)
+    private bool WaitForModuleConnecting(CancellationToken cancellationToken, ref string error)
     {
         try
         {
@@ -679,6 +904,11 @@ public class ModuleController : ControllerBase
                 if (websocketEventState.ModuleConnected)
                 {
                     return true;
+                }
+                if (websocketEventState.ModuleAlreadyConnected)
+                {
+                    error = "Module is already connected";
+                    return false;
                 }
             }
         }
@@ -742,6 +972,82 @@ public class ModuleController : ControllerBase
         return false;
     }
 
+    private bool WaitForModuleMode8(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode8)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
+    private bool WaitForModuleMode9(CancellationToken cancellationToken, out int sessionId)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode9)
+                {
+                    sessionId = websocketEventState.SessionIdMode9;
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        sessionId = 0;
+        return false;
+    }
+
+    private bool WaitForModuleMode10(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode10)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
+    private bool WaitForModuleMode11(CancellationToken cancellationToken, out bool check)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode11)
+                {
+                    check = websocketEventState.ModuleMode11Check;
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        check = false;
+        return false;
+    }
+
 
 
     private void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
@@ -750,6 +1056,10 @@ public class ModuleController : ControllerBase
         if(e.Event == ("Connected " + websocketEventState.SessionId))
         {
             websocketEventState.ModuleConnected = true;
+        }
+        else if(e.Event == "Connected by other")
+        {
+            websocketEventState.ModuleAlreadyConnected = true;
         }
     }
 
@@ -784,6 +1094,48 @@ public class ModuleController : ControllerBase
             websocketEventState.ModuleMode4 = true;
         }
     }
+
+    private void OnModuleMode8EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event == ("Update fingerprint " + websocketEventState.SessionId))
+        {
+            websocketEventState.ModuleMode8 = true;
+        }
+    }
+
+    private void OnModuleMode9EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event.Contains("Check current session"))
+        {
+            var sessionId = int.Parse(e.Event.Split(" ").LastOrDefault() ?? "0");
+            websocketEventState.SessionIdMode9 = sessionId;
+            websocketEventState.ModuleMode9 = true;
+        }
+    }
+
+    private void OnModuleMode10EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event.Contains("Start attendance " + websocketEventState.ScheduleId))
+        {
+            websocketEventState.ModuleMode10 = true;
+        }
+    }
+
+    private void OnModuleMode11EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event.Contains("Check uploaded schedule " + websocketEventState.ScheduleId))
+        {
+            if(e.Event.Contains("unavailable"))
+            {
+                websocketEventState.ModuleMode11Check = false;
+            }
+            else if (e.Event.Contains("available"))
+            {
+                websocketEventState.ModuleMode11Check = true;
+            }
+            websocketEventState.ModuleMode11 = true;
+        }
+    }
 }
 
 
@@ -792,10 +1144,17 @@ public class WebsocketEventState
     public int SessionId { get; set; }
     public int ScheduleId { get; set; }
     public bool ModuleConnected { get; set; } = false;
+    public bool ModuleAlreadyConnected { get; set; } = false;
     public bool ModuleMode1 { get; set; } = false;
     public bool ModuleMode2 { get; set; } = false;
     public bool ModuleMode3 { get; set; } = false;
     public bool ModuleMode4 { get; set; } = false;
+    public bool ModuleMode8 { get; set; } = false;
+    public bool ModuleMode9 { get; set; } = false;
+    public int SessionIdMode9 { get; set; } = 0;
+    public bool ModuleMode10 { get; set; } = false;
+    public bool ModuleMode11 { get; set; } = false;
+    public bool ModuleMode11Check { get; set; } = false;
 }
 
 public class ActivateModule
@@ -806,15 +1165,24 @@ public class ActivateModule
     public int Mode { get; set; }
     public int? SessionId { get; set; }
     public RegisterMode? RegisterMode { get; set; }
+    public UpdateMode? UpdateMode { get; set; }
     public PrepareAttendance? PrepareAttendance { get; set; }
     public StopAttendance? StopAttendance { get; set; }
-
+    public StartAttendance? StartAttendance { get; set; }
+    public CheckSchedule? CheckSchedule { get; set; }
 }
 
 public class RegisterMode
 {
     public Guid StudentID { get; set; }
     public int FingerRegisterMode { get; set; }
+}
+
+public class UpdateMode
+{
+    public Guid StudentID { get; set; }
+    public int? FingerprintTemplateId1 { get; set; }
+    public int? FingerprintTemplateId2 { get; set; }
 }
 
 public class CancelRegisterMode
@@ -828,6 +1196,16 @@ public class PrepareAttendance
 }
 
 public class StopAttendance
+{
+    public int ScheduleID { get; set; }
+}
+
+public class StartAttendance
+{
+    public int ScheduleID { get; set; }
+}
+
+public class CheckSchedule
 {
     public int ScheduleID { get; set; }
 }

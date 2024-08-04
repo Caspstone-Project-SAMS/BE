@@ -12,6 +12,6 @@ namespace Base.Service.IService;
 public interface IModuleActivityService
 {
     Task<ServiceResponseVM<ModuleActivity>> Create(ActivityHistoryVM newEntity);
-    Task<ServiceResponseVM<IEnumerable<ModuleActivity>>> GetAll(int startPage, int endPage, int quantity, string? title, string? description, Guid? userId, DateTime? activityDate, bool? IsSuccess, int? moduleId);
+    Task<ServiceResponseVM<IEnumerable<ModuleActivity>>> GetAll(int startPage, int endPage, int quantity, string? title, string? description, Guid? userId, DateTime? activityDate, bool? IsSuccess, int? moduleId, int? scheduleId);
     Task<ModuleActivity?> GetById(int id);
 }

@@ -46,7 +46,7 @@ namespace Base.API.Mapper
             CreateMap<Student, StudentModuleResponse>()
                  .ForMember(dest => dest.StudentName, opt => opt.MapFrom(src => src.User!.DisplayName))
                  .ForMember(dest => dest.StudentID, opt => opt.MapFrom(src => src.StudentID))
-                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates.Select(ft => ft.FingerprintTemplateData)))       
+                 .ForMember(dest => dest.FingerprintTemplateData, opt => opt.MapFrom(src => src.FingerprintTemplates.Where(f => f.Status == 1).Select(ft => ft.FingerprintTemplateData)))       
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id));
 
             CreateMap<Class, ClassResponse>()
@@ -168,6 +168,18 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.GetErrors()))
                 .ForMember(dest => dest.PreparationTask, opt => opt.MapFrom(src => src.PreparationTask))
                 .ForMember(dest => dest.Module, opt => opt.MapFrom(src => src.Module));
+
+            // For import service
+            CreateMap<ImportErrorEntity<Schedule>, ImportErrorEntity<Schedule_ImportScheduleServiceResponseVM>>()
+                .ForMember(dest => dest.ErrorEntity, opt => opt.MapFrom(src => src.ErrorEntity))
+                .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.Errors));
+            CreateMap<Schedule, Schedule_ImportScheduleServiceResponseVM>()
+                .ForMember(dest => dest.SlotNumber, opt => opt.MapFrom(src => src.Slot != null ? src.Slot.SlotNumber : 0))
+                .ForMember(dest => dest.ClassCode, opt => opt.MapFrom(src => src.Class != null ? src.Class.ClassCode : "***"));
+            CreateMap<ImportServiceResposneVM<Schedule>, ImportScheduleServiceResponseVM>()
+                .ForMember(dest => dest.ImportedEntities, opt => opt.MapFrom(src => src.ImportedEntities))
+                .ForMember(dest => dest.ErrorEntities, opt => opt.MapFrom(src => src.ErrorEntities))
+                .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.Errors));
         }
     }
 }

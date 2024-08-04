@@ -55,25 +55,49 @@ public class SessionManager
 
 
     //====================
-    public bool CreateFingerUpdateSession(int sessionId, int fingerRegistrationMode, Guid userId, Guid studentId)
+    public bool CreateFingerUpdateSession(int sessionId, Guid studentId, int? fingerTemplateId1, int? fingerTemplateId2)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
 
-        var fingerRegistration = new FingerRegistration()
+        var fingerUpdate = new FingerUpdatate
         {
             StudentId = studentId,
-            FingerRegistrationMode = fingerRegistrationMode
+            FingerprintTemplateId1 = fingerTemplateId1,
+            FingerprintTemplateId2 = fingerTemplateId2
         };
 
         session.Category = 8;
         session.SessionState = 1;
-        session.FingerRegistration = fingerRegistration;
+        session.FingerUpdate = fingerUpdate;
 
         return true;
     }
 
-    public bool CreateFingerRegistrationSession(int sessionId, int fingerRegistrationMode, Guid userId, Guid studentId)
+    public bool UpdateFinger(int sessionId, string fingerprintTemplate, int fingerTemplateId, Guid studentId)
+    {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
+        if (session is null || session.Category != 8 || session.SessionState != 1 || session.FingerUpdate is null || session.FingerUpdate.StudentId != studentId)
+        {
+            return false;
+        }
+        if(fingerTemplateId == session.FingerUpdate.FingerprintTemplateId1)
+        {
+            session.FingerUpdate.FingerprintTemplate1 = fingerprintTemplate;
+            session.FingerUpdate.Finger1TimeStamp = ServerDateTime.GetVnDateTime();
+            return true;
+        }
+        else if(fingerTemplateId == session.FingerUpdate.FingerprintTemplateId2)
+        {
+            session.FingerUpdate.FingerprintTemplate2 = fingerprintTemplate;
+            session.FingerUpdate.Finger2TimeStamp = ServerDateTime.GetVnDateTime();
+            return true;
+        }
+
+        return false;
+    }
+
+    public bool CreateFingerRegistrationSession(int sessionId, int fingerRegistrationMode, Guid studentId)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
@@ -94,26 +118,31 @@ public class SessionManager
     public bool RegisterFinger(int sessionId, string fingerprintTemplate, int fingerNumber, Guid studentId)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
-        if(session is null || (session.Category != 1 && session.Category != 8) || session.SessionState != 1 || session.FingerRegistration is null || session.FingerRegistration.StudentId != studentId)
+        if(session is null || session.Category != 1 || session.SessionState != 1 || session.FingerRegistration is null || session.FingerRegistration.StudentId != studentId)
         {
             return false;
         }
         if(fingerNumber == 1)
         {
             session.FingerRegistration.FingerprintTemplate1 = fingerprintTemplate;
-            session.FingerRegistration.Finger1TimeStamp = DateTime.Now;
+            session.FingerRegistration.Finger1TimeStamp = ServerDateTime.GetVnDateTime();
+            return true;
         }
-        if(fingerNumber == 2)
+        else if(fingerNumber == 2)
         {
             session.FingerRegistration.FingerprintTemplate2 = fingerprintTemplate;
-            session.FingerRegistration.Finger2TimeStamp = DateTime.Now;
+            session.FingerRegistration.Finger2TimeStamp = ServerDateTime.GetVnDateTime();
+            return true;
         }
-        return true;
+        else
+        {
+            return false;
+        }
     }
 
 
 
-    public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount)
+    public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount, int totalFingers)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
@@ -122,7 +151,8 @@ public class SessionManager
         {
             ScheduleId = scheduleId,
             Progress = 0,
-            TotalWorkAmount = totalWorkAmount
+            TotalWorkAmount = totalWorkAmount,
+            TotalFingers = totalFingers
         };
 
         session.Category = 2;
@@ -132,7 +162,7 @@ public class SessionManager
         return true;
     }
 
-    public bool CreatePrepareSchedulesSession(int sessionId, DateOnly preparedDate, IEnumerable<int> scheduleIds, int totalWorkAmount)
+    public bool CreatePrepareSchedulesSession(int sessionId, DateOnly preparedDate, IEnumerable<int> scheduleIds, int totalWorkAmount, int totalFingers)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
@@ -142,7 +172,8 @@ public class SessionManager
             PreparedDate = preparedDate,
             Progress = 0,
             TotalWorkAmount = totalWorkAmount,
-            ScheduleIds = scheduleIds
+            ScheduleIds = scheduleIds,
+            TotalFingers = totalFingers
         };
 
         session.Category = 3;
@@ -155,7 +186,7 @@ public class SessionManager
     public bool UpdateSchedulePreparationProgress(int sessionId, int completedWorkAmount)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
-        if (session is null || session.SessionState != 1 || session.Category != 2) return false;
+        if (session is null || session.SessionState != 1 || (session.Category != 2 && session.Category != 3 )) return false;
 
         if (session.PrepareAttendance is null) return false;
 
@@ -291,7 +322,7 @@ public class SessionManager
                 break;
 
             case 8:
-                if (session.FingerRegistration is null)
+                if (session.FingerUpdate is null)
                 {
                     return new ServiceResponseVM
                     {
@@ -300,20 +331,23 @@ public class SessionManager
                         Errors = new string[1] { "Invalid fingerprint information" }
                     };
                 }
-                if (session.FingerRegistration.FingerprintTemplate1 is null || session.FingerRegistration.FingerprintTemplate2 is null)
+                if (session.FingerUpdate.FingerprintTemplate1 is null && session.FingerUpdate.FingerprintTemplate2 is null)
                 {
                     return new ServiceResponseVM
                     {
                         IsSuccess = false,
                         Title = "Update fingerprint failed",
-                        Errors = new string[1] { "Both 2 fingers are required" }
+                        Errors = new string[1] { "Updated fingers not found" }
                     };
                 }
-                var updateFingerResult = await fingerprintService.UpdateFingerprintTemplate(session.FingerRegistration.StudentId,
-                        session.FingerRegistration.FingerprintTemplate1,
-                        session.FingerRegistration.Finger1TimeStamp,
-                        session.FingerRegistration.FingerprintTemplate2,
-                        session.FingerRegistration.Finger2TimeStamp);
+                var updateFingerResult = await fingerprintService.UpdateFingerprintTemplate(
+                        session.FingerUpdate.StudentId,
+                        session.FingerUpdate.FingerprintTemplateId1,
+                        session.FingerUpdate.FingerprintTemplate1,
+                        session.FingerUpdate.Finger1TimeStamp,
+                        session.FingerUpdate.FingerprintTemplateId2,
+                        session.FingerUpdate.FingerprintTemplate2,
+                        session.FingerUpdate.Finger2TimeStamp);
                 if (updateFingerResult.IsSuccess)
                 {
                     _sessions.Remove(session);
@@ -369,7 +403,7 @@ public class SessionManager
     // Call this when session is completed (this should be called by module event, or by server if the event is timed out)
     // Only complete session about schedule preparation (both success and failed cases), setup module
     // This will make a record of module activity and make a notification about that activity
-    public async Task<bool> CompleteSession(int sessionId, bool isSucess)
+    public async Task<bool> CompleteSession(int sessionId, bool isSucess, int uploadedFingers = 0)
     {
         // Make a notification, activity history of module, and notify the notification to user
         var existedSession = GetSessionById(sessionId);
@@ -446,7 +480,9 @@ public class SessionManager
                 Progress = existedSession.PrepareAttendance?.Progress ?? 0,
                 PreparedScheduleId = existedSession.PrepareAttendance?.ScheduleId,
                 PreparedScheduleIds = existedSession.PrepareAttendance?.ScheduleIds ?? Enumerable.Empty<int>(),
-                PreparedDate = existedSession.PrepareAttendance?.PreparedDate
+                PreparedDate = existedSession.PrepareAttendance?.PreparedDate,
+                UploadedFingers = uploadedFingers,
+                TotalFingers = existedSession.PrepareAttendance?.TotalFingers ?? 0
             };
             newActivity.PreparationTaskVM = preparationTask;
         }
@@ -579,6 +615,7 @@ public class Session
     public int DurationInMin { get; set; }
     public int ModuleId { get; set; }
     public FingerRegistration? FingerRegistration { get; set; }
+    public FingerUpdatate? FingerUpdate { get; set; }
     public PrepareAttendance? PrepareAttendance { get; set; }
     public IEnumerable<string> Errors { get; set; } = new List<string>();
 }
@@ -587,20 +624,33 @@ public class FingerRegistration
 {
     public Guid StudentId { get; set; }
     public int FingerRegistrationMode { get; set; }
-    public string FingerprintTemplate1 { get; set; } = string.Empty;
+    public string? FingerprintTemplate1 { get; set; }
     public DateTime? Finger1TimeStamp { get; set; }
-    public string FingerprintTemplate2 { get; set; } = string.Empty;
+    public string? FingerprintTemplate2 { get; set; }
     public DateTime? Finger2TimeStamp { get; set; }
+}
+
+public class FingerUpdatate
+{
+    public Guid StudentId { get; set; }
+    public int? FingerprintTemplateId1 { get; set; }
+    public string? FingerprintTemplate1 { get; set; }
+    public DateTime? Finger1TimeStamp { get; set; }
+    public int? FingerprintTemplateId2 { get; set; }
+    public string? FingerprintTemplate2 { get; set; }
+    public DateTime? Finger2TimeStamp { get; set; }
+
 }
 
 public class PrepareAttendance
 {
     public IEnumerable<int> ScheduleIds { get; set; } = Enumerable.Empty<int>();
     public DateOnly? PreparedDate { get; set; }
-    public int ScheduleId { get; set; }
+    public int? ScheduleId { get; set; }
     public float Progress { get; set; }
     public float TotalWorkAmount { get; set; }
     public float CompletedWorkAmount { get; set; }
+    public int TotalFingers { get; set; }
 }
 
 

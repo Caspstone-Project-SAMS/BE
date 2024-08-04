@@ -48,6 +48,9 @@ public class PreparationTask
     public string? PreparedSchedules { get; set; }
     public DateOnly? PreparedDate { get; set; }
 
+    public int TotalFingers { get; set; }
+    public int UploadedFingers { get; set; }
+
     public ModuleActivity? ModuleActivity { get; set; }
 
     public IEnumerable<int> GetPreparedSchedules()

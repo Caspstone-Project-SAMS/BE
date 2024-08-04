@@ -159,3 +159,21 @@ public abstract class Auditable
     public string CreatedBy { get; set; } = "Undefined";
     public DateTime CreatedAt { get; set; }
 }
+
+
+public class ImportServiceResposneVM<T> where T : class
+{
+    public bool IsSuccess { get; set; }
+    public string? Title { get; set; }
+    public IEnumerable<string>? Errors { get; set; }
+    //public bool? IsRestored { get; set; } = false;
+
+    public IEnumerable<T> ImportedEntities { get; set; } = Enumerable.Empty<T>();
+    public IEnumerable<ImportErrorEntity<T>> ErrorEntities { get; set; } = Enumerable.Empty<ImportErrorEntity<T>>();
+}
+
+public class ImportErrorEntity<T> where T : class
+{
+    public T? ErrorEntity { get; set; }
+    public IEnumerable<string> Errors { get; set; } = Enumerable.Empty<string>();
+}
