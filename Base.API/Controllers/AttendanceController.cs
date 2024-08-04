@@ -1,16 +1,11 @@
 ﻿using AutoMapper;
 using Base.API.Service;
-using Base.Repository.Entity;
 using Base.Service.IService;
-using Base.Service.Service;
 using Base.Service.ViewModel.RequestVM;
-using Base.Service.ViewModel.RequestVM.Role;
 using Base.Service.ViewModel.ResponseVM;
-using Duende.IdentityServer.Events;
-using Microsoft.AspNetCore.Http;
+using ClosedXML.Excel;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
-
 namespace Base.API.Controllers
 {
     [Route("api/[controller]")]
@@ -197,5 +192,90 @@ namespace Base.API.Controllers
             var jsonPayload = JsonSerializer.Serialize(messageSend);
             await _webSocketConnectionManager.SendMessageToClient(jsonPayload, existedClass.LecturerID);
         }
+
+
+        [HttpGet("attendance-report")]
+
+        public async Task<IActionResult> GetAttendanceReport(int classId,bool isExport = false)
+        {
+            try
+            {
+                var response = await _attendanceService.GetAttendanceReport(classId);
+                if (isExport)
+                {
+                    if (response == null || !response.Any())
+                    {
+                        return BadRequest("No data available for export.");
+                    }
+
+                    // Create the workbook and worksheet
+                    using (var workbook = new XLWorkbook())
+                    {
+                        var worksheet = workbook.Worksheets.Add("Attendance Report");
+
+                        // Set headers
+                        worksheet.Cell("A1").Value = "Student Code";
+                        worksheet.Cell("B1").Value = "Student Name";
+                        worksheet.Cell("C1").Value = "Absence Percentage";
+                        worksheet.Cell("D1").Value = "Date";
+                        worksheet.Cell("E1").Value = "Status";
+
+                        int row = 2;
+
+                        // Populate the worksheet with data from the response
+                        foreach (var student in response)
+                        {
+                            if (student.AttendanceRecords != null)
+                            {
+                                foreach (var record in student.AttendanceRecords)
+                                {
+                                    worksheet.Cell(row, 1).Value = student.StudentCode;
+                                    worksheet.Cell(row, 2).Value = student.StudentName;
+                                    worksheet.Cell(row, 3).Value = student.AbsencePercentage;
+                                    worksheet.Cell(row, 4).Value = record.Date.ToString("yyyy-MM-dd");
+                                    worksheet.Cell(row, 5).Value = MapStatusToString(record.Status);
+
+                                    row++;
+                                }
+                            }
+                        }
+
+                        // Save the workbook to a MemoryStream
+                        using (var stream = new MemoryStream())
+                        {
+                            workbook.SaveAs(stream);
+
+                            // Reset the stream position to the beginning
+                            stream.Position = 0;
+
+                            // Return the file as a FileStreamResult
+                            return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "AttendanceReport.xlsx");
+                        }
+                    }
+                }
+
+                if (response != null)
+                {
+                    return Ok(response);
+                }
+
+                return BadRequest("Error retrieving attendance report.");
+            }
+            catch (Exception ex)
+            {
+                // Log the exception (you might want to use a logging library here)
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+        private string MapStatusToString(int status)
+        {
+            return status switch
+            {
+                1 => "P",
+                2 => "A",
+                _ => "-"
+            };
+        }
+
     }
 }

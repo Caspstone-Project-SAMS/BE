@@ -57,7 +57,7 @@ namespace Base.Service.Service
 
                 Student newStudent = new Student
                 {
-                    StudentCode = newEntity.StudentCode,
+                    StudentCode = newEntity.StudentCode.ToUpper(),
                     CreatedBy = _currentUserService.UserId,
                     CreatedAt = ServerDateTime.GetVnDateTime(),
                 };

@@ -1,10 +1,12 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Repository.Identity;
 using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using Google.Api.Gax;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -217,6 +219,56 @@ namespace Base.Service.Service
                 .Take((endPage - startPage + 1) * quantityResult)
                 .ToArrayAsync();
             result.Title = "Get successfully";
+
+            return result;
+        }
+
+        public async Task<IEnumerable<AttendanceReportResponse>> GetAttendanceReport(int classId)
+        {
+            DbContextFactory dbFactory = new DbContextFactory();
+
+            var dbContext1 = dbFactory.CreateDbContext(Array.Empty<string>());
+            var dbContext2 = dbFactory.CreateDbContext(Array.Empty<string>());
+
+            var studentsTask = dbContext1
+                .Set<User>()
+                .Where(u => u.StudentClasses.Any(sc => sc.ClassID == classId))
+                .Include(u => u.StudentClasses.Where(sc => sc.ClassID == classId))
+                .Include(u => u.Student)
+                .AsNoTracking()
+                .ToListAsync();
+
+            var scheduleTask = dbContext2
+                .Set<Schedule>()
+                .Where(s => s.ClassID == classId)
+                .Include(s => s.Attendances)
+                .Include(s => s.Class)
+                .AsNoTracking()
+                .ToListAsync();
+
+            await Task.WhenAll(studentsTask, scheduleTask);
+
+            var students = await studentsTask;
+            var schedules = await scheduleTask;
+
+            var result = students.Select(student => new AttendanceReportResponse
+            {
+                StudentCode = student!.Student!.StudentCode,
+                StudentName = student.DisplayName,
+                AbsencePercentage = student.StudentClasses.First(sc => sc.ClassID == classId).AbsencePercentage,
+                AttendanceRecords = schedules.Select(schedule =>
+                {
+                    var attendance = schedule.Attendances.FirstOrDefault(a => a.StudentID == student.Id);
+                    return new AttendanceRecord
+                    {
+                        Date = schedule.Date,
+                        Status = attendance != null ? attendance.AttendanceStatus : -1
+                    };
+                }).ToList()
+            }).ToList();
+
+            dbContext1.Dispose();
+            dbContext2.Dispose();
 
             return result;
         }
