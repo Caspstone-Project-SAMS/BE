@@ -21,15 +21,18 @@ namespace Base.API.Controllers
         private readonly IMapper _mapper;
         private readonly WebSocketConnectionManager1 _webSocketConnectionManager;
         private readonly IScheduleService _scheduleService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         public AttendanceController(IAttendanceService attendanceService, 
             IMapper mapper, 
             WebSocketConnectionManager1 webSocketConnectionManager,
-            IScheduleService scheduleService)
+            IScheduleService scheduleService,
+            IServiceScopeFactory serviceScopeFactory)
         {
             _attendanceService = attendanceService;
             _webSocketConnectionManager = webSocketConnectionManager;
             _mapper = mapper;
             _scheduleService = scheduleService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
         
         [HttpGet]
@@ -80,31 +83,7 @@ namespace Base.API.Controllers
             var result = await _attendanceService.UpdateListStudentStatus(studentArr);
             if (result.IsSuccess)
             {
-                /*// real-time websocket
-                foreach (var item in studentArr)
-                {
-                    var dataSend = new DataSend
-                    {
-                        studentID = item.StudentID.ToString() ?? "",
-                        status = 1
-                    };
-                    var dataSendString = JsonSerializer.Serialize(dataSend);
-                    var messageSend = new WebsocketMessage
-                    {
-                        Event = "statusChange",
-                        Data = dataSendString
-                    };
-                    var messageSendString = JsonSerializer.Serialize(messageSend);
-                    _webSocketConnectionManager.SendMessagesToAll(messageSendString);
-                }*/
-                var newobject = new
-                {
-                    Event = "StudentAttended",
-                    Data = new
-                    {
-                        studentIDs = new List<string>() { "aaaa", "aaaa" }
-                    }
-                };
+                _ = UpdateAttendancesStatus(studentArr);
 
                 return Ok(new
                 {
@@ -176,7 +155,11 @@ namespace Base.API.Controllers
 
         private async Task UpdateAttendanceStatus(int scheduleID, Guid studentID)
         {
-            var existedClass = (await _scheduleService.GetById(scheduleID))?.Class;
+            using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+            var scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+
+            var existedSchedule = await scheduleService.GetById(scheduleID);
+            var existedClass = existedSchedule?.Class;
             if (existedClass is null) return;
             var messageSend = new WebsocketMessage
             {
@@ -191,16 +174,23 @@ namespace Base.API.Controllers
             await _webSocketConnectionManager.SendMessageToClient(jsonPayload, existedClass.LecturerID);
         }
 
-        private async Task UpdateAttendancesStatus(int scheduleID, List<Guid> studentIDs)
+        private async Task UpdateAttendancesStatus(StudentListUpdateVM[] studentArr)
         {
-            var existedClass = (await _scheduleService.GetById(scheduleID))?.Class;
+            var scheduleID = studentArr.FirstOrDefault()?.ScheduleID ?? 0;
+            var studentIDs = studentArr.Where(s => s.StudentID != null).Select(s => s.StudentID);
+
+            using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+            var scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+
+            var existedSchedule = await scheduleService.GetById(scheduleID);
+            var existedClass = existedSchedule?.Class;
             if (existedClass is null) return;
             var messageSend = new WebsocketMessage
             {
                 Event = "StudentAttended",
                 Data = new
                 {
-                    studentIDs = new List<string>(studentIDs.Select(s => s.ToString())),
+                    studentIDs = new List<string?>(studentIDs.Select(s => s.ToString()) ?? Enumerable.Empty<string>()),
                     scheduleID = scheduleID,
                 }
             };

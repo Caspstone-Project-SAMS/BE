@@ -15,11 +15,13 @@ namespace Base.API.Controllers
     {
         private readonly IClassService _classService;
         private readonly IMapper _mapper;
+
         public ClassController(IClassService classService, IMapper mapper)
         {
             _classService = classService;
             _mapper = mapper;
         }
+
 
         [HttpPost]
         public async Task<IActionResult> CreateClass(ClassVM resource)
@@ -39,6 +41,7 @@ namespace Base.API.Controllers
                 Errors = result.Errors
             });
         }
+
 
         [HttpGet]
         public async Task<IActionResult> GetAllClasses(
@@ -77,6 +80,7 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetClasById(int id)

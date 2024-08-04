@@ -132,6 +132,26 @@ public class SessionManager
         return true;
     }
 
+    public bool CreatePrepareSchedulesSession(int sessionId, DateOnly preparedDate, IEnumerable<int> scheduleIds, int totalWorkAmount)
+    {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
+        if (session is null) return false;
+
+        var prepareAttendance = new PrepareAttendance()
+        {
+            PreparedDate = preparedDate,
+            Progress = 0,
+            TotalWorkAmount = totalWorkAmount,
+            ScheduleIds = scheduleIds
+        };
+
+        session.Category = 3;
+        session.SessionState = 1;
+        session.PrepareAttendance = prepareAttendance;
+
+        return true;
+    }
+
     public bool UpdateSchedulePreparationProgress(int sessionId, int completedWorkAmount)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);

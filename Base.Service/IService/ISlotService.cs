@@ -16,5 +16,6 @@ namespace Base.Service.IService
         Task<ServiceResponseVM> Delete(int id);
         Task<ServiceResponseVM<Slot>> Update(SlotVM updateEntity, int id);
         Task<Slot?> GetById(int id);
+        Task<ServiceResponseVM<IEnumerable<Slot>>> GetAllSlots(int startPage, int endPage, int quantity, int? slotNumber, int? status,  int? order);
     }
 }

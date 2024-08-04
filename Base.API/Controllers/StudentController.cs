@@ -251,11 +251,11 @@ namespace Base.API.Controllers
         }
 
         [HttpGet("get-students-by-classId")]
-        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] int? sessionId, [FromQuery] bool isModule = false)
+        public async Task<IActionResult> GetAllStudents([FromQuery] int classID, [FromQuery] int startPage, [FromQuery] int endPage, [FromQuery] int? quantity, [FromQuery] int? sessionId, [FromQuery] Guid? userId, [FromQuery] bool isModule = false)
         {
             if (ModelState.IsValid)
             {
-                var students = await _studentService.GetStudentsByClassID(classID,startPage,endPage,quantity);
+                var students = await _studentService.GetStudentsByClassID(classID,startPage,endPage,quantity,userId);
                 if (isModule)
                 {
                     // Update progress

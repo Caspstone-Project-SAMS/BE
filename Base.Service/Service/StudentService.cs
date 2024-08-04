@@ -199,7 +199,7 @@ namespace Base.Service.Service
             .ToArrayAsync();
         }
 
-        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID, int startPage, int endPage, int? quantity)
+        public async Task<IEnumerable<Student>> GetStudentsByClassID(int classID, int startPage, int endPage, int? quantity, Guid? userId)
         {
             int quantityResult = 0;
             _validateGet.ValidateGetRequest(ref startPage, ref endPage, quantity, ref quantityResult);
@@ -214,15 +214,20 @@ namespace Base.Service.Service
                 s => s.User!.StudentClasses            
             };
 
-            var result = await _unitOfWork.StudentRepository
+            var result = _unitOfWork.StudentRepository
             .Get(s => s.User != null && s.User.StudentClasses
                 .Any(c => c.ClassID == classID), includes: includes)
             .Where(c => c.IsDeleted == false)
             //.AsNoTracking()
             .Skip((startPage - 1) * quantityResult)
-            .Take((endPage - startPage + 1) * quantityResult)
-            .ToArrayAsync();
-            return result;
+            .Take((endPage - startPage + 1) * quantityResult);
+
+            if (userId is not null)
+            {
+                result = result.Where(s => s.User != null && s.User.Id == userId);
+            }
+
+            return await result.ToArrayAsync();
         }
 
         public async Task<ServiceResponseVM> Delete(Guid id)
