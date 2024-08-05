@@ -208,55 +208,64 @@ namespace Base.API.Controllers
                         return BadRequest("No data available for export.");
                     }
 
-                    // Create the workbook and worksheet
                     using (var workbook = new XLWorkbook())
                     {
                         var worksheet = workbook.Worksheets.Add("Attendance Report");
 
                         // Set headers
-                        worksheet.Cell("A1").Value = "Student Code";
-                        worksheet.Cell("B1").Value = "Student Name";
-                        worksheet.Cell("C1").Value = "Absence Percentage";
-                        worksheet.Cell("D1").Value = "Date";
-                        worksheet.Cell("E1").Value = "Status";
+                        worksheet.Cell("A1").Value = "STUDENT CODE";
+                        worksheet.Cell("B1").Value = "STUDENT NAME";
+                        worksheet.Cell("C1").Value = "ABSENT (%) SO FAR";
 
+                        // Dynamically set the dates as headers
+                        var dates = response.SelectMany(r => r.AttendanceRecords!)
+                                            .Select(ar => ar.Date)
+                                            .Distinct()
+                                            .OrderBy(d => d)
+                                            .ToList();
+
+                        for (int i = 0; i < dates.Count; i++)
+                        {
+                            worksheet.Cell(1, i + 4).Value = dates[i].ToString("dd/MM");
+                        }
+
+                        // Populate the data
                         int row = 2;
-
-                        // Populate the worksheet with data from the response
                         foreach (var student in response)
                         {
-                            if (student.AttendanceRecords != null)
-                            {
-                                foreach (var record in student.AttendanceRecords)
-                                {
-                                    worksheet.Cell(row, 1).Value = student.StudentCode;
-                                    worksheet.Cell(row, 2).Value = student.StudentName;
-                                    worksheet.Cell(row, 3).Value = student.AbsencePercentage;
-                                    worksheet.Cell(row, 4).Value = record.Date.ToString("yyyy-MM-dd");
-                                    worksheet.Cell(row, 5).Value = MapStatusToString(record.Status);
+                            worksheet.Cell(row, 1).Value = student.StudentCode;
+                            worksheet.Cell(row, 2).Value = student.StudentName;
+                            worksheet.Cell(row, 3).Value = $"{student.AbsencePercentage}%";
 
-                                    row++;
-                                }
+                            for (int i = 0; i < dates.Count; i++)
+                            {
+                                var recordsForDate = student.AttendanceRecords!
+                                .Where(r => r.Date == dates[i])
+                                .Select(r => r.Status)
+                                .ToList();
+
+                                worksheet.Cell(row, i + 4).Value = recordsForDate.Any() ? recordsForDate.Last() : "-";
                             }
+
+                            row++;
                         }
+
+                        // Adjust column widths
+                        worksheet.Columns().AdjustToContents();
 
                         // Save the workbook to a MemoryStream
                         using (var stream = new MemoryStream())
                         {
                             workbook.SaveAs(stream);
-
-                            // Reset the stream position to the beginning
                             stream.Position = 0;
-
-                            // Return the file as a FileStreamResult
                             return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "AttendanceReport.xlsx");
                         }
                     }
-                }
 
+                }
                 if (response != null)
                 {
-                    return Ok(response);
+                   return Ok(response);
                 }
 
                 return BadRequest("Error retrieving attendance report.");

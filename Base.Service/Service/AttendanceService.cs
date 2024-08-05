@@ -242,6 +242,7 @@ namespace Base.Service.Service
                 .Set<Schedule>()
                 .Where(s => s.ClassID == classId)
                 .Include(s => s.Attendances)
+                .Include(s => s.Slot)
                 .Include(s => s.Class)
                 .AsNoTracking()
                 .ToListAsync();
@@ -253,15 +254,18 @@ namespace Base.Service.Service
 
             var result = students.Select(student => new AttendanceReportResponse
             {
+              
                 StudentCode = student!.Student!.StudentCode,
                 StudentName = student.DisplayName,
                 AbsencePercentage = student.StudentClasses.First(sc => sc.ClassID == classId).AbsencePercentage,
                 AttendanceRecords = schedules.Select(schedule =>
                 {
                     var attendance = schedule.Attendances.FirstOrDefault(a => a.StudentID == student.Id);
+                    var slotNumber = schedule.Slot?.SlotNumber;
                     return new AttendanceRecord
                     {
                         Date = schedule.Date,
+                        SlotNumber = slotNumber,
                         Status = attendance != null ? attendance.AttendanceStatus : -1
                     };
                 }).ToList()
