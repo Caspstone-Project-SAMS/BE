@@ -34,6 +34,7 @@ namespace Base.Service.IService
     public class AttendanceRecord
     {
         public DateOnly Date { get; set; }
+        public int? SlotNumber { get; set; }
         public int Status { get; set; }
     }
 }
