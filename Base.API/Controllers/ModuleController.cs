@@ -231,13 +231,21 @@ public class ModuleController : ControllerBase
                             Errors = new string[1] { "Session not found" }
                         });
                     }
-
-                    if(sessionMode2.SessionState == 2)
+                    Guid currentUserId;
+                    if (!Guid.TryParse(_currentUserService.UserId, out currentUserId))
                     {
                         return BadRequest(new
                         {
-                            Title = "Cancel session failed",
-                            Errors = new string[1] { "Session is already cancelled" }
+                            Title = "Cancel sesion failed",
+                            Errors = new string[1] { "Session not found" }
+                        });
+                    }
+                    if (sessionMode2.UserID != currentUserId)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Cancel sesion failed",
+                            Errors = new string[1] { "Session not found" }
                         });
                     }
 

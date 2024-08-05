@@ -71,6 +71,10 @@ public class SessionManager
         session.SessionState = 1;
         session.FingerUpdate = fingerUpdate;
 
+        var cts = new CancellationTokenSource();
+        cts.CancelAfter(TimeSpan.FromSeconds(240));
+        _ = WaitCancelSession(sessionId, cts.Token);
+
         return true;
     }
 
@@ -111,6 +115,10 @@ public class SessionManager
         session.Category = 1;
         session.SessionState = 1;
         session.FingerRegistration = fingerRegistration;
+
+        var cts = new CancellationTokenSource();
+        cts.CancelAfter(TimeSpan.FromSeconds(240));
+        _ = WaitCancelSession(sessionId, cts.Token);
 
         return true;
     }
@@ -602,6 +610,17 @@ public class SessionManager
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
         await _webSocketConnectionManager.SendMessageToClient(jsonPayload, userId);
+    }
+
+    private Task WaitCancelSession(int sessionId, CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+        }
+
+        DeleteSession(sessionId);
+
+        return Task.CompletedTask;
     }
 }
 
