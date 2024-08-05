@@ -71,9 +71,9 @@ public class SessionManager
         session.SessionState = 1;
         session.FingerUpdate = fingerUpdate;
 
-        var cts = new CancellationTokenSource();
-        cts.CancelAfter(TimeSpan.FromSeconds(240));
-        _ = WaitCancelSession(sessionId, cts.Token);
+        //var cts = new CancellationTokenSource();
+        //cts.CancelAfter(TimeSpan.FromSeconds(240));
+        //_ = WaitCancelSession(sessionId, cts.Token);
 
         return true;
     }
@@ -116,9 +116,9 @@ public class SessionManager
         session.SessionState = 1;
         session.FingerRegistration = fingerRegistration;
 
-        var cts = new CancellationTokenSource();
-        cts.CancelAfter(TimeSpan.FromSeconds(240));
-        _ = WaitCancelSession(sessionId, cts.Token);
+        //var cts = new CancellationTokenSource();
+        //cts.CancelAfter(TimeSpan.FromSeconds(240));
+        //_ = WaitCancelSession(sessionId, cts.Token);
 
         return true;
     }
