@@ -32,6 +32,20 @@ using Base.Repository.Entity;
 
 var builder = WebApplication.CreateBuilder(args);
 
+/*builder.Host.ConfigureServices((context, services) =>
+{
+    HostConfig.CertPath = context.Configuration["CertPath"]!;
+});*/
+
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(80);
+    serverOptions.ListenAnyIP(443, listenOptions =>
+    {
+        listenOptions.UseHttps("/etc/ssl/certs/sams.pfx", "pa55w0rd!");
+    });
+});
+
 var Configuration = builder.Configuration;
 
 // Add services to the container.
@@ -425,3 +439,10 @@ app.UseEndpoints(endpoints =>
 
 
 app.Run();
+
+
+public static class HostConfig
+{
+    public static string CertPath { get; set; }
+    public static string CertPassword { get; set; }
+}

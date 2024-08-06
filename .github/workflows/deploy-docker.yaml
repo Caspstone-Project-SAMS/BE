@@ -24,6 +24,6 @@ jobs:
 
       - name: Build docker image and push it to docker hub
         run: |
-          docker build -t khoale111/sams-project:latest22 .
+          docker build -t khoale111/sams-project:latest .
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push khoale111/sams-project:latest22
+          docker push khoale111/sams-project:latest
