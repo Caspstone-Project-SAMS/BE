@@ -29,6 +29,7 @@ using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using IMailService = Base.Service.Common.IMailService;
 using MailService = Base.Service.Common.MailService;
 using Base.Repository.Entity;
+using System.Security.Cryptography.X509Certificates;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,14 +38,15 @@ var builder = WebApplication.CreateBuilder(args);
     HostConfig.CertPath = context.Configuration["CertPath"]!;
 });*/
 
-builder.WebHost.ConfigureKestrel(serverOptions =>
+
+/*builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.ListenAnyIP(80);
     serverOptions.ListenAnyIP(443, listenOptions =>
     {
         listenOptions.UseHttps("/etc/ssl/certs/sams.pfx", "pa55w0rd!");
     });
-});
+});*/
 
 var Configuration = builder.Configuration;
 

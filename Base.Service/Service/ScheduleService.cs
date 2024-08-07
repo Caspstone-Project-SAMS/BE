@@ -418,7 +418,7 @@ namespace Base.Service.Service
                 result.ErrorEntities = errorSchedules.ToList();
                 return result;
             }
-
+            
 
             // Lets check whether if the schedule overlap the existed schedule
             DbContextFactory dbFactory = new DbContextFactory();
@@ -465,8 +465,38 @@ namespace Base.Service.Service
             }
 
 
+            // Lets duplicate schedule
+            var duplicateSchedules = importedSchedules.ToList();
+            foreach(var schedule in importedSchedules.ToList())
+            {
+                bool check = true;
+                var date = schedule.Date;
+                while (check)
+                {
+                    Schedule duplicateSchedule = new Schedule();
+                    duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
+                    duplicateSchedule.SlotID = schedule.SlotID;
+                    duplicateSchedule.ClassID = schedule.ClassID;
+                    duplicateSchedule.RoomID = schedule.RoomID;
+                    duplicateSchedule.CreatedAt = schedule.CreatedAt;
+                    duplicateSchedule.CreatedBy = schedule.CreatedBy;
+
+                    date = date.AddDays(7);
+                    if(date > endDate)
+                    {
+                        check = false;
+                    }
+                    else
+                    {
+                        duplicateSchedule.Date = date;
+                        duplicateSchedule.DateOfWeek = (int)date.DayOfWeek;
+                        duplicateSchedules.Add(duplicateSchedule);
+                    }
+                }
+            };
+
             // Lets create schedules
-            var createSchedules = importedSchedules.ToList();
+            var createSchedules = duplicateSchedules.ToList();
             try
             {
                 await _unitOfWork.ScheduleRepository.AddRangeAsync(createSchedules);

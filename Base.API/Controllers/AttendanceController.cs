@@ -78,7 +78,7 @@ namespace Base.API.Controllers
             var result = await _attendanceService.UpdateListStudentStatus(studentArr);
             if (result.IsSuccess)
             {
-                _ = UpdateAttendancesStatus(studentArr);
+                _ = UpdateAttendancesStatus(studentArr.Where(s => s.AttendanceStatus == 1).ToArray());
 
                 return Ok(new
                 {
