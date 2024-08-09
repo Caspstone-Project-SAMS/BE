@@ -217,16 +217,18 @@ namespace Base.API.Controllers
                         worksheet.Cell("B1").Value = "STUDENT NAME";
                         worksheet.Cell("C1").Value = "ABSENT (%) SO FAR";
 
-                        // Dynamically set the dates as headers
-                        var dates = response.SelectMany(r => r.AttendanceRecords!)
-                                            .Select(ar => ar.Date)
-                                            .Distinct()
-                                            .OrderBy(d => d)
-                                            .ToList();
+                        // Dynamically set the dates with slot numbers as headers
+                        var dateSlotPairs = response.SelectMany(r => r.AttendanceRecords!)
+                                                    .Select(ar => new { ar.Date, ar.SlotNumber })
+                                                    .Distinct()
+                                                    .OrderBy(ds => ds.Date)
+                                                    .ThenBy(ds => ds.SlotNumber)
+                                                    .ToList();
 
-                        for (int i = 0; i < dates.Count; i++)
+                        for (int i = 0; i < dateSlotPairs.Count; i++)
                         {
-                            worksheet.Cell(1, i + 4).Value = dates[i].ToString("dd/MM");
+                            var dateSlot = dateSlotPairs[i];
+                            worksheet.Cell(1, i + 4).Value = $"{dateSlot.Date:dd/MM}-({dateSlot.SlotNumber})";
                         }
 
                         // Populate the data
@@ -237,23 +239,32 @@ namespace Base.API.Controllers
                             worksheet.Cell(row, 2).Value = student.StudentName;
                             worksheet.Cell(row, 3).Value = $"{student.AbsencePercentage}%";
 
-                            for (int i = 0; i < dates.Count; i++)
+                            for (int i = 0; i < dateSlotPairs.Count; i++)
                             {
-                                var recordsForDate = student.AttendanceRecords!
-                                .Where(r => r.Date == dates[i])
-                                .Select(r => r.Status)
-                                .ToList();
+                                var dateSlot = dateSlotPairs[i];
+                                var record = student.AttendanceRecords!.FirstOrDefault(r => r.Date == dateSlot.Date && r.SlotNumber == dateSlot.SlotNumber);
 
-                                worksheet.Cell(row, i + 4).Value = recordsForDate.Any() ? recordsForDate.Last() : "-";
+                                if (record != null)
+                                {
+                                    string statusIcon = record.Status switch
+                                    {
+                                        1 => "P", 
+                                        2 => "A", 
+                                        _ => "-" 
+                                    };
+
+                                    worksheet.Cell(row, i + 4).Value = statusIcon;
+                                }
+                                else
+                                {
+                                    worksheet.Cell(row, i + 4).Value = "-";
+                                }
                             }
 
                             row++;
                         }
 
-                        // Adjust column widths
                         worksheet.Columns().AdjustToContents();
-
-                        // Save the workbook to a MemoryStream
                         using (var stream = new MemoryStream())
                         {
                             workbook.SaveAs(stream);
@@ -261,30 +272,22 @@ namespace Base.API.Controllers
                             return File(stream.ToArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "AttendanceReport.xlsx");
                         }
                     }
-
                 }
+
                 if (response != null)
                 {
-                   return Ok(response);
+                    return Ok(response);
                 }
 
                 return BadRequest("Error retrieving attendance report.");
             }
             catch (Exception ex)
             {
-                // Log the exception (you might want to use a logging library here)
-                return StatusCode(500, $"Internal server error: {ex.Message}");
+                // Log the exception
+                return StatusCode(500, "Internal server error.");
             }
-        }
-        private string MapStatusToString(int status)
-        {
-            return status switch
-            {
-                1 => "P",
-                2 => "A",
-                _ => "-"
-            };
-        }
 
+
+        }
     }
 }
