@@ -195,7 +195,7 @@ namespace Base.API.Controllers
                     }
                 });
 
-                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID);
+                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID, resource.ApplyToSemester) ;
                 if (result.IsSuccess)
                 {
                     return Ok(_mapper.Map<ImportScheduleServiceResponseVM>(result));
@@ -221,6 +221,7 @@ namespace Base.API.Controllers
         public int Year { get; set; }
         public int DatesCount { get; set; }
         public int SlotsCount { get; set; }
+        public bool ApplyToSemester { get; set; } = false;
         [Required]
         public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();
         [Required]

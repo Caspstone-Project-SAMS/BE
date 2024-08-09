@@ -104,5 +104,38 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllSemesters([FromQuery] int startPage,
+            [FromQuery] int endPage,
+            [FromQuery] int quantity,
+            [FromQuery] string? semesterCode,
+            [FromQuery] int? semesterStatus,
+            [FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _semesterService.GetAll(startPage, endPage, quantity, semesterCode, semesterStatus, startDate, endDate);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = result.Result
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = "Get semesters falied",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get semesters failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

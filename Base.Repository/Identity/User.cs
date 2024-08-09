@@ -60,6 +60,10 @@ public class User : IdentityUser<Guid>
     // ===========================Officialy assigned teaching===========================//
     public IEnumerable<SubstituteTeaching> AssignedTeachings { get; set; } = new List<SubstituteTeaching>();
 
+
+    // ===========================Import Record========================//
+    public IEnumerable<ImportSchedulesRecord> ImportSchedulesRecords { get; set; } = new List<ImportSchedulesRecord>();
+
     public Role? GetRole()
     {
         if (this.Role is not null && this.Role.Deleted != true)

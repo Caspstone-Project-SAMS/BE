@@ -1,4 +1,5 @@
 ﻿using Base.IService.IService;
+using Base.Repository.Entity;
 using Base.Service.IService;
 using CloudinaryDotNet.Actions;
 using DocumentFormat.OpenXml.Vml.Spreadsheet;
@@ -220,7 +221,7 @@ public class ImportService
         };
     }
 
-    public async Task<Import_Result> ImportScheduleUsingImage(IFormFile imageResource, int semesterId, Guid lecturerId, int? recommendationRate)
+    public async Task<Import_Result> ImportScheduleUsingImage(IFormFile imageResource, Guid lecturerId, int recommendationRate = 50)
     {
         var credential = GoogleCredential.FromFile("keys/next-project-426205-5bd6e4b638be.json");
         ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
@@ -240,6 +241,8 @@ public class ImportService
 
         // Slot
         var slots = new List<Import_Slot>();
+
+        Semester? existedSemester;
         //===============================Other datas to work with===============================
 
 
@@ -376,9 +379,52 @@ public class ImportService
             }
         }
 
+        // Get semester based on startDate and endDate
+        var startDate = weeklyDates.MinBy(w => w.Date)?.Date;
+        var endDate = weeklyDates.MaxBy(w => w.Date)?.Date;
+        TimeOnly timeOnly = new TimeOnly(0, 0);
+        if (startDate is null || endDate is null)
+        {
+            return new Import_Result
+            {
+                Year = year ?? 0,
+                SemesterFound = false,
+                DatesCount = weeklyDates.Count,
+                SlotsCount = slots.Count,
+                Dates = weeklyDates,
+                Slots = slots
+            };
+        }
+        var getSemestersResult = await _semesterService.GetAll(1, 10, 10, null, null, startDate.Value.ToDateTime(timeOnly), endDate.Value.ToDateTime(timeOnly));
+        if (!getSemestersResult.IsSuccess)
+        {
+            return new Import_Result
+            {
+                Year = year ?? 0,
+                SemesterFound = false,
+                DatesCount = weeklyDates.Count,
+                SlotsCount = slots.Count,
+                Dates = weeklyDates,
+                Slots = slots
+            };
+        }
+        existedSemester = getSemestersResult.Result?.FirstOrDefault();
+        if(existedSemester is null)
+        {
+            return new Import_Result
+            {
+                Year = year ?? 0,
+                SemesterFound = false,
+                DatesCount = weeklyDates.Count,
+                SlotsCount = slots.Count,
+                Dates = weeklyDates,
+                Slots = slots
+            };
+        }
+
 
         // Remake schedule data, remove words that seems not to be class code
-        foreach(var block in adjustedTextBlocks)
+        foreach (var block in adjustedTextBlocks)
         {
             foreach (var paragraph in block.Paragraphs)
             {
@@ -511,7 +557,7 @@ public class ImportService
 
 
         // Validate schedule (class code) information of each slot
-        var existedClassCode = await _classService.GetAllClassCodes(semesterId, lecturerId);
+        var existedClassCode = await _classService.GetAllClassCodes(existedSemester.SemesterID, lecturerId);
         var validateSchedulesTasks = new List<Task<Import_Slot>>();
         foreach (var slot in slots)
         {
@@ -552,6 +598,9 @@ public class ImportService
         return new Import_Result
         {
             Year = year ?? 0,
+            SemesterFound = true,
+            SemesterCode = existedSemester.SemesterCode,
+            SemesterId = existedSemester.SemesterID,
             DatesCount = weeklyDates.Count,
             SlotsCount = slots.Count,
             Dates = weeklyDates,
@@ -753,6 +802,9 @@ public class Class_Suggest
 public class Import_Result
 {
     public int Year { get; set; }
+    public string SemesterCode { get; set; } = string.Empty;
+    public int SemesterId { get; set; }
+    public bool SemesterFound { get; set; }
     public int DatesCount { get; set; }
     public int SlotsCount { get; set; }
     public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();

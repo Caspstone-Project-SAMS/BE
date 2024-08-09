@@ -300,7 +300,7 @@ namespace Base.Service.Service
             return result;
         }
 
-        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID)
+        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID, bool applyToSemester)
         {
             var result = new ImportServiceResposneVM<Schedule>()
             {
@@ -389,6 +389,38 @@ namespace Base.Service.Service
             }
 
 
+            if (applyToSemester)
+            {
+                // Lets duplicate schedule
+                Parallel.ForEach(importedSchedules.ToList(), parallelOptions, (schedule, state) =>
+                {
+                    bool check = true;
+                    var date = schedule.Date;
+                    while (check)
+                    {
+                        Schedule duplicateSchedule = new Schedule();
+                        duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
+                        duplicateSchedule.SlotID = schedule.SlotID;
+                        duplicateSchedule.ClassID = schedule.ClassID;
+                        duplicateSchedule.RoomID = schedule.RoomID;
+                        duplicateSchedule.CreatedAt = schedule.CreatedAt;
+                        duplicateSchedule.CreatedBy = schedule.CreatedBy;
+
+                        date = date.AddDays(7);
+                        if (date > endDate)
+                        {
+                            check = false;
+                        }
+                        else
+                        {
+                            duplicateSchedule.Date = date;
+                            duplicateSchedule.DateOfWeek = (int)date.DayOfWeek;
+                            importedSchedules.Add(duplicateSchedule);
+                        }
+                    }
+                });
+            }
+
             // Lets check whether if the schedule is already added
             var verifiedSchedules = importedSchedules.ToList();
             var copySchedules = verifiedSchedules.ToList();
@@ -465,38 +497,8 @@ namespace Base.Service.Service
             }
 
 
-            // Lets duplicate schedule
-            var duplicateSchedules = importedSchedules.ToList();
-            foreach(var schedule in importedSchedules.ToList())
-            {
-                bool check = true;
-                var date = schedule.Date;
-                while (check)
-                {
-                    Schedule duplicateSchedule = new Schedule();
-                    duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
-                    duplicateSchedule.SlotID = schedule.SlotID;
-                    duplicateSchedule.ClassID = schedule.ClassID;
-                    duplicateSchedule.RoomID = schedule.RoomID;
-                    duplicateSchedule.CreatedAt = schedule.CreatedAt;
-                    duplicateSchedule.CreatedBy = schedule.CreatedBy;
-
-                    date = date.AddDays(7);
-                    if(date > endDate)
-                    {
-                        check = false;
-                    }
-                    else
-                    {
-                        duplicateSchedule.Date = date;
-                        duplicateSchedule.DateOfWeek = (int)date.DayOfWeek;
-                        duplicateSchedules.Add(duplicateSchedule);
-                    }
-                }
-            };
-
             // Lets create schedules
-            var createSchedules = duplicateSchedules.ToList();
+            var createSchedules = importedSchedules.ToList();
             try
             {
                 await _unitOfWork.ScheduleRepository.AddRangeAsync(createSchedules);
