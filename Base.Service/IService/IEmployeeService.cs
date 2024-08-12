@@ -1,4 +1,5 @@
 ﻿using Base.Repository.Identity;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using System;
 using System.Collections.Generic;
@@ -12,4 +13,5 @@ public interface IEmployeeService
 {
     Task<User?> GetById(Guid id);
     Task<ServiceResponseVM<IEnumerable<User>>> GetAll(int startPage, int endPage, int quantity, string? email, string? phone, string? department, int? roleId);
+    Task<ServiceResponseVM<List<EmployeeVM>>> CreateEmployee(List<EmployeeVM> newEntities);
 }
