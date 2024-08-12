@@ -689,5 +689,18 @@ namespace Base.Service.Service
                 return result;
             }
         }
+
+        public async Task<Schedule?> GetByIdForModule(int scheduleId)
+        {
+            var includes = new Expression<Func<Schedule, object?>>[]
+            {
+                s => s.Slot,
+                s => s.Class,
+            };
+            return await _unitOfWork.ScheduleRepository
+                .Get(s => s.ScheduleID == scheduleId, includes)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
     }
 }

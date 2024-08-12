@@ -265,6 +265,31 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpGet("module/{id}")]
+        public async Task<IActionResult> GetScheduleByIdForModule(int id)
+        {
+            if (ModelState.IsValid && id > 0)
+            {
+                var existedSchedule = await _scheduleService.GetByIdForModule(id);
+                if (existedSchedule is null)
+                {
+                    return NotFound(new
+                    {
+                        Title = "Schedule not found"
+                    });
+                }
+                return Ok(new
+                {
+                    Result = _mapper.Map<ScheduleResponseVM>(existedSchedule)
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get schedule information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 
     public class ScheduleImport
