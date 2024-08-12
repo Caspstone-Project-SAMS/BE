@@ -10,6 +10,7 @@ public class Attendance : AuditableEntity
     public int AttendanceID { get; set; }
     public int AttendanceStatus { get; set; }
     public DateTime? AttendanceTime { get; set; }
+    public DateTime? ScannedTime { get; set; }
     public string? Comments { get; set; }
 
     public int ScheduleID { get; set; }

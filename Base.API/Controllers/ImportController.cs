@@ -21,7 +21,7 @@ public class ImportController : ControllerBase
     {
         if (ModelState.IsValid && resource.Image is not null)
         {
-            var result = await _importService.ImportScheduleUsingImage(resource.Image, resource.SemesterId, resource.UserId, resource.RecommendationRate);
+            var result = await _importService.ImportScheduleUsingImage(resource.Image, resource.UserId);
             return Ok(new
             {
                 Title = "Import successfully",
@@ -41,8 +41,5 @@ public class ImportSchedule
     [Required]
     public IFormFile? Image { get; set; }
     [Required]
-    public int SemesterId { get; set; }
-    [Required]
     public Guid UserId { get; set; }
-    public int? RecommendationRate { get; set; }
 }

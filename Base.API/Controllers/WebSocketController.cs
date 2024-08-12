@@ -365,7 +365,7 @@ public class WebSocketController : ControllerBase
                     webSocket.Abort();
                     webSocket.Dispose();
 
-                    await Task.Delay(TimeSpan.FromSeconds(1));
+                    await Task.Delay(TimeSpan.FromSeconds(4));
 
                     // Notify to user that module is lost connected
                     _ = NotifyModuleLostConnected(moduleId);

@@ -20,6 +20,9 @@ using HttpMethod = System.Net.Http.HttpMethod;
 using Azure.Core;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
+using Microsoft.AspNetCore.Http;
 
 namespace Base.Service.Service;
 
@@ -30,18 +33,21 @@ public class UserService : IUserService
     private readonly Cloudinary _cloudinary;
     private readonly ICurrentUserService _currentUserService;
     private readonly IValidateGet _validateGet;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public UserService(UserManager<User> userManager, 
         IUnitOfWork unitOfWork, 
         Cloudinary cloudinary,
         ICurrentUserService currentUserService,
-        IValidateGet validateGet)
+        IValidateGet validateGet,
+        IHttpContextAccessor httpContextAccessor)
     {
         _userManager = userManager;
         _unitOfWork = unitOfWork;
         _cloudinary = cloudinary;
         _currentUserService = currentUserService;
         _validateGet = validateGet;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<ServiceResponseVM<User>> CreateNewUser(UserVM newEntity)
@@ -422,4 +428,128 @@ public class UserService : IUserService
 
         expressions.Add(Expression.Equal(Expression.Property(pe, nameof(User.Deleted)), Expression.Constant(false)));
     }*/
+
+    public async Task<UserManagerResponse> ResetPassword(ResetPasswordVM resource)
+    {
+        var result = new UserManagerResponse
+        {
+            IsSuccess = false
+        };
+
+        if (resource.NewPassword != resource.ConfirmPassword)
+        {
+            result.IsSuccess = false;
+            result.Title = "Reset password failed";
+            result.Errors = new string[1] { "New password and confirm password does not matched" };
+            return result;
+        }
+
+        var existedUser = await _userManager.FindByIdAsync(resource.UserId.ToString());
+        if (existedUser is null || existedUser.Deleted == true)
+        {
+            result.IsSuccess = false;
+            result.Title = "Reset password failed";
+            result.Errors = new string[1] { "User information not found" };
+            return result;
+        }
+
+        var changePasswordResult = await _userManager.ChangePasswordAsync(existedUser, resource.OldPassword, resource.NewPassword);
+        if (changePasswordResult.Succeeded)
+        {
+            result.IsSuccess = true;
+            result.Title = "Reset password successfully";
+            return result;
+        }
+        else
+        {
+            result.IsSuccess = false;
+            result.Title = "Reset password failed";
+            result.Errors = changePasswordResult.Errors.Select(e => e.Description);
+            return result;
+        }
+    }
+
+    public async Task<UserManagerResponse> ForgetPassword(string email)
+    {
+        var result = new UserManagerResponse()
+        {
+            IsSuccess = false
+        };
+
+        var existedUser = await _userManager.FindByEmailAsync(email);
+        if(existedUser is null || existedUser.Deleted)
+        {
+            result.IsSuccess = false;
+            result.Title = "Request to reset password failed";
+            result.Errors = new string[1] { "Email not found" };
+            return result;
+        }
+
+        var token = await _userManager.GenerateUserTokenAsync(existedUser, "UserTokenProvider", UserManager<User>.ResetPasswordTokenPurpose);
+        var encodedToken = Encoding.UTF8.GetBytes(token);
+        var validToken = WebEncoders.Base64UrlEncode(encodedToken);
+
+        if(_httpContextAccessor.HttpContext is null)
+        {
+            result.IsSuccess = false;
+            result.Title = "Request to reset password failed";
+            result.Errors = new string[1] { "Requested url not found" };
+            return result;
+        }
+
+        string host = _httpContextAccessor.HttpContext.Request.Scheme + "://" + _httpContextAccessor.HttpContext.Request.Host;
+        string url = $"{host}/resetpassword?email={email}&token={validToken}";
+
+        result.IsSuccess = true;
+        result.Title = "Please check mail and follow instruction to reset password";
+        result.ForgetPasswordUrl = url;
+        result.User = existedUser;
+        return result;
+    }
+
+    public async Task<UserManagerResponse> ForgetAndResetPasswordAsync(ForgetPasswordVM model)
+    {
+        var result = new UserManagerResponse()
+        {
+            IsSuccess = false
+        };
+
+        if (model.NewPassword != model.ConfirmPassword)
+        {
+            result.IsSuccess = false;
+            result.Title = "Reset password failed";
+            result.Errors = new string[1] { "New password and confirm password does not matched" };
+            return result;
+        }
+
+        var existedUser = await _userManager.FindByEmailAsync(model.Email);
+        if (existedUser is null || existedUser.Deleted)
+        {
+            result.IsSuccess = false;
+            result.Title = "Reset password failed";
+            result.Errors = new string[1] { "No user associated with the given email: " + model.Email };
+            return result;
+        }
+
+        var decodedToken = WebEncoders.Base64UrlDecode(model.Token!);
+        string normalToken = Encoding.UTF8.GetString(decodedToken);
+
+        // Force user manager to use the given token provider
+        _userManager.Options.Tokens.PasswordResetTokenProvider = "UserTokenProvider";
+        var resetPasswordResult = await _userManager.ResetPasswordAsync(existedUser, normalToken, model.NewPassword);
+
+        if (resetPasswordResult.Succeeded)
+        {
+            result.IsSuccess = true;
+            result.Title = "Reset password successfully";
+            return result;
+        }
+        else
+        {
+            result.IsSuccess = false;
+            result.Title = "Reset password failed";
+            result.Errors = resetPasswordResult.Errors.Select(e => e.Description);
+            return result;
+        }
+    }
 }

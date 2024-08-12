@@ -20,6 +20,9 @@ public class Schedule : AuditableEntity
     public int? RoomID { get; set; }
     public Room? Room { get; set; }
 
+    public int? ImportSchedulesRecordID { get; set; }
+    public ImportSchedulesRecord? ImportSchedulesRecord { get; set; }
+
     public SubstituteTeaching? SubstituteTeaching { get; set; }
 
     public IEnumerable<Attendance> Attendances { get; set; } = new List<Attendance>();

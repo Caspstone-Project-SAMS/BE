@@ -300,7 +300,7 @@ namespace Base.Service.Service
             return result;
         }
 
-        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID)
+        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID, bool applyToSemester)
         {
             var result = new ImportServiceResposneVM<Schedule>()
             {
@@ -389,6 +389,38 @@ namespace Base.Service.Service
             }
 
 
+            if (applyToSemester)
+            {
+                // Lets duplicate schedule
+                Parallel.ForEach(importedSchedules.ToList(), parallelOptions, (schedule, state) =>
+                {
+                    bool check = true;
+                    var date = schedule.Date;
+                    while (check)
+                    {
+                        Schedule duplicateSchedule = new Schedule();
+                        duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
+                        duplicateSchedule.SlotID = schedule.SlotID;
+                        duplicateSchedule.ClassID = schedule.ClassID;
+                        duplicateSchedule.RoomID = schedule.RoomID;
+                        duplicateSchedule.CreatedAt = schedule.CreatedAt;
+                        duplicateSchedule.CreatedBy = schedule.CreatedBy;
+
+                        date = date.AddDays(7);
+                        if (date > endDate)
+                        {
+                            check = false;
+                        }
+                        else
+                        {
+                            duplicateSchedule.Date = date;
+                            duplicateSchedule.DateOfWeek = (int)date.DayOfWeek;
+                            importedSchedules.Add(duplicateSchedule);
+                        }
+                    }
+                });
+            }
+
             // Lets check whether if the schedule is already added
             var verifiedSchedules = importedSchedules.ToList();
             var copySchedules = verifiedSchedules.ToList();
@@ -465,38 +497,8 @@ namespace Base.Service.Service
             }
 
 
-            // Lets duplicate schedule
-            var duplicateSchedules = importedSchedules.ToList();
-            foreach(var schedule in importedSchedules.ToList())
-            {
-                bool check = true;
-                var date = schedule.Date;
-                while (check)
-                {
-                    Schedule duplicateSchedule = new Schedule();
-                    duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
-                    duplicateSchedule.SlotID = schedule.SlotID;
-                    duplicateSchedule.ClassID = schedule.ClassID;
-                    duplicateSchedule.RoomID = schedule.RoomID;
-                    duplicateSchedule.CreatedAt = schedule.CreatedAt;
-                    duplicateSchedule.CreatedBy = schedule.CreatedBy;
-
-                    date = date.AddDays(7);
-                    if(date > endDate)
-                    {
-                        check = false;
-                    }
-                    else
-                    {
-                        duplicateSchedule.Date = date;
-                        duplicateSchedule.DateOfWeek = (int)date.DayOfWeek;
-                        duplicateSchedules.Add(duplicateSchedule);
-                    }
-                }
-            };
-
             // Lets create schedules
-            var createSchedules = duplicateSchedules.ToList();
+            var createSchedules = importedSchedules.ToList();
             try
             {
                 await _unitOfWork.ScheduleRepository.AddRangeAsync(createSchedules);
@@ -523,6 +525,169 @@ namespace Base.Service.Service
             result.ErrorEntities = errorSchedules.ToList();
 
             return result;
+        }
+
+        public async Task<ServiceResponseVM<Schedule>> CreateNewSchedule(CreateScheduleVM resource)
+        {
+            var result = new ServiceResponseVM<Schedule> 
+            {
+                IsSuccess = false
+            };
+
+            var existedSlot = _unitOfWork.SlotRepository.Get(s => !s.IsDeleted && s.SlotID == resource.SlotId).AsNoTracking().FirstOrDefault();
+            if(existedSlot is null)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new string[1] { "Slot not found" };
+                return result;
+            }
+
+            var existedClass = _unitOfWork.ClassRepository.Get(c => !c.IsDeleted && c.ClassID == resource.ClassId).AsNoTracking().FirstOrDefault();
+            if(existedClass is null)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new string[1] { "Class not found" };
+                return result;
+            }
+
+            if(resource.RoomId is not null)
+            {
+                var existedRoom = _unitOfWork.RoomRepository.Get(r => !r.IsDeleted && r.RoomID == resource.RoomId).AsNoTracking().FirstOrDefault();
+                if(existedRoom is null)
+                {
+                    result.IsSuccess = false;
+                    result.Title = "Create new schedule failed";
+                    result.Errors = new string[1] { "Room not found" };
+                    return result;
+                }
+            }
+
+            var checkAlreadCreateSchedule = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && s.ClassID == resource.ClassId && s.SlotID == resource.SlotId && s.Date == resource.Date)
+                .AsNoTracking()
+                .FirstOrDefault();
+            if(checkAlreadCreateSchedule is not null)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new string[1] { "Schedule is already added" };
+                return result;
+            }
+
+            var checkOverlapSchedule = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && s.Date == resource.Date && s.SlotID == resource.SlotId && s.Class!.LecturerID == existedClass.LecturerID,
+                    new Expression<Func<Schedule, object?>>[]
+                    {
+                        s => s.Class,
+                        s => s.Slot
+                    })
+                .AsNoTracking()
+                .FirstOrDefault();
+            if(checkOverlapSchedule is not null)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new string[1] { "There is already a class " + checkOverlapSchedule.Class?.ClassCode + " scheduled on " + checkOverlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + checkOverlapSchedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + checkOverlapSchedule.Slot?.Endtime.ToString("hh:mm:ss") };
+                return result;
+            }
+
+            var createdSchedule = new Schedule
+            {
+                Date = resource.Date,
+                DateOfWeek = (int)resource.Date.DayOfWeek,
+                SlotID = resource.SlotId,
+                ClassID = resource.ClassId,
+                RoomID = resource.RoomId
+            };
+
+            try
+            {
+                await _unitOfWork.ScheduleRepository.AddAsync(createdSchedule);
+                var saveChangesResult = await _unitOfWork.SaveChangesAsync();
+                if (saveChangesResult)
+                {
+                    result.IsSuccess = true;
+                    result.Title = "Create new schedule successfully";
+                    result.Result = createdSchedule;
+                    return result;
+                }
+                else
+                {
+                    result.IsSuccess = false;
+                    result.Title = "Create new schedule failed";
+                    result.Errors = new string[1] { "Error when saving changes" };
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new List<string> { "Error when saving changes", ex.Message };
+                return result;
+            }
+        }
+
+        public async Task<ServiceResponseVM> DeleteSchedules(DeleteSchedulesVM resource)
+        {
+            var result = new ServiceResponseVM
+            {
+                IsSuccess = false
+            };
+
+            var deletedSchedules = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && s.Date >= resource.StartDate && s.Date <= resource.EndDate && s.Class!.LecturerID == resource.UserID,
+                new Expression<Func<Schedule, object?>>[]
+                {
+                    s => s.Attendances,
+                });
+
+            if(resource.SlotIDs.Count() > 0)
+            {
+                deletedSchedules = deletedSchedules.Where(s => resource.SlotIDs.Any(i => i == s.SlotID));
+            }
+
+            var schedules = deletedSchedules.ToArray();
+
+            var parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.4 * 2))
+            };
+            Parallel.ForEach(schedules, parallelOptions, (schedule, state) =>
+            {
+                schedule.IsDeleted = true;
+                foreach (var attendance in schedule.Attendances)
+                {
+                    attendance.IsDeleted = true;
+                }
+            });
+
+            try
+            {
+                var saveChangesResult = await _unitOfWork.SaveChangesAsync();
+                if (saveChangesResult)
+                {
+                    result.IsSuccess = true;
+                    result.Title = "Delete schedules successfully";
+                    return result;
+                }
+                else
+                {
+                    result.IsSuccess = false;
+                    result.Title = "Delete schedules failed";
+                    result.Errors = new List<string> { "Error when saving changes" };
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.Title = "Delete schedules failed";
+                result.Errors = new List<string> { "Error when saving changes", ex.Message };
+                return result;
+            }
         }
     }
 }

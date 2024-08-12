@@ -16,5 +16,6 @@ namespace Base.IService.IService
         Task<ServiceResponseVM> Delete(int id);
         Task<ServiceResponseVM<Semester>> Update(SemesterVM updateSemester, int id);
         Task<Semester?> GetById(int id);
+        Task<ServiceResponseVM<IEnumerable<Semester>>> GetAll(int startPage, int endPage, int quantity, string? semesterCode, int? semesterStatus, DateTime? startDate, DateTime? endDate);
     }
 }
