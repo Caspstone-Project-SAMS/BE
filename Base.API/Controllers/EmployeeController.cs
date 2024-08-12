@@ -2,6 +2,7 @@
 using Base.API.Common;
 using Base.Repository.Entity;
 using Base.Service.IService;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -77,6 +78,18 @@ namespace Base.API.Controllers
                 Title = "Get employees failed",
                 Errors = new string[1] { "Invalid input" }
             });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateNewEmployee(List<EmployeeVM> resources)
+        {
+            var result = await _employeeService.CreateEmployee(resources);
+            if (result.IsSuccess)
+            {
+                return Ok(result);
+            }
+
+            return BadRequest(result);
         }
     }
 }

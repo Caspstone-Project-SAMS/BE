@@ -269,7 +269,7 @@ namespace Base.Service.Service
                         Status = attendance != null ? attendance.AttendanceStatus : -1
                     };
                 }).ToList()
-            }).ToList();
+            }).OrderBy(s => s.AttendanceRecords!.Min(a => a.Date)).ToList();
 
             dbContext1.Dispose();
             dbContext2.Dispose();
