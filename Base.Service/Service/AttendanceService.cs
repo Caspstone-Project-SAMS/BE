@@ -268,7 +268,7 @@ namespace Base.Service.Service
                         SlotNumber = slotNumber,
                         Status = attendance != null ? attendance.AttendanceStatus : -1
                     };
-                }).ToList()
+                }).OrderBy(record => record.Date).ToList()
             }).OrderBy(s => s.AttendanceRecords!.Min(a => a.Date)).ToList();
 
             dbContext1.Dispose();
