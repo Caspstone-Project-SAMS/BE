@@ -179,36 +179,45 @@ namespace Base.Service.Service
 
             var dbContext1 = dbFactory.CreateDbContext(Array.Empty<string>());
             var dbContext2 = dbFactory.CreateDbContext(Array.Empty<string>());
+            var dbContext3 = dbFactory.CreateDbContext(Array.Empty<string>());
 
             var students = dbContext1
                 .Set<User>()
-                .Where(u => u.StudentClasses.Any(c => c.ClassID == classId))
+                .Where(u => !u.Deleted && u.StudentClasses.Any(c => c.ClassID == classId))
                 .Include(s => s.StudentClasses.Where(sc => sc.ClassID == classId))
                 .Include(s => s.Student)
                 .AsNoTracking()
                 .ToListAsync();
 
+            var schedules = dbContext3
+                .Set<Schedule>()
+                .Where(s => !s.IsDeleted && s.ClassID == classId)
+                .Include(s => s.Slot)
+                .AsNoTracking()
+                .ToListAsync();
+
             var existedClass = dbContext2
                 .Set<Class>()
-                .Where(c => c.ClassID == classId)
+                .Where(c => !c.IsDeleted && c.ClassID == classId)
                 .Include(c => c.Semester)
                 .Include(c => c.Room)
                 .Include(c => c.Subject)
                 .Include(c => c.Lecturer!.Employee)
-                .Include(c => c.Schedules)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            await Task.WhenAll(students, existedClass);
+            await Task.WhenAll(students, schedules, existedClass);
 
             var result = existedClass.Result;
             if(result != null)
             {
                 result.Students = students.Result;
+                result.Schedules = schedules.Result;
             }
 
             dbContext1.Dispose();
             dbContext2.Dispose();
+            dbContext3.Dispose();
 
             return result;
         }

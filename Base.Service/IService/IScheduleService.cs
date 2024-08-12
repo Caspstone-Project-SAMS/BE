@@ -17,5 +17,7 @@ namespace Base.Service.IService
         string? GetClassCodeList(string deliminate, List<int>? scheduleIds);
         Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate);
         Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID, bool applyToSemester);
+        Task<ServiceResponseVM<Schedule>> CreateNewSchedule(CreateScheduleVM resource);
+        Task<ServiceResponseVM> DeleteSchedules(DeleteSchedulesVM resource);
     }
 }

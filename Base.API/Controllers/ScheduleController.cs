@@ -14,6 +14,8 @@ using Google.Type;
 using DateTime = System.DateTime;
 using System.Collections.Concurrent;
 using Base.Service.Common;
+using CloudinaryDotNet.Actions;
+using static Google.Cloud.Vision.V1.ProductSearchResults.Types;
 
 namespace Base.API.Controllers
 {
@@ -206,6 +208,60 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Import schedules failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpPost("create")]
+        public async Task<IActionResult> CreateNewSchedule([FromBody] CreateScheduleVM resource)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _scheduleService.CreateNewSchedule(resource);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = _mapper.Map<ScheduleResponseVM>(result.Result)
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = result.Title,
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Create new schedule failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpDelete]
+        public async Task<IActionResult> DeleteSchedule([FromBody] DeleteSchedulesVM resource)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _scheduleService.DeleteSchedules(resource);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title
+                    });
+                }
+
+                return BadRequest(new
+                {
+                    Title = result.Title,
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Delete schedules failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }

@@ -12,12 +12,6 @@ public class Module : AuditableEntity
     public string Key { get; set; } = string.Empty;
 
 
-    // Data Preparation
-    public bool AutoPrepare { get; set; } = false;
-    public TimeOnly? PreparedTime { get; set; }
-    public int? PreparedMinBeforeSlot { get; set; }
-
-
     // Sound of buzzer
     public bool ConnectionSound { get; set; } = true;
     public int ConnectionSoundDurationMs { get; set; } = 500;
@@ -31,6 +25,10 @@ public class Module : AuditableEntity
 
     // Attendance
     public int AttendanceGracePeriodMinutes { get; set; } = 15;
+    // Data Preparation
+    public bool AutoPrepare { get; set; } = false;
+    public TimeOnly? PreparedTime { get; set; }
+    public int? PreparedMinBeforeSlot { get; set; }
 
 
     public Guid EmployeeID { get; set; }

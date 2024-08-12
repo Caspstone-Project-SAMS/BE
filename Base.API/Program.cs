@@ -111,7 +111,8 @@ builder.Services.AddIdentityCore<User>(options =>
     options.Tokens.ChangeEmailTokenProvider = "UserTokenProvider";
     options.Tokens.PasswordResetTokenProvider = "UserTokenProvider";
 })
-    .AddEntityFrameworkStores<ApplicationDbContext>();
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddTokenProvider<TokenProvider<User>>("UserTokenProvider");
 
 builder.Services.AddScoped<IJWTTokenService<IdentityUser<Guid>>, JWTTokenService<IdentityUser<Guid>>>();
 builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();

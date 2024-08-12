@@ -50,8 +50,8 @@ namespace Base.API.Mapper
                  .ForMember(dest => dest.UserID, opt => opt.MapFrom(src => src.User!.Id));
 
             CreateMap<Class, ClassResponse>()
-                .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room!.RoomName))
-                .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedules!.First().Date))
+                .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room!.IsDeleted ? null : src.Room.RoomName))
+                .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedules!.FirstOrDefault() != null ? src.Schedules.FirstOrDefault()!.Date : new DateOnly(2000, 0, 0)))
                 .ForMember(dest => dest.LecturerName, opt => opt.MapFrom(src => src.Lecturer!.DisplayName))
                 .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject!.SubjectCode))
                 .ForMember(dest => dest.SubjectName, opt => opt.MapFrom(src => src.Subject!.SubjectName));
@@ -66,18 +66,17 @@ namespace Base.API.Mapper
 
             // For attendance detail
             CreateMap<User, Student_AttendanceResponseVM>()
-                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode));
+                .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.IsDeleted ? null : src.Student.StudentCode));
             CreateMap<Slot, Slot_AttendanceResponseVM>();
             CreateMap<Class, Class_AttendanceResponseVM>();
             CreateMap<Room, Room_AttendanceResponseVM>();
             CreateMap<Schedule, Schedule_AttendanceResponseVM>();
             CreateMap<Attendance, AttendanceResponseVM>();
-
             CreateMap<Attendance, AttendancesResponseVM>()
-                .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedule!.Date))
-                .ForMember(dest => dest.Slot, opt => opt.MapFrom(src => src.Schedule!.Slot))
-                .ForMember(dest => dest.Class, opt => opt.MapFrom(src => src.Schedule!.Class))
-                .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Schedule!.Room != null ? src.Schedule.Room : src.Schedule.Class!.Room));
+                .ForMember(dest => dest.Date, opt => opt.MapFrom(src => src.Schedule!.IsDeleted ? new DateOnly(1900, 0 ,0) : src.Schedule.Date))
+                .ForMember(dest => dest.Slot, opt => opt.MapFrom(src => src.Schedule!.Slot!.IsDeleted ? null : src.Schedule.Slot))
+                .ForMember(dest => dest.Class, opt => opt.MapFrom(src => src.Schedule!.Class!.IsDeleted ? null : src.Schedule!.Class))
+                .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Schedule!.Room != null ? (src.Schedule.Room.IsDeleted ? null : src.Schedule.Room) : (src.Schedule.Class!.Room!.IsDeleted ? null : src.Schedule.Class.Room)));
 
             // For class detail
             CreateMap<User, Student_ClassResponseVM>()

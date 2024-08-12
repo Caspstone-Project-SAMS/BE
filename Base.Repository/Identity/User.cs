@@ -85,6 +85,15 @@ public class LoginUserManagement
     public bool IsSuccess { get; set; }
     public IEnumerable<string>? Errors { get; set; }
     public User? LoginUser { get; set; }
-    public string? ConfirmEmailUrl { get; set; }
     public IEnumerable<string>? RoleNames { get; set; }
+}
+
+public class UserManagerResponse
+{
+    public string? Title { get; set; }
+    public bool IsSuccess { get; set; }
+    public IEnumerable<string>? Errors { get; set; }
+    public User? User { get; set; }
+    public string? ConfirmEmailUrl { get; set; }
+    public string? ForgetPasswordUrl { get; set; }
 }

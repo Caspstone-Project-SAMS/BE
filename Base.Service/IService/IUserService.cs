@@ -10,4 +10,7 @@ public interface IUserService
     Task<LoginUserManagement> LoginUser(LoginUserVM resource);
     Task<ServiceResponseVM<User>> CreateNewUser(UserVM newEntity);
     Task<User?> GetUserById(Guid id);
+    Task<UserManagerResponse> ResetPassword(ResetPasswordVM resource);
+    Task<UserManagerResponse> ForgetPassword(string email);
+    Task<UserManagerResponse> ForgetAndResetPasswordAsync(ForgetPasswordVM model);
 }
