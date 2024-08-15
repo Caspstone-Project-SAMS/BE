@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240814044339_add system configuration")]
+    partial class addsystemconfiguration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -191,12 +193,8 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("IsReversible")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime>("RecordTimestamp")
+                    b.Property<DateTime?>("RecordTimestamp")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -216,7 +214,7 @@ namespace Base.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ModuleID"), 1L, 1);
 
-                    b.Property<int>("AttendanceDurationMinutes")
+                    b.Property<int>("AttendanceGracePeriodMinutes")
                         .HasColumnType("int");
 
                     b.Property<bool>("AttendanceSound")
@@ -228,7 +226,7 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("AutoPrepare")
                         .HasColumnType("bit");
 
-                    b.Property<int>("ConnectionLifeTimeSeconds")
+                    b.Property<int>("ConnectionLifetimeMs")
                         .HasColumnType("int");
 
                     b.Property<bool>("ConnectionSound")
@@ -255,6 +253,9 @@ namespace Base.Repository.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Mode")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PreparedMinBeforeSlot")
                         .HasColumnType("int");
 
                     b.Property<TimeSpan?>("PreparedTime")

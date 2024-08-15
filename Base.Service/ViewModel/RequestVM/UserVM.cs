@@ -22,3 +22,17 @@ public class UserVM
     public IFormFile? Avatar { get; set; }
     public string? FilePath { get; set; }
 }
+
+public class UpdateUserVM
+{
+    [EmailAddress]
+    public string? Email { get; set; }
+    [Phone]
+    public string? PhoneNumber { get; set; }
+    public IFormFile? Avatar { get; set; }
+    public string? DisplayName { get; set; }
+    public string? Address { get; set; }
+    public DateTime? DOB { get; set; }
+}
+
+

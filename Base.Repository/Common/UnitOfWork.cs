@@ -44,6 +44,10 @@ public interface IUnitOfWork
 
     IModuleActivityRepository ModuleActivityRepository { get; }
 
+    IImportSchedulesRecordRepository ImportSchedulesRecordRepository { get; }
+
+    ISystemConfigurationRepository SystemConfigurationRepository { get; }
+
     Task<bool> SaveChangesAsync();
     void Dispose();
 }
@@ -53,6 +57,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
     private readonly ApplicationDbContext _applicationDbContext;
 
     public IUserRepository UserRepository { get; private set; }
+
     public IRoleRepository RoleRepository { get; private set; }
 
     public IScheduleRepository ScheduleRepository { get; private set; }
@@ -79,7 +84,6 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public IFingerprintRepository FingerprintRepository { get; private set;  }
 
-
     public IPreparationTaskRepository PreparationTaskRepository { get; private set; }
 
     public INotificationRepository NotificationRepository { get; private set; }
@@ -87,6 +91,10 @@ public class UnitOfWork : IUnitOfWork, IDisposable
     public INotificationTypeRepository NotificationTypeRepository { get; private set; }
 
     public IModuleActivityRepository ModuleActivityRepository { get; private set; }
+
+    public IImportSchedulesRecordRepository ImportSchedulesRecordRepository { get; private set; }
+
+    public ISystemConfigurationRepository SystemConfigurationRepository { get; private set; }
 
 
     public UnitOfWork(ApplicationDbContext applicationDbContext,
@@ -107,7 +115,9 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         IPreparationTaskRepository preparationTaskRepository,
         INotificationRepository notificationRepository,
         INotificationTypeRepository notificationTypeRepository,
-        IModuleActivityRepository moduleActivityRepository)
+        IModuleActivityRepository moduleActivityRepository,
+        IImportSchedulesRecordRepository importSchedulesRecordRepository,
+        ISystemConfigurationRepository systemConfigurationRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -128,6 +138,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         NotificationRepository = notificationRepository;
         NotificationTypeRepository = notificationTypeRepository;
         ModuleActivityRepository = moduleActivityRepository;
+        ImportSchedulesRecordRepository = importSchedulesRecordRepository;
+        SystemConfigurationRepository = systemConfigurationRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

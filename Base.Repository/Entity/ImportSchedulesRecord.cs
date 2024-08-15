@@ -10,7 +10,8 @@ namespace Base.Repository.Entity;
 public class ImportSchedulesRecord
 {
     public int ImportSchedulesRecordID { get; set; }
-    public DateTime? RecordTimestamp { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public DateTime RecordTimestamp { get; set; }
     public bool ImportReverted { get; set; } = false;
     public bool IsReversible { get; set; } = false;
     public IEnumerable<Schedule> ImportedSchedules { get; set; } = new List<Schedule>();

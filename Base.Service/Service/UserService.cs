@@ -65,7 +65,10 @@ public class UserService : IUserService
 
         if(newEntity.Email is not null)
         {
-            var existedEmail = await _unitOfWork.UserRepository.Get(l => newEntity.Email.Equals(l.Email)).FirstOrDefaultAsync();
+            var existedEmail = await _unitOfWork.UserRepository
+                .Get(l => newEntity.Email.Equals(l.Email))
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
             if (existedEmail is not null)
             {
                 return new ServiceResponseVM<User>
@@ -79,7 +82,10 @@ public class UserService : IUserService
 
         if (newEntity.PhoneNumber is not null)
         {
-            var existedPhone = await _unitOfWork.UserRepository.Get(l => newEntity.PhoneNumber.Equals(l.PhoneNumber)).FirstOrDefaultAsync();
+            var existedPhone = await _unitOfWork.UserRepository
+                .Get(l => newEntity.PhoneNumber.Equals(l.PhoneNumber))
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
             if (existedPhone is not null)
             {
                 return new ServiceResponseVM<User>
@@ -200,6 +206,117 @@ public class UserService : IUserService
             .UserRepository
             .Get(u => !u.Deleted && u.Id == id, include)
             .FirstOrDefaultAsync();
+    }
+
+    public async Task<ServiceResponseVM<User>> UpdateUser(Guid userId, UpdateUserVM updatedUser)
+    {
+        var result = new ServiceResponseVM<User>
+        {
+            IsSuccess = false
+        };
+        var errors = new List<string>();
+
+        var existedUser = _unitOfWork.UserRepository
+            .Get(u => !u.Deleted && u.Id == userId)
+            .FirstOrDefault();
+        if (existedUser is null)
+        {
+            result.IsSuccess = false;
+            result.Errors = new string[1] { "User not found" };
+            return result;
+        }
+
+        if(updatedUser.Email is not null)
+        {
+            var checkExistedEmail = _unitOfWork.UserRepository
+                .Get(u => !u.Deleted && u.Id != userId && u.Email.ToUpper() == updatedUser.Email.ToUpper())
+                .AsNoTracking()
+                .FirstOrDefault() is not null;
+            if (checkExistedEmail)
+            {
+                errors.Add("Email is already taken");
+            }
+            else
+            {
+                existedUser.Email = updatedUser.Email;
+                existedUser.NormalizedEmail = updatedUser.Email.ToUpper();
+            }
+        }
+
+        if(updatedUser.PhoneNumber is not null)
+        {
+            var checkExistedPhoneNumber = _unitOfWork.UserRepository
+                .Get(u => !u.Deleted && u.Id != userId && u.PhoneNumber == updatedUser.PhoneNumber)
+                .AsNoTracking()
+                .FirstOrDefault() is not null;
+            if (checkExistedPhoneNumber)
+            {
+                errors.Add("Phone number is already taken");
+            }
+            else
+            {
+                existedUser.PhoneNumber = updatedUser.PhoneNumber;
+            }
+        }
+
+        if(updatedUser.Avatar is not null)
+        {
+            var file = updatedUser.Avatar;
+            if (file is not null && file.Length > 0)
+            {
+                var uploadFile = new ImageUploadParams
+                {
+                    File = new FileDescription(file.FileName, file.OpenReadStream())
+                };
+                var uploadResult = await _cloudinary.UploadAsync(uploadFile);
+
+                if (uploadResult.Error is not null)
+                {
+                    errors.Add(uploadResult.Error.Message);
+                }
+                else
+                {
+                    existedUser.Avatar = uploadResult.SecureUrl.ToString();
+                }
+            }
+            else
+            {
+                errors.Add("Image can not be read");
+            }
+        }
+
+        if(errors.Count() > 0)
+        {
+            result.IsSuccess = false;
+            result.Errors = errors;
+            return result;
+        }
+
+        existedUser.DisplayName = updatedUser.DisplayName is null ? existedUser.DisplayName : updatedUser.DisplayName;
+        existedUser.Address = updatedUser.Address is null ? existedUser.Address : updatedUser.Address;
+        existedUser.DOB = updatedUser.DOB is null ? existedUser.DOB : DateOnly.FromDateTime(updatedUser.DOB.Value);
+
+        try
+        {
+            var finalResult = await _unitOfWork.SaveChangesAsync();
+            if (finalResult)
+            {
+                result.IsSuccess = true;
+                result.Title = "Update user successfully";
+                result.Result = existedUser;
+                return result;
+            }
+
+            result.IsSuccess = false;
+            result.Errors = new string[1] { "Error when saving changes" };
+            return result;
+        }
+        catch(Exception ex)
+        {
+            result.IsSuccess = false;
+            result.Errors = new string[2] { "Error when saving changes", ex.Message };
+            return result;
+        }
     }
 
     public async Task<LoginUserManagement> LoginUser(LoginUserVM resource)

@@ -179,6 +179,11 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.ImportedEntities, opt => opt.MapFrom(src => src.ImportedEntities))
                 .ForMember(dest => dest.ErrorEntities, opt => opt.MapFrom(src => src.ErrorEntities))
                 .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.Errors));
+
+            // for import schedule model
+            CreateMap<User, User_ImportSchedulesRecordResponseVM>();
+            CreateMap<ImportSchedulesRecord, ImportSchedulesRecordResponseVM>()
+                .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
         }
     }
 }

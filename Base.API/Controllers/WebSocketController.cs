@@ -191,6 +191,20 @@ public class WebSocketController : ControllerBase
                                 websocketEventHandler.OnCheckUploadedScheduleEvent(receiveData);
                             }
                         }
+                        else if (receiveData.Contains("Syncing attendance data"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnSyncingAttendanceData(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Apply configurations"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnApplyConfigurationEvent(receiveData);
+                            }
+                        }
                         else if (receiveData.Contains("Check current session"))
                         {
                             currentSessionID = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");

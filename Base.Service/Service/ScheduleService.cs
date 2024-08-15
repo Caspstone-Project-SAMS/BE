@@ -300,7 +300,7 @@ namespace Base.Service.Service
             return result;
         }
 
-        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID, bool applyToSemester)
+        public async Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID, DateOnly importStartDate, DateOnly importEndDate)
         {
             var result = new ImportServiceResposneVM<Schedule>()
             {
@@ -308,7 +308,32 @@ namespace Base.Service.Service
             };
             var errors = new List<string>();
 
-            if(schedules.Count == 0)
+            // Create import record
+            Guid creatorId;
+            if (!Guid.TryParse(_currentUserService.UserId, out creatorId))
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                result.Errors = new string[1] { "User not found" };
+                return result;
+            }
+            var existedUser = _unitOfWork.UserRepository.Get(u => u.Id == creatorId).AsNoTracking().FirstOrDefault();
+            if(existedUser is null)
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                result.Errors = new string[1] { "User not found" };
+                return result;
+            }
+            var newRecord = new ImportSchedulesRecord
+            {
+                RecordTimestamp = ServerDateTime.GetVnDateTime(),
+                ImportReverted = false,
+                IsReversible = true,
+                UserId = creatorId
+            };
+
+            if (schedules.Count == 0)
             {
                 errors.Add("No schedules found");
             }
@@ -320,6 +345,22 @@ namespace Base.Service.Service
             }
 
             if(errors.Count > 0)
+            {
+                result.Title = "Import schedules failed";
+                result.IsSuccess = false;
+                result.Errors = errors;
+                return result;
+            }
+
+            if (importStartDate < existedSemester!.StartDate)
+            {
+                errors.Add("Start date must be greater than or equal to " + existedSemester!.StartDate.ToString("dd-MM-yyyy"));
+            }
+            if (importEndDate > existedSemester!.EndDate)
+            {
+                errors.Add("End date must be less than or equal to " + existedSemester!.EndDate.ToString("dd-MM-yyyy"));
+            }
+            if (errors.Count > 0)
             {
                 result.Title = "Import schedules failed";
                 result.IsSuccess = false;
@@ -361,7 +402,7 @@ namespace Base.Service.Service
                 }
                 if(schedule.Date < startDate || schedule.Date > endDate)
                 {
-                    errors.Add("The scheduling date is not associated with semester " + existedSemester?.SemesterCode);
+                    errors.Add("The scheduling date is not belong to semester " + existedSemester?.SemesterCode);
                 }
 
                 if(errors.Count > 0)
@@ -389,37 +430,81 @@ namespace Base.Service.Service
             }
 
 
-            if (applyToSemester)
+            // Lets filter schedules within the range
+            var filterSchedules = importedSchedules.ToList();
+            importedSchedules = new ConcurrentBag<Schedule>();
+            Parallel.ForEach(filterSchedules, parallelOptions, (schedule, state) =>
             {
-                // Lets duplicate schedule
-                Parallel.ForEach(importedSchedules.ToList(), parallelOptions, (schedule, state) =>
+                if (schedule.Date >= importStartDate && schedule.Date <= importEndDate)
                 {
-                    bool check = true;
-                    var date = schedule.Date;
-                    while (check)
-                    {
-                        Schedule duplicateSchedule = new Schedule();
-                        duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
-                        duplicateSchedule.SlotID = schedule.SlotID;
-                        duplicateSchedule.ClassID = schedule.ClassID;
-                        duplicateSchedule.RoomID = schedule.RoomID;
-                        duplicateSchedule.CreatedAt = schedule.CreatedAt;
-                        duplicateSchedule.CreatedBy = schedule.CreatedBy;
+                    importedSchedules.Add(schedule);
+                }
+            });
 
-                        date = date.AddDays(7);
-                        if (date > endDate)
-                        {
-                            check = false;
-                        }
-                        else
-                        {
-                            duplicateSchedule.Date = date;
-                            duplicateSchedule.DateOfWeek = (int)date.DayOfWeek;
-                            importedSchedules.Add(duplicateSchedule);
-                        }
+
+            // Lets handle import schedules in a time frame
+
+            var noDuplicatedSchedules = importedSchedules.ToList();
+            Parallel.ForEach(noDuplicatedSchedules, parallelOptions, (schedule, state) =>
+            {
+                bool check = true;
+                var date = schedule.Date;
+
+                Schedule duplicateSchedule = new Schedule();
+                duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
+                duplicateSchedule.SlotID = schedule.SlotID;
+                duplicateSchedule.ClassID = schedule.ClassID;
+                duplicateSchedule.RoomID = schedule.RoomID;
+                duplicateSchedule.CreatedAt = schedule.CreatedAt;
+                duplicateSchedule.CreatedBy = schedule.CreatedBy;
+
+                while (check)
+                {
+                    var copySchedule = (Schedule)duplicateSchedule.Clone();
+
+                    date = date.AddDays(7);
+                    if (date > importEndDate)
+                    {
+                        check = false;
                     }
-                });
-            }
+                    else
+                    {
+                        copySchedule.Date = date;
+                        copySchedule.DateOfWeek = (int)date.DayOfWeek;
+                        importedSchedules.Add(copySchedule);
+                    }
+                }
+            });
+            Parallel.ForEach(noDuplicatedSchedules, parallelOptions, (schedule, state) =>
+            {
+                bool check = true;
+                var date = schedule.Date;
+
+                Schedule duplicateSchedule = new Schedule();
+                duplicateSchedule.ScheduleStatus = schedule.ScheduleStatus;
+                duplicateSchedule.SlotID = schedule.SlotID;
+                duplicateSchedule.ClassID = schedule.ClassID;
+                duplicateSchedule.RoomID = schedule.RoomID;
+                duplicateSchedule.CreatedAt = schedule.CreatedAt;
+                duplicateSchedule.CreatedBy = schedule.CreatedBy;
+
+                while (check)
+                {
+                    var copySchedule = (Schedule)duplicateSchedule.Clone();
+
+                    date = date.AddDays(-7);
+                    if (date < importStartDate)
+                    {
+                        check = false;
+                    }
+                    else
+                    {
+                        copySchedule.Date = date;
+                        copySchedule.DateOfWeek = (int)date.DayOfWeek;
+                        importedSchedules.Add(copySchedule);
+                    }
+                }
+            });
 
             // Lets check whether if the schedule is already added
             var verifiedSchedules = importedSchedules.ToList();
@@ -431,6 +516,7 @@ namespace Base.Service.Service
                         s.Date == schedule.Date && 
                         s.ClassID == schedule.ClassID && 
                         s.SlotID == schedule.SlotID)
+                    .AsNoTracking()
                     .FirstOrDefaultAsync();
                 if(existedSchedule is not null)
                 {
@@ -466,6 +552,7 @@ namespace Base.Service.Service
                             s.SlotID == schedule.SlotID &&
                             s.ClassID != schedule.ClassID)
                         .Include(s => s.Class)
+                        .AsNoTracking()
                         .FirstOrDefault();
                     if(overlapSchedule is not null)
                     {
@@ -483,6 +570,7 @@ namespace Base.Service.Service
                         schedule.Class = null;
                         schedule.Slot = null;
                         schedule.Room = null;
+                        schedule.ImportSchedulesRecord = newRecord;
                         importedSchedules.Add(schedule);
                     }
                 }
@@ -499,8 +587,10 @@ namespace Base.Service.Service
 
             // Lets create schedules
             var createSchedules = importedSchedules.ToList();
+            newRecord.Title = "Imported " + createSchedules.Count() + " schedules from " + importStartDate.ToString("dd-MM-yyyy") + " to " + importEndDate.ToString("dd-MM-yyyy");
             try
             {
+                await _unitOfWork.ImportSchedulesRecordRepository.AddAsync(newRecord);
                 await _unitOfWork.ScheduleRepository.AddRangeAsync(createSchedules);
                 var saveResult = await _unitOfWork.SaveChangesAsync();
                 if (!saveResult)

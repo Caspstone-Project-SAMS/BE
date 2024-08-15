@@ -23,3 +23,12 @@ public class ClassVM
     public Guid LecturerID { get; set; }
 
 }
+
+public class UpdateClassVM
+{
+    public string? ClassCode { get; set; }
+    public int? SemesterId { get; set; }
+    public int? RoomId { get; set; }
+    public int? SubjectId { get; set; }
+    public Guid? LecturerID { get; set; }
+}

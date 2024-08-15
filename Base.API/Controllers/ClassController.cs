@@ -106,6 +106,34 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateClass(int id, UpdateClassVM resource)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _classService.UpdateClass(id, resource);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = result.Result
+                    });
+                }
+
+                return BadRequest(new
+                {
+                    Title = "Update class failed",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Update class failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }
 

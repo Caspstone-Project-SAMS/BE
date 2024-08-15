@@ -2,6 +2,7 @@
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
+using DocumentFormat.OpenXml.Bibliography;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -75,6 +76,33 @@ namespace Base.API.Controllers
                     Title = "Invalid input"
                 });
             }
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateUser(Guid id, [FromForm] UpdateUserVM resource)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _userService.UpdateUser(id, resource);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = result.Result
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = "Update user failed",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Update user failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
     }
 }

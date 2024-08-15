@@ -13,4 +13,5 @@ public interface IUserService
     Task<UserManagerResponse> ResetPassword(ResetPasswordVM resource);
     Task<UserManagerResponse> ForgetPassword(string email);
     Task<UserManagerResponse> ForgetAndResetPasswordAsync(ForgetPasswordVM model);
+    Task<ServiceResponseVM<User>> UpdateUser(Guid userId, UpdateUserVM updatedUser);
 }
