@@ -2,6 +2,7 @@ using Base.API.Service;
 using Base.IService.IService;
 using Base.Repository.Common;
 using Base.Repository.IRepository;
+using Base.Service.Common;
 using Base.Service.IService;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Mvc;
@@ -94,7 +95,7 @@ public class HelloController : ControllerBase
         fingerprint.IsAuthenticated = true;
         if(dateTime is null)
         {
-            fingerprint.ScanningTime = DateTime.UtcNow;
+            fingerprint.ScanningTime = ServerDateTime.GetVnDateTime();
         }
         else
         {

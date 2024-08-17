@@ -12,12 +12,13 @@ public class ModuleResponseVM
     public int? Status { get; set; }
     public int? ConnectionStatus { get; set; }
     public int? Mode { get; set; }
-    public bool? AutoPrepare { get; set; } = false;
-    public int? PreparedMinBeforeSlot { get; set; }
+    public bool? AutoPrepare { get; set; }
     public TimeOnly? PreparedTime { get; set; }
-    public bool? AutoReset { get; set; } = false;
-    public int? ResetMinAfterSlot { get; set; }
-    public TimeOnly? ResetTime { get; set; }
+    public int? ConnectionLifeTimeSeconds { get; set; }
+    public bool? ConnectionSound { get; set; }
+    public int? ConnectionSoundDurationMs { get; set; }
+    public bool? AttendanceSound { get; set; }
+    public int? AttendanceSoundDurationMs { get; set; }
     public Employee_ModuleResponseVM? Employee { get; set; }
     public IEnumerable<ModuleActivity_ModuleResponseVM> ModuleActivities { get; set; } = new List<ModuleActivity_ModuleResponseVM>();
 }

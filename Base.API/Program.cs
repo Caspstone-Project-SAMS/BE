@@ -205,7 +205,7 @@ builder.Services.AddAuthentication(options =>
                 // If the request is for ws client...
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken) &&
-                    (path.StartsWithSegments("/ws/client")))
+                    (path.StartsWithSegments("/ws/client") || path.StartsWithSegments("/ws/mobile")))
                 {
                     // Read the token out of the request header
                     context.Token = accessToken;

@@ -23,6 +23,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using Microsoft.AspNetCore.Http;
+using Hangfire.Common;
 
 namespace Base.Service.Service;
 
@@ -226,7 +227,25 @@ public class UserService : IUserService
             return result;
         }
 
-        if(updatedUser.Email is not null)
+        var copyUser = (User)existedUser.Clone();
+
+        if (updatedUser.Email is null &&
+            updatedUser.PhoneNumber is null &&
+            updatedUser.Avatar is null &&
+            updatedUser.DisplayName is null &&
+            updatedUser.Address is null &&
+            updatedUser.DOB is null &&
+            updatedUser.Gender is null &&
+            updatedUser.FirstName is null &&
+            updatedUser.LastName is null)
+        {
+            result.IsSuccess = true;
+            result.Title = "Update user successfully";
+            result.Result = existedUser;
+            return result;
+        }
+
+        if (updatedUser.Email is not null)
         {
             var checkExistedEmail = _unitOfWork.UserRepository
                 .Get(u => !u.Deleted && u.Id != userId && u.Email.ToUpper() == updatedUser.Email.ToUpper())
@@ -295,6 +314,17 @@ public class UserService : IUserService
         existedUser.DisplayName = updatedUser.DisplayName is null ? existedUser.DisplayName : updatedUser.DisplayName;
         existedUser.Address = updatedUser.Address is null ? existedUser.Address : updatedUser.Address;
         existedUser.DOB = updatedUser.DOB is null ? existedUser.DOB : DateOnly.FromDateTime(updatedUser.DOB.Value);
+        existedUser.Gender = updatedUser.Gender is null ? existedUser.Gender : updatedUser.Gender;
+        existedUser.FirstName = updatedUser.FirstName is null ? existedUser.FirstName : updatedUser.FirstName;
+        existedUser.LastName = updatedUser.LastName is null ? existedUser.LastName : updatedUser.LastName;
+
+        if (TwoObjectsAreTheSame(copyUser, existedUser))
+        {
+            result.IsSuccess = true;
+            result.Title = "Update user successfully";
+            result.Result = existedUser;
+            return result;
+        }
 
         try
         {
@@ -668,5 +698,15 @@ public class UserService : IUserService
             result.Errors = resetPasswordResult.Errors.Select(e => e.Description);
             return result;
         }
+    }
+
+
+    private bool TwoObjectsAreTheSame(User object1, User object2)
+    {
+        return (object1.Email == object2.Email && object1.PhoneNumber == object2.PhoneNumber &&
+            object1.Avatar == object2.Avatar && object1.DisplayName == object2.DisplayName &&
+            object1.Address == object2.Address && object1.DOB == object2.DOB &&
+            object1.Gender == object2.Gender && object1.FirstName == object2.FirstName &&
+            object1.LastName == object2.LastName);
     }
 }

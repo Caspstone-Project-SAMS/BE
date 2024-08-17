@@ -52,6 +52,9 @@ public class UserInformationResponseVM : Auditable
     public string? DisplayName { get; set; }
     public string? Address { get; set; }
     public DateOnly? DOB { get; set; }
+    public int? Gender { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
     public RoleResponseVM Role { get; set; } = new RoleResponseVM();
 }
 

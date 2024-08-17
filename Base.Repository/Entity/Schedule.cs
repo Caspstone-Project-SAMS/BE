@@ -9,7 +9,8 @@ public class Schedule : AuditableEntity, ICloneable
     public int ScheduleID { get; set; }
     public DateOnly Date { get; set; }
     public int DateOfWeek { get; set; }
-    public int ScheduleStatus { get; set; }
+    public int ScheduleStatus { get; set; } = 1;
+    public int Attended { get; set; } = 1;
 
     public int SlotID { get; set; }
     public Slot? Slot { get; set; }

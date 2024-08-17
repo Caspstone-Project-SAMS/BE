@@ -13,4 +13,6 @@ public class SystemConfiguration
     public int SystemConfigurationId { get; set; }
     public int RevertableDurationInHours { get; set; } = 24;
     public int ClassCodeMatchRate { get; set; } = 50;
+    public int SemesterDurationInDays { get; set; } = 90;
+    public int SlotDurationInMins { get; set; } = 135;
 }
