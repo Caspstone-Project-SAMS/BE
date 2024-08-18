@@ -4,7 +4,7 @@ using Base.Repository.Identity;
 
 namespace Base.Repository.Entity;
 
-public class Attendance : AuditableEntity
+public class Attendance : AuditableEntity, ICloneable
 {
     [Key]
     public int AttendanceID { get; set; }
@@ -18,4 +18,9 @@ public class Attendance : AuditableEntity
 
     public Guid StudentID { get; set; }
     public User? Student { get; set; }
+
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
 }

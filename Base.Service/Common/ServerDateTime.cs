@@ -6,26 +6,19 @@ using System.Threading.Tasks;
 
 namespace Base.Service.Common
 {
-    public class ServerDateTime
+    public static class ServerDateTime
     {
-        private int Minutes { get; set; }
-        private bool IsUp { get; set; }
-        DateTime serverDateTime;
-        public DateTime GetLocalMachineDateTime()
-        {
-            return DateTime.Now;
-        }
+        // If the timeDifference is larger than 0 => updated time is on future
+        // If the timeDifference is less than 0 => updated time is on past
+        private static double timeDifferenceMinutes = 0;
 
-        public DateTime GetServerDateTime() 
+        public static void SetServerTime(DateTime newTime)
         {
-            
-            return serverDateTime;
-        }
+            var currentVnTime = GetExactlyVnDateTime();
 
-        public void SetTime(int minutes, bool isUp)
-        {
-            Minutes = minutes;
-            IsUp = isUp;
+            // Count the difference
+            var difference = currentVnTime - newTime;
+            timeDifferenceMinutes = difference.TotalMinutes;
         }
 
         public static DateTime GetVnDateTime()
@@ -34,9 +27,16 @@ namespace Base.Service.Common
             string vnTimeZoneKey = "SE Asia Standard Time";
             TimeZoneInfo vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById(vnTimeZoneKey);
             DateTime vnDateTime = TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, vnTimeZone);
+            return vnDateTime.AddMinutes(timeDifferenceMinutes);
+        }
+
+        public static DateTime GetExactlyVnDateTime()
+        {
+            DateTime utcDateTime = DateTime.UtcNow;
+            string vnTimeZoneKey = "SE Asia Standard Time";
+            TimeZoneInfo vnTimeZone = TimeZoneInfo.FindSystemTimeZoneById(vnTimeZoneKey);
+            DateTime vnDateTime = TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, vnTimeZone);
             return vnDateTime;
         }
     }
-
-
 }

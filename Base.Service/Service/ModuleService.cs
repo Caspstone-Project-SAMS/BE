@@ -121,7 +121,9 @@ internal class ModuleService : IModuleService
             IsSuccess = false      
         };
 
-        var existedModule = await _unitOfWork.ModuleRepository.Get(m => m.ModuleID == id).SingleOrDefaultAsync();
+        var existedModule = await _unitOfWork.ModuleRepository
+            .Get(m => !m.IsDeleted && m.ModuleID == id)
+            .FirstOrDefaultAsync();
         if(existedModule is null)
         {
             result.Title = "Update Module Failed";
@@ -129,8 +131,16 @@ internal class ModuleService : IModuleService
             return result;
         }
 
-        existedModule.AutoPrepare = newEntity.AutoPrepare;
+        existedModule.AutoPrepare = newEntity.AutoPrepare is null ? existedModule.AutoPrepare : (newEntity.AutoPrepare ?? false);
         existedModule.PreparedTime = TimeOnly.Parse(newEntity.PreparedTime!);
+
+        // Update other configurations
+        existedModule.ConnectionSound = newEntity.ConnectionSound is null ? existedModule.ConnectionSound : (newEntity.ConnectionSound ?? false);
+        existedModule.ConnectionSoundDurationMs = newEntity.ConnectionSoundDurationMs is null ? existedModule.ConnectionSoundDurationMs : (int)newEntity.ConnectionSoundDurationMs;
+        existedModule.AttendanceSound = newEntity.AttendanceSound is null ? existedModule.AttendanceSound : (newEntity.AttendanceSound ?? false);
+        existedModule.AttendanceSoundDurationMs = newEntity.AttendanceSoundDurationMs is null ? existedModule.AttendanceSoundDurationMs : (int)newEntity.AttendanceSoundDurationMs;
+        existedModule.ConnectionLifeTimeSeconds = newEntity.ConnectionLifeTimeSeconds is null ? existedModule.ConnectionLifeTimeSeconds : (int)newEntity.ConnectionLifeTimeSeconds;
+        existedModule.AttendanceDurationMinutes = newEntity.AttendanceDurationMinutes is null ? existedModule.AttendanceDurationMinutes : (int)newEntity.AttendanceDurationMinutes;
 
         _unitOfWork.ModuleRepository.Update(existedModule);
 

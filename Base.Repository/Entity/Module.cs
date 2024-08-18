@@ -20,15 +20,14 @@ public class Module : AuditableEntity
 
 
     // Module activities
-    public int ConnectionLifetimeMs { get; set; } = 100;
+    public int ConnectionLifeTimeSeconds { get; set; } = 30;
 
 
     // Attendance
-    public int AttendanceGracePeriodMinutes { get; set; } = 15;
+    public int AttendanceDurationMinutes { get; set; } = 15;
     // Data Preparation
     public bool AutoPrepare { get; set; } = false;
     public TimeOnly? PreparedTime { get; set; }
-    public int? PreparedMinBeforeSlot { get; set; }
 
 
     public Guid EmployeeID { get; set; }

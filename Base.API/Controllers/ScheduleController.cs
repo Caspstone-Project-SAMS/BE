@@ -16,6 +16,7 @@ using System.Collections.Concurrent;
 using Base.Service.Common;
 using CloudinaryDotNet.Actions;
 using static Google.Cloud.Vision.V1.ProductSearchResults.Types;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Base.API.Controllers
 {
@@ -146,12 +147,22 @@ namespace Base.API.Controllers
             });
         }
 
-
+        [Authorize(Policy = "Admin Lecturer")]
         [HttpPost("import-schedules")]
         public async Task<IActionResult> ImportSchedules([FromBody] ScheduleImport resource)
         {
             if (ModelState.IsValid)
             {
+                // Check start date and end date
+                if (resource.StartDate > resource.EndDate)
+                {
+                    return BadRequest(new
+                    {
+                        Title = "Import schedules failed",
+                        Errors = new string[1] { "Start date must be less than or equal to end date" }
+                    });
+                }
+
                 ConcurrentBag<Schedule> schedules = new ConcurrentBag<Schedule>();
                 var importedDates = resource.Dates.Select(d => new DateOnly(resource.Year, d.Date.Month, d.Date.Day)).ToList();
                 if(importedDates is null || importedDates.Count == 0)
@@ -197,7 +208,7 @@ namespace Base.API.Controllers
                     }
                 });
 
-                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID, resource.ApplyToSemester) ;
+                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID, resource.StartDate, resource.EndDate);
                 if (result.IsSuccess)
                 {
                     return Ok(_mapper.Map<ImportScheduleServiceResponseVM>(result));
@@ -302,7 +313,8 @@ namespace Base.API.Controllers
         public int Year { get; set; }
         public int DatesCount { get; set; }
         public int SlotsCount { get; set; }
-        public bool ApplyToSemester { get; set; } = false;
+        public DateOnly StartDate { get; set; }
+        public DateOnly EndDate { get; set; }
         [Required]
         public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();
         [Required]

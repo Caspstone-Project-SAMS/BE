@@ -15,5 +15,6 @@ namespace Base.Service.IService
         Task<Class?> GetById(int classId);
         Task<ServiceResponseVM<IEnumerable<Class>>> GetAllClasses(int startPage, int endPage, int quantity, int? semesterId, string? classCode, int? classStatus, int? roomID, int? subjectID, Guid? lecturerId, Guid? studentId, int? scheduleId);
         Task<IEnumerable<string>> GetAllClassCodes(int? semesterId, Guid? userId);
+        Task<ServiceResponseVM<Class>> UpdateClass(int classId, UpdateClassVM resource);
     }
 }

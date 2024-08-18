@@ -129,7 +129,7 @@ public class WebSocketController : ControllerBase
                     {
                         if (receiveData.Contains("Connected") || receiveData == "Connected by other")
                         {
-                            if(websocketEventHandler is not null)
+                            if (websocketEventHandler is not null)
                                 websocketEventHandler.OnConnectModuleEvent(receiveData);
                         }
                         else if (receiveData.Contains("Register fingerprint"))
@@ -144,7 +144,7 @@ public class WebSocketController : ControllerBase
                         }
                         else if (receiveData.Contains("Prepare attendance"))
                         {
-                            if(websocketEventHandler is not null)
+                            if (websocketEventHandler is not null)
                             {
                                 websocketEventHandler.OnPrepareAttendanceSession(receiveData);
                             }
@@ -189,6 +189,20 @@ public class WebSocketController : ControllerBase
                             if (websocketEventHandler is not null)
                             {
                                 websocketEventHandler.OnCheckUploadedScheduleEvent(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Syncing attendance data"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnSyncingAttendanceData(receiveData);
+                            }
+                        }
+                        else if (receiveData.Contains("Apply configurations"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnApplyConfigurationEvent(receiveData);
                             }
                         }
                         else if (receiveData.Contains("Check current session"))
@@ -458,6 +472,24 @@ public class WebSocketController : ControllerBase
 
         await Task.Delay(TimeSpan.FromSeconds(10));
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+
+        // Notify to update configurations
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        var message = new WebsocketMessage
+        {
+            Event = "ApplyConfigurations",
+            Data = new
+            {
+                ConnectionSound = module.ConnectionSound,
+                ConnectionSoundDurationMs = module.ConnectionSoundDurationMs,
+                AttendanceSound = module.AttendanceSound,
+                AttendanceSoundDurationMs = module.AttendanceSoundDurationMs,
+                ConnectionLifeTimeSeconds = module.ConnectionLifeTimeSeconds,
+                AttendanceDurationMinutes = module.AttendanceDurationMinutes
+            }
+        };
+        var jsonPayloadMode = JsonSerializer.Serialize(message);
+        _ = _websocketConnectionManager1.SendMesageToModule(jsonPayloadMode, module.ModuleID);
     }
 
     private async Task HandleSessionAfterConnectionLost(int moduleId)

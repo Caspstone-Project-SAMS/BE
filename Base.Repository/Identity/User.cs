@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Identity;
 
-public class User : IdentityUser<Guid>
+public class User : IdentityUser<Guid>, ICloneable
 {
     public string? DisplayName { get; set; } = "Undefined";
     public string? Address { get; set; }
@@ -17,6 +17,9 @@ public class User : IdentityUser<Guid>
     public string? Avatar { get; set; }
     public bool Deleted { get; set; } = false;
     public bool IsActivated { get; set; } = false;
+    public int? Gender { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
     public string CreatedBy { get; set; } = "Undefined";
     public DateTime CreatedAt { get; set; }
 
@@ -76,6 +79,11 @@ public class User : IdentityUser<Guid>
     public int GetAbsencePercentage()
     {
         return this.StudentClasses.FirstOrDefault()?.AbsencePercentage ?? 0;
+    }
+
+    public object Clone()
+    {
+        return this.MemberwiseClone();
     }
 }
 

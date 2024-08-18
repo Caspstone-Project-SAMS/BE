@@ -33,7 +33,10 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Semester>> Create(SemesterVM newEntity)
         {
-            var existedSemesterCode = await _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == newEntity.SemesterCode).SingleOrDefaultAsync();
+            var existedSemesterCode = await _unitOfWork.SemesterRepository
+                .Get(s => !s.IsDeleted && s.SemesterCode == newEntity.SemesterCode)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
             if (existedSemesterCode is not null)
             {
                 return new ServiceResponseVM<Semester>
@@ -43,6 +46,32 @@ namespace Base.Service.Service
                     Errors = new string[1] { "Semester Code is already taken" }
                 };
             }
+
+            // Validate semester duration
+            if (newEntity.StartDate >= newEntity.EndDate)
+            {
+                return new ServiceResponseVM<Semester>
+                {
+                    IsSuccess = false,
+                    Title = "Update Semester failed",
+                    Errors = new string[1] { "Start date must be earlier than end date" }
+                };
+            }
+            var semesterDuration = _unitOfWork.SystemConfigurationRepository
+                .Get(s => true)
+                .FirstOrDefault()
+                ?.SemesterDurationInDays ?? 90;
+            var difference = newEntity.EndDate.ToDateTime(TimeOnly.MinValue) - newEntity.StartDate.ToDateTime(TimeOnly.MinValue);
+            if (difference.Days != semesterDuration)
+            {
+                return new ServiceResponseVM<Semester>
+                {
+                    IsSuccess = false,
+                    Title = "Update Semester failed",
+                    Errors = new string[2] { $"The total duration of the semester is {difference.Days} days", $"The total duration of a semester must be {semesterDuration} days" }
+                };
+            }
+            //===========================
 
             var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
                 (newEntity.StartDate >= s.StartDate && newEntity.StartDate <= s.EndDate) ||
@@ -60,10 +89,26 @@ namespace Base.Service.Service
                 };
             }
 
+            // Identify the semester status
+            int semesterStatus = 0;
+            var currentTime = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+            if (currentTime < newEntity.StartDate)
+            {
+                semesterStatus = 1;
+            }
+            if (currentTime >= newEntity.StartDate && currentTime <= newEntity.EndDate)
+            {
+                semesterStatus = 2;
+            }
+            if(currentTime > newEntity.EndDate)
+            {
+                semesterStatus = 3;
+            }
+
             Semester newSemester = new Semester
             {
                 SemesterCode = newEntity.SemesterCode,
-                SemesterStatus = newEntity.SemesterStatus,
+                SemesterStatus = semesterStatus,
                 StartDate = newEntity.StartDate,
                 EndDate = newEntity.EndDate,
                 CreatedBy = _currentUserService.UserId,
@@ -176,7 +221,9 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Semester>> Update(SemesterVM updateSemester, int id)
         {
-            var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == id && !s.IsDeleted).SingleOrDefaultAsync();
+            var existedSemester = await _unitOfWork.SemesterRepository
+                .Get(s => s.SemesterID == id && !s.IsDeleted)
+                .FirstOrDefaultAsync();
             if (existedSemester is null)
             {
                 return new ServiceResponseVM<Semester>
@@ -187,9 +234,12 @@ namespace Base.Service.Service
                 };
             }
 
-            if (updateSemester.SemesterCode != existedSemester.SemesterCode)
+            if (updateSemester.SemesterCode != string.Empty && updateSemester.SemesterCode != existedSemester.SemesterCode)
             {
-                var checkSemesterCode = _unitOfWork.SemesterRepository.Get(s => s.SemesterCode == updateSemester.SemesterCode && !s.IsDeleted).FirstOrDefault() is not null;
+                var checkSemesterCode = _unitOfWork.SemesterRepository
+                    .Get(s => s.SemesterCode == updateSemester.SemesterCode && !s.IsDeleted)
+                    .AsNoTracking()
+                    .FirstOrDefault() is not null;
                 if (checkSemesterCode)
                 {
                     return new ServiceResponseVM<Semester>
@@ -203,9 +253,35 @@ namespace Base.Service.Service
 
             if (updateSemester.StartDate != existedSemester.StartDate || updateSemester.EndDate != existedSemester.EndDate)
             {
+                // Validate semester duration
+                if (updateSemester.StartDate >= updateSemester.EndDate)
+                {
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Semester failed",
+                        Errors = new string[1] { "Start date must be earlier than end date" }
+                    };
+                }
+                var semesterDuration = _unitOfWork.SystemConfigurationRepository
+                    .Get(s => true)
+                    .FirstOrDefault()
+                    ?.SemesterDurationInDays ?? 90;
+                var difference = updateSemester.EndDate.ToDateTime(TimeOnly.MinValue) - updateSemester.StartDate.ToDateTime(TimeOnly.MinValue);
+                if (difference.Days != semesterDuration)
+                {
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Semester failed",
+                        Errors = new string[2] { $"The total duration of the semester is {difference.Days} days", $"The total duration of a semester must be {semesterDuration} days" }
+                    };
+                }
+                //===========================
+
                 var overlappingSemester = await _unitOfWork.SemesterRepository.Get(s =>
-                !s.IsDeleted &&
-                (
+                !s.IsDeleted && s.SemesterID != id &&
+                (   
                     (updateSemester.StartDate >= s.StartDate && updateSemester.StartDate <= s.EndDate) ||
                     (updateSemester.EndDate >= s.StartDate && updateSemester.EndDate <= s.EndDate) ||
                     (s.StartDate >= updateSemester.StartDate && s.StartDate <= updateSemester.EndDate) ||
@@ -224,12 +300,27 @@ namespace Base.Service.Service
                 }
             }
 
-
-
-            existedSemester.SemesterStatus = updateSemester.SemesterStatus;
             existedSemester.SemesterCode = updateSemester.SemesterCode;
             existedSemester.StartDate = updateSemester.StartDate;
             existedSemester.EndDate = updateSemester.EndDate;
+
+            // Identify semester status
+            int semesterStatus = 0;
+            var currentTime = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+            if (currentTime < existedSemester.StartDate)
+            {
+                semesterStatus = 1;
+            }
+            if (currentTime >= existedSemester.StartDate && currentTime <= existedSemester.EndDate)
+            {
+                semesterStatus = 2;
+            }
+            if (currentTime > existedSemester.EndDate)
+            {
+                semesterStatus = 3;
+            }
+            existedSemester.SemesterStatus = semesterStatus;
+
             _unitOfWork.SemesterRepository.Update(existedSemester);
             var result = await _unitOfWork.SaveChangesAsync();
             if (result)

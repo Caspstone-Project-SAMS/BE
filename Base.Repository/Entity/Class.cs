@@ -4,7 +4,7 @@ using Base.Repository.Identity;
 
 namespace Base.Repository.Entity;
 
-public class Class : AuditableEntity 
+public class Class : AuditableEntity, ICloneable
 {
     [Key]
     public int ClassID { get; set; }
@@ -37,5 +37,10 @@ public class Class : AuditableEntity
     public int GetAbsencePercentage()
     {
         return this.StudentClasses.FirstOrDefault()?.AbsencePercentage ?? 0;
+    }
+
+    public object Clone()
+    {
+        return this.MemberwiseClone();
     }
 }

@@ -671,6 +671,7 @@ public class ModuleController : ControllerBase
 
 
                 // Mode 9 - check current session
+                // Does not effect to the session of the system
                 case 9:
                     if (websocketEventHandler is not null)
                     {
@@ -719,6 +720,7 @@ public class ModuleController : ControllerBase
 
 
                 // Mode 10 - start attendance session
+                // Does not effect to the session of the system
                 case 10:
                     if (activateModule.StartAttendance is null)
                     {
@@ -756,7 +758,7 @@ public class ModuleController : ControllerBase
                     var resultMode10 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode10, activateModule.ModuleID);
                     if (resultMode10)
                     {
-                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        cts.CancelAfter(TimeSpan.FromSeconds(6));
                         if (WaitForModuleMode10(cts.Token))
                         {
                             if (websocketEventHandler is not null)
@@ -812,7 +814,7 @@ public class ModuleController : ControllerBase
                     if (resultMode11)
                     {
                         bool check = false;
-                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        cts.CancelAfter(TimeSpan.FromSeconds(6));
                         if (WaitForModuleMode11(cts.Token, out check))
                         {
                             if (websocketEventHandler is not null)
@@ -841,6 +843,149 @@ public class ModuleController : ControllerBase
                         Title = "Check schedule information failed",
                         Errors = new string[1] { "Connection times out" }
                     });
+
+
+                // Mode 12 - syncing attendance data
+                // Does not effect to the session of the system
+                case 12:
+                    if(activateModule.SyncingAttendanceData is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input: Schedule information not valid" }
+                        });
+                    }
+
+                    var existedModuleMode12 = await _moduleService.GetById(activateModule.ModuleID);
+                    if(existedModuleMode12 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Module not found" }
+                        });
+                    }
+                    if(existedModuleMode12.Mode != 2)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Syncing action is not supported by the module" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.SyncingAttendanceData += OnModuleMode12EventHandler;
+                    }
+                    websocketEventState.ScheduleId = activateModule.SyncingAttendanceData.ScheduleID;
+
+                    var messageSendMode12 = new WebsocketMessage
+                    {
+                        Event = "SyncingAttendanceData",
+                        Data = new
+                        {
+                            ScheduleId = activateModule.SyncingAttendanceData.ScheduleID
+                        }
+                    };
+                    var jsonPayloadMode12 = JsonSerializer.Serialize(messageSendMode12);
+                    var resultMode12 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode12, activateModule.ModuleID);
+                    if (resultMode12)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(6));
+                        bool failed = false;
+                        if (WaitForModuleMode12(cts.Token, out failed))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.SyncingAttendanceData -= OnModuleMode12EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Syncing data successfully"
+                            });
+                        }
+                        if (failed)
+                        {
+                            return BadRequest(new
+                            {
+                                Title = "Syncing data failed"
+                            });
+                        }
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.SyncingAttendanceData -= OnModuleMode12EventHandler;
+                    }
+                    return BadRequest(new
+                    {
+                        Title = "Syncing data failed",
+                        Errors = new string[1] { "Connection times out" }
+                    });
+
+
+                // Mode 13 - apply configurations
+                case 13:
+                    var existedModuleMode13 = await _moduleService.GetById(activateModule.ModuleID);
+                    if (existedModuleMode13 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Module not found" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.ApplyConfigurationsEvent += OnModuleMode13EventHandler;
+                    }
+
+                    var messageSendMode13 = new WebsocketMessage
+                    {
+                        Event = "ApplyConfigurations",
+                        Data = new
+                        {
+                            ConnectionSound = existedModuleMode13.ConnectionSound,
+                            ConnectionSoundDurationMs = existedModuleMode13.ConnectionSoundDurationMs,
+                            AttendanceSound = existedModuleMode13.AttendanceSound,
+                            AttendanceSoundDurationMs = existedModuleMode13.AttendanceSoundDurationMs,
+                            ConnectionLifeTimeSeconds = existedModuleMode13.ConnectionLifeTimeSeconds,
+                            AttendanceDurationMinutes = existedModuleMode13.AttendanceDurationMinutes
+                        }
+                    };
+                    var jsonPayloadMode13 = JsonSerializer.Serialize(messageSendMode13);
+                    var resultMode13 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode13, activateModule.ModuleID);
+                    if (resultMode13)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(6));
+                        if (WaitForModuleMode13(cts.Token))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.ApplyConfigurationsEvent -= OnModuleMode13EventHandler;
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Apply configuration successfully"
+                            });
+                        }
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.ApplyConfigurationsEvent -= OnModuleMode13EventHandler;
+                    }
+                    return BadRequest(new
+                    {
+                        Title = "Apply configurations failed",
+                        Errors = new string[1] { "Connection times out" }
+                    });
+
 
 
                 default:
@@ -1056,6 +1201,48 @@ public class ModuleController : ControllerBase
         return false;
     }
 
+    private bool WaitForModuleMode12(CancellationToken cancellationToken, out bool failed)
+    {
+        failed = false;
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode12)
+                {
+                    return true;
+                }
+                if (websocketEventState.ModuleMode12Failed)
+                {
+                    failed = true;
+                    return false;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
+    private bool WaitForModuleMode13(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode13)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
 
 
     private void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
@@ -1144,6 +1331,33 @@ public class ModuleController : ControllerBase
             websocketEventState.ModuleMode11 = true;
         }
     }
+
+    private void OnModuleMode12EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event.Contains(websocketEventState.ScheduleId.ToString()))
+        {
+            if (e.Event.Contains("successfully"))
+            {
+                websocketEventState.ModuleMode12 = true;
+            }
+            else if (e.Event.Contains("failed"))
+            {
+                websocketEventState.ModuleMode12Failed = true;
+            }
+        }
+        else
+        {
+            websocketEventState.ModuleMode12Failed = true;
+        }
+    }
+
+    private void OnModuleMode13EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event.Equals("Apply configurations successfully"))
+        {
+            websocketEventState.ModuleMode13 = true;
+        }
+    }
 }
 
 
@@ -1163,6 +1377,9 @@ public class WebsocketEventState
     public bool ModuleMode10 { get; set; } = false;
     public bool ModuleMode11 { get; set; } = false;
     public bool ModuleMode11Check { get; set; } = false;
+    public bool ModuleMode12 { get; set; } = false;
+    public bool ModuleMode12Failed { get; set; } = false;
+    public bool ModuleMode13 { get; set; } = false;
 }
 
 public class ActivateModule
@@ -1178,6 +1395,7 @@ public class ActivateModule
     public StopAttendance? StopAttendance { get; set; }
     public StartAttendance? StartAttendance { get; set; }
     public CheckSchedule? CheckSchedule { get; set; }
+    public SyncingAttendanceData? SyncingAttendanceData { get; set; }
 }
 
 public class RegisterMode
@@ -1214,6 +1432,11 @@ public class StartAttendance
 }
 
 public class CheckSchedule
+{
+    public int ScheduleID { get; set; }
+}
+
+public class SyncingAttendanceData
 {
     public int ScheduleID { get; set; }
 }

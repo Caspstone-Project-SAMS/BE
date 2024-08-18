@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<INotificationTypeRepository, NotificationTypeRepository>();
         services.AddScoped<IModuleActivityRepository, ModuleActivityRepository>();
+        services.AddScoped<IImportSchedulesRecordRepository, ImportSchedulesRecordRepository>();
+        services.AddScoped<ISystemConfigurationRepository, SystemConfigurationRepository>();
         #endregion
 
         return services;

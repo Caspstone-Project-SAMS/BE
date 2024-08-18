@@ -191,8 +191,12 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("IsReversible")
                         .HasColumnType("bit");
 
-                    b.Property<DateTime?>("RecordTimestamp")
+                    b.Property<DateTime>("RecordTimestamp")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
@@ -212,7 +216,7 @@ namespace Base.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ModuleID"), 1L, 1);
 
-                    b.Property<int>("AttendanceGracePeriodMinutes")
+                    b.Property<int>("AttendanceDurationMinutes")
                         .HasColumnType("int");
 
                     b.Property<bool>("AttendanceSound")
@@ -224,7 +228,7 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("AutoPrepare")
                         .HasColumnType("bit");
 
-                    b.Property<int>("ConnectionLifetimeMs")
+                    b.Property<int>("ConnectionLifeTimeSeconds")
                         .HasColumnType("int");
 
                     b.Property<bool>("ConnectionSound")
@@ -251,9 +255,6 @@ namespace Base.Repository.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Mode")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("PreparedMinBeforeSlot")
                         .HasColumnType("int");
 
                     b.Property<TimeSpan?>("PreparedTime")
@@ -469,6 +470,9 @@ namespace Base.Repository.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ScheduleID"), 1L, 1);
 
+                    b.Property<int>("Attended")
+                        .HasColumnType("int");
+
                     b.Property<int>("ClassID")
                         .HasColumnType("int");
 
@@ -593,6 +597,23 @@ namespace Base.Repository.Migrations
                     b.ToTable("Slot", (string)null);
                 });
 
+            modelBuilder.Entity("Base.Repository.Entity.StoredFingerprintDemo", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
+
+                    b.Property<string>("FingerprintTemplate")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("StoredFingerprintDemos");
+                });
+
             modelBuilder.Entity("Base.Repository.Entity.Student", b =>
                 {
                     b.Property<Guid>("StudentID")
@@ -703,6 +724,31 @@ namespace Base.Repository.Migrations
                     b.ToTable("SubstituteTeaching", (string)null);
                 });
 
+            modelBuilder.Entity("Base.Repository.Entity.SystemConfiguration", b =>
+                {
+                    b.Property<int>("SystemConfigurationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SystemConfigurationId"), 1L, 1);
+
+                    b.Property<int>("ClassCodeMatchRate")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RevertableDurationInHours")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SemesterDurationInDays")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SlotDurationInMins")
+                        .HasColumnType("int");
+
+                    b.HasKey("SystemConfigurationId");
+
+                    b.ToTable("SystemConfiguration", (string)null);
+                });
+
             modelBuilder.Entity("Base.Repository.Identity.Role", b =>
                 {
                     b.Property<int>("RoleId")
@@ -783,8 +829,17 @@ namespace Base.Repository.Migrations
                     b.Property<Guid?>("EmployeeID")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("FirstName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("Gender")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActivated")
                         .HasColumnType("bit");
+
+                    b.Property<string>("LastName")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");

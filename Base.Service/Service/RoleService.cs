@@ -47,7 +47,7 @@ public class RoleService : IRoleService
             };
         }
 
-        newRole.CreatedAt = DateTime.UtcNow;
+        newRole.CreatedAt = ServerDateTime.GetVnDateTime();
         newRole.CreatedBy = _currentUserService.UserId;
 
         try

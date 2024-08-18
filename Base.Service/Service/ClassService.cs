@@ -318,7 +318,9 @@ namespace Base.Service.Service
             var includes = new Expression<Func<Class, object?>>[]
             {
                 c => c.Lecturer,
-                c => c.Semester
+                c => c.Semester,
+                c => c.Subject,
+                c => c.Room
             };
 
             var classes = await _unitOfWork.ClassRepository
@@ -359,6 +361,165 @@ namespace Base.Service.Service
                 .Get(where)
                 .Select(c => c.ClassCode.ToUpper())
                 .ToArrayAsync();
+        }
+
+        public async Task<ServiceResponseVM<Class>> UpdateClass(int classId, UpdateClassVM resource)
+        {
+            var result = new ServiceResponseVM<Class>
+            {
+                IsSuccess = false
+            };
+            var errors = new List<string>();
+
+            var existedClass = _unitOfWork.ClassRepository
+                .Get(c => !c.IsDeleted && c.ClassID == classId)
+                .FirstOrDefault();
+
+            if(existedClass is null)
+            {
+                result.IsSuccess = false;
+                result.Errors = new string[1] { "Class not found" };
+                return result;
+            }
+
+            if (resource.SemesterId is null &&
+            resource.RoomId is null &&
+            resource.SubjectId is null &&
+            resource.LecturerID is null &&
+            resource.ClassCode is null)
+            {
+                result.IsSuccess = true;
+                result.Title = "Update class successfully";
+                result.Result = existedClass;
+                return result;
+            }
+
+            var copyClass = (Class)existedClass.Clone();
+
+            if(resource.SemesterId is not null)
+            {
+                var checkExistedSemester = _unitOfWork.SemesterRepository
+                    .Get(s => !s.IsDeleted && s.SemesterID == resource.SemesterId)
+                    .AsNoTracking()
+                    .FirstOrDefault() is null;
+                if (checkExistedSemester)
+                {
+                    errors.Add("Semester not found");
+                }
+                else
+                {
+                    existedClass.SemesterID = (int)resource.SemesterId;
+                }
+            }
+
+            if(resource.RoomId is not null)
+            {
+                var checkExistedRoom = _unitOfWork.RoomRepository
+                    .Get(r => !r.IsDeleted && r.RoomID == resource.RoomId)
+                    .AsNoTracking()
+                    .FirstOrDefault() is null;
+                if (checkExistedRoom)
+                {
+                    errors.Add("Room not found");
+                }
+                else
+                {
+                    existedClass.RoomID = (int)resource.RoomId;
+                }
+            }
+
+            if(resource.SubjectId is not null)
+            {
+                var checkExistedSubject = _unitOfWork.SubjectRepository
+                    .Get(s => !s.IsDeleted && s.SubjectID == resource.SubjectId)
+                    .AsNoTracking()
+                    .FirstOrDefault() is null;
+                if (checkExistedSubject)
+                {
+                    errors.Add("Subject not found");
+                }
+                else
+                {
+                    existedClass.SubjectID = (int)resource.SubjectId;
+                }
+            }
+
+            if(resource.LecturerID is not null)
+            {
+                var checkExistedLecturer = _unitOfWork.UserRepository
+                    .Get(u => !u.Deleted && u.Id == resource.LecturerID)
+                    .AsNoTracking()
+                    .FirstOrDefault() is null;
+                if (checkExistedLecturer)
+                {
+                    errors.Add("Lecturer not found");
+                }
+                else
+                {
+                    existedClass.LecturerID = (Guid)resource.LecturerID;
+                }
+            }
+
+            if(resource.ClassCode is not null)
+            {
+                var belongedSemesterId = resource.SemesterId is null ? existedClass.SemesterID : resource.SemesterId;
+                var checkExistedClassCode = _unitOfWork.ClassRepository
+                    .Get(c => !c.IsDeleted && c.ClassID != existedClass.ClassID && c.SemesterID == belongedSemesterId && c.ClassCode == resource.ClassCode.Trim())
+                    .AsNoTracking()
+                    .FirstOrDefault() is not null;
+                if (checkExistedClassCode)
+                {
+                    errors.Add("Class code is already taken");
+                }
+                else
+                {
+                    existedClass.ClassCode = resource.ClassCode;
+                }
+            }
+
+            if(errors.Count() > 0)
+            {
+                result.IsSuccess = false;
+                result.Errors = errors;
+                return result;
+            }
+
+            if (TwoObjectsAreTheSame(copyClass, existedClass))
+            {
+                result.IsSuccess = true;
+                result.Title = "Update class successfully";
+                result.Result = existedClass;
+                return result;
+            }
+
+            try
+            {
+                var finalResult = await _unitOfWork.SaveChangesAsync();
+                if (finalResult)
+                {
+                    result.IsSuccess = true;
+                    result.Result = existedClass;
+                    result.Title = "Update class successfully";
+                    return result;
+                }
+
+                result.IsSuccess = false;
+                result.Errors = new string[1] { "Error when saving changes" };
+                return result;
+            }
+            catch (Exception ex)
+            {
+                result.IsSuccess = false;
+                result.Errors = new string[2] { "Error when saving changes", ex.Message };
+                return result;
+            }
+        }
+
+        private bool TwoObjectsAreTheSame(Class object1, Class object2)
+        {
+            return (object1.SemesterID == object2.SemesterID && object1.RoomID == object2.RoomID &&
+                object1.SubjectID == object2.SubjectID && object1.LecturerID == object2.LecturerID &&
+                object1.ClassCode == object2.ClassCode);
         }
     }
 }

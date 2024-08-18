@@ -22,6 +22,7 @@ public interface IBaseRepository<T, TKey> where T : class
     void Update(T entity);
     void Update(T entity, string entityTypeName);
     void Remove(T entity);
+    void RemoveRange(IEnumerable<T> entities);
 }
 
 public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
@@ -87,6 +88,11 @@ public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
     public virtual void Remove(T entity)
     {
         dbSet.Remove(entity);
+    }
+
+    public virtual void RemoveRange(IEnumerable<T> entities)
+    {
+        dbSet.RemoveRange(entities);
     }
 
     public virtual void Update(T entity)

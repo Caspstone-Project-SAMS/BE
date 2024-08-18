@@ -39,6 +39,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     public DbSet<PreparationTask> PreparationTasks { get; set; } = null!;
     public DbSet<ModuleActivity> ActivityHistories { get; set; } = null!;
     public DbSet<ImportSchedulesRecord> ImportSchedulesRecords { get; set; } = null!;
+    public DbSet<SystemConfiguration> SystemConfigurations { get; set; } = null!;
+    public DbSet<StoredFingerprintDemo> StoredFingerprintDemos { get; set; } = null!;
 
 
 
@@ -247,6 +249,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
         builder.Entity<ModuleActivity>().ToTable("ModuleActivity");
 
         builder.Entity<ImportSchedulesRecord>().ToTable("ImportSchedulesRecord");
+
+        builder.Entity<SystemConfiguration>().ToTable("SystemConfiguration");
 
 
         builder.Ignore<IdentityUserClaim<Guid>>();

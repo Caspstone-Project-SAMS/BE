@@ -3,13 +3,14 @@ using Base.Repository.Common;
 
 namespace Base.Repository.Entity;
 
-public class Schedule : AuditableEntity
+public class Schedule : AuditableEntity, ICloneable
 {
     [Key]
     public int ScheduleID { get; set; }
     public DateOnly Date { get; set; }
     public int DateOfWeek { get; set; }
-    public int ScheduleStatus { get; set; }
+    public int ScheduleStatus { get; set; } = 1;
+    public int Attended { get; set; } = 1;
 
     public int SlotID { get; set; }
     public Slot? Slot { get; set; }
@@ -27,4 +28,8 @@ public class Schedule : AuditableEntity
 
     public IEnumerable<Attendance> Attendances { get; set; } = new List<Attendance>();
 
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
 }
