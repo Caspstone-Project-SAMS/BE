@@ -32,17 +32,27 @@ namespace Base.Service.Service
             _currentUserService = currentUserService;
         }
 
-        public async Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities)
+        public async Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities, int semesterId)
         {
             List<ScheduleVM> createdSchedule = new List<ScheduleVM>();
             List<string> errors = new List<string>();
+            var existedSemester = await _unitOfWork.SemesterRepository.Get(s => s.SemesterID == semesterId && !s.IsDeleted).SingleOrDefaultAsync();
+            if (existedSemester is null)
+            {
+                return new ServiceResponseVM<List<ScheduleVM>>
+                {
+                    IsSuccess = false,
+                    Title = "Add new Schedule failed",
+                    Errors = new string[1] { "Semester not Existed" }
+                };
+            }
             foreach (var newEntity in newEntities)
             {
                 
-                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode) && !c.IsDeleted).SingleOrDefaultAsync();
+                    var existedClass = await _unitOfWork.ClassRepository.Get(c => c.ClassCode.Equals(newEntity.ClassCode)&& c.SemesterID == semesterId && !c.IsDeleted).Include(s => s.Semester).FirstOrDefaultAsync();
                     if (existedClass is null)
                     {
-                        errors.Add($"Class with Class Code: {newEntity.ClassCode} not existed");
+                        errors.Add($"Class with Class Code: {newEntity.ClassCode} not existed in Semester {existedSemester.SemesterCode}");
                         continue;
                     }
 
@@ -53,16 +63,23 @@ namespace Base.Service.Service
                         continue;
                     }
 
-                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date && s.SlotID == existedSlot.SlotID && !s.IsDeleted).FirstOrDefaultAsync();
+                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(
+                                                                                s => s.Date == newEntity.Date 
+                                                                                && s.SlotID == existedSlot.SlotID 
+                                                                                && s.ClassID == existedClass.ClassID 
+                                                                                && !s.IsDeleted).FirstOrDefaultAsync();
                     if(existedSchedule is not null)
                     {
                         errors.Add($"A schedule already exists for class {newEntity.ClassCode} at slot {newEntity.SlotNumber} on date {newEntity.Date}");
                         continue;
                     }
 
-                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date 
-                                                                            && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID && s.Class!.RoomID == existedClass.RoomID 
-                                                                            && s.ClassID == existedClass.ClassID && !s.IsDeleted).ToArrayAsync();
+                    var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(
+                                                                               s => s.Date == newEntity.Date 
+                                                                            && s.SlotID == existedSlot.SlotID
+                                                                            && s.ClassID != existedClass.ClassID
+                                                                            && s.Class!.RoomID == existedClass.RoomID 
+                                                                            && !s.IsDeleted).ToArrayAsync();
                     if( conflictingSchedule.Count() > 0)
                     {
                         errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date}'.");
@@ -71,8 +88,9 @@ namespace Base.Service.Service
 
                     var conflictingScheduleLecturer = 
                     await _unitOfWork.ScheduleRepository.Get(s => s.Date == newEntity.Date 
-                                                            && s.SlotID == existedSlot.SlotID && s.ClassID != existedClass.ClassID 
-                                                            && s.Class!.RoomID == existedClass.RoomID && s.ClassID == existedClass.ClassID 
+                                                            && s.SlotID == existedSlot.SlotID
+                                                            && s.ClassID != existedClass.ClassID 
+                                                            && s.Class!.RoomID == existedClass.RoomID
                                                             && s.Class!.LecturerID == existedClass.LecturerID && !s.IsDeleted).ToArrayAsync();
                     if (conflictingScheduleLecturer.Count() > 0)
                     {

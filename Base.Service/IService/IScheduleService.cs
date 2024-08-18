@@ -12,7 +12,7 @@ namespace Base.Service.IService
     public interface IScheduleService
     {
         Task<IEnumerable<Schedule>> GetSchedules(int startPage,int endPage,Guid lecturerId,int quantity, int? semesterId,DateTime? startDate, DateTime? endDate);
-        Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities);
+        Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities, int semesterId);
         Task<Schedule?> GetById(int scheduleId);
         string? GetClassCodeList(string deliminate, List<int>? scheduleIds);
         Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate);

@@ -26,8 +26,6 @@ using HttpMethod = System.Net.Http.HttpMethod;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
-using IMailService = Base.Service.Common.IMailService;
-using MailService = Base.Service.Common.MailService;
 using Base.Repository.Entity;
 using System.Security.Cryptography.X509Certificates;
 
@@ -75,7 +73,7 @@ builder.Services.AddSingleton(cloudinary);
 #endregion
 
 #region Email Service
-var emailConfig = Configuration.GetSection("EmailConfig").Get<Base.Service.Common.EmailConfig>();
+var emailConfig = Configuration.GetSection("EmailConfig").Get<EmailConfig>();
 builder.Services.AddSingleton(emailConfig);
 builder.Services.AddScoped<IMailService, MailService>();
 #endregion
@@ -439,6 +437,11 @@ app.UseEndpoints(endpoints =>
     });
 });
 
+using (var scope = app.Services.CreateScope())
+{
+    var hangfireServiceSingleton = scope.ServiceProvider.GetRequiredService<HangfireServiceSingleton>();
+    hangfireServiceSingleton.Run();
+}
 
 
 app.Run();

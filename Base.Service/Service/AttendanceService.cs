@@ -45,7 +45,7 @@ namespace Base.Service.Service
             };
 
             return await _unitOfWork.AttendanceRepository
-            .Get(a => a.ScheduleID == scheduleID, includes: includes)
+            .Get(a => a.ScheduleID == scheduleID && !a.IsDeleted, includes: includes)
             .AsNoTracking()
             .Skip((startPage - 1) * quantityResult)
             .Take((endPage - startPage + 1) * quantityResult)
@@ -54,7 +54,7 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus(int scheduleID, int attendanceStatus, DateTime? attendanceTime, Guid studentID)
         {
-            var existedAttendance = await _unitOfWork.AttendanceRepository.Get(a => a.ScheduleID == scheduleID && a.StudentID.Equals(studentID)).FirstOrDefaultAsync();
+            var existedAttendance = await _unitOfWork.AttendanceRepository.Get(a => a.ScheduleID == scheduleID && a.StudentID.Equals(studentID) && !a.IsDeleted).FirstOrDefaultAsync();
             if (existedAttendance is null)
             {
                 return new ServiceResponseVM<Attendance>
@@ -268,7 +268,9 @@ namespace Base.Service.Service
                         SlotNumber = slotNumber,
                         Status = attendance != null ? attendance.AttendanceStatus : -1
                     };
-                }).OrderBy(record => record.Date).ToList()
+                }).OrderBy(record => record.Date)
+                .ThenBy(record => record.SlotNumber)
+                .ToList()
             }).OrderBy(s => s.AttendanceRecords!.Min(a => a.Date)).ToList();
 
             dbContext1.Dispose();

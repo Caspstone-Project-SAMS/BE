@@ -18,6 +18,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 
+
 namespace Base.API.Service;
 
 public class HangfireService
@@ -29,7 +30,7 @@ public class HangfireService
     private readonly ICurrentUserService _currentUserService;
     private readonly WebsocketEventManager _websocketEventManager;
     private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
-    private readonly IUnitOfWork _unitOfWork;
+    //private readonly IUnitOfWork _unitOfWork;
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public HangfireService(IBackgroundJobClient backgroundJobClient,
@@ -38,7 +39,7 @@ public class HangfireService
                            SessionManager sessionManager,
                            ICurrentUserService currentUserService,
                            WebsocketEventManager websocketEventManager,
-                           IUnitOfWork unitOfWork,
+                           //IUnitOfWork unitOfWork,
                            IServiceScopeFactory serviceScopeFactory)
     {
         _backgroundJobClient = backgroundJobClient;
@@ -48,7 +49,7 @@ public class HangfireService
         _currentUserService = currentUserService;
         _websocketEventManager = websocketEventManager;
         _serviceScopeFactory = serviceScopeFactory;
-        _unitOfWork = unitOfWork;
+        //_unitOfWork = unitOfWork;
     }
 
     public void CheckAbsenceRoutine()
@@ -56,7 +57,7 @@ public class HangfireService
         _recurringJobManager.AddOrUpdate(
             "Check Absence Routine",
             () => SendAbsenceEmails(),
-            "53 16 * * *",
+            "00 19 * * *",
             new RecurringJobOptions
             {
                 TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
@@ -68,7 +69,7 @@ public class HangfireService
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var mailService = serviceScope.ServiceProvider.GetRequiredService<IMailService>();
-
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var entities = await _unitOfWork.StudentClassRepository.GetStudentClassInfoAsync();
 
         foreach (var entity in entities)
@@ -90,11 +91,17 @@ public class HangfireService
                     </body>
                     </html>"
             };
-
-
-
             await mailService.SendMailAsync(emailMessage);
+            var update = _unitOfWork.StudentClassRepository.Get("StudentClass",s => s.StudentID.Equals(entity.ID) && s.ClassID == entity.ClassID && !s.IsDeleted).FirstOrDefault();
+
+            if (update is null)
+            {
+                continue;
+            }
+            update.IsSendEmail = true;
+            _unitOfWork.StudentClassRepository.Update(update);
         }
+       await _unitOfWork.SaveChangesAsync();
     }
 
     public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
