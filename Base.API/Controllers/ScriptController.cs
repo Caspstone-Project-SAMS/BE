@@ -7,4 +7,8 @@ namespace Base.API.Controllers;
 [ApiController]
 public class ScriptController : ControllerBase
 {
+    public ScriptController()
+    {
+        
+    }
 }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Entity;
 
-public class SystemConfiguration
+public class SystemConfiguration : ICloneable
 {
     [Key]
     public int SystemConfigurationId { get; set; }
@@ -15,4 +15,9 @@ public class SystemConfiguration
     public int ClassCodeMatchRate { get; set; } = 50;
     public int SemesterDurationInDays { get; set; } = 90;
     public int SlotDurationInMins { get; set; } = 135;
+
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
 }

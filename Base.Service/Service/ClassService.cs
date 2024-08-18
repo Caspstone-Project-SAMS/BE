@@ -382,6 +382,20 @@ namespace Base.Service.Service
                 return result;
             }
 
+            if (resource.SemesterId is null &&
+            resource.RoomId is null &&
+            resource.SubjectId is null &&
+            resource.LecturerID is null &&
+            resource.ClassCode is null)
+            {
+                result.IsSuccess = true;
+                result.Title = "Update class successfully";
+                result.Result = existedClass;
+                return result;
+            }
+
+            var copyClass = (Class)existedClass.Clone();
+
             if(resource.SemesterId is not null)
             {
                 var checkExistedSemester = _unitOfWork.SemesterRepository
@@ -470,6 +484,14 @@ namespace Base.Service.Service
                 return result;
             }
 
+            if (TwoObjectsAreTheSame(copyClass, existedClass))
+            {
+                result.IsSuccess = true;
+                result.Title = "Update class successfully";
+                result.Result = existedClass;
+                return result;
+            }
+
             try
             {
                 var finalResult = await _unitOfWork.SaveChangesAsync();
@@ -491,6 +513,13 @@ namespace Base.Service.Service
                 result.Errors = new string[2] { "Error when saving changes", ex.Message };
                 return result;
             }
+        }
+
+        private bool TwoObjectsAreTheSame(Class object1, Class object2)
+        {
+            return (object1.SemesterID == object2.SemesterID && object1.RoomID == object2.RoomID &&
+                object1.SubjectID == object2.SubjectID && object1.LecturerID == object2.LecturerID &&
+                object1.ClassCode == object2.ClassCode);
         }
     }
 }

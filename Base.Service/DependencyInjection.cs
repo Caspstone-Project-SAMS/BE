@@ -37,6 +37,7 @@ public static class DependencyInjection
         services.AddScoped<INotificationTypeService, NotificationTypeService>();
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IImportSchedulesRecordService, ImportSchedulesRecordService>();
+        services.AddScoped<ISystemService, SystemSevice>();
         #endregion
 
         #region Validation

@@ -40,6 +40,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
     public DbSet<ModuleActivity> ActivityHistories { get; set; } = null!;
     public DbSet<ImportSchedulesRecord> ImportSchedulesRecords { get; set; } = null!;
     public DbSet<SystemConfiguration> SystemConfigurations { get; set; } = null!;
+    public DbSet<StoredFingerprintDemo> StoredFingerprintDemos { get; set; } = null!;
 
 
 
