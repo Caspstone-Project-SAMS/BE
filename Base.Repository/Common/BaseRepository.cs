@@ -20,6 +20,7 @@ public interface IBaseRepository<T, TKey> where T : class
     Task AddAsync(T entity, string entityTypeName);
     Task AddRangeAsync(IEnumerable<T> entities);
     void Update(T entity);
+    void Update(T entity, string entityTypeName);
     void Remove(T entity);
 }
 
@@ -96,5 +97,10 @@ public class BaseRepository<T, TKey> : IBaseRepository<T, TKey> where T : class
     public virtual IQueryable<T> GetAll(string entityTypeName)
     {
         return _applicationDbContext.Set<T>(entityTypeName);
+    }
+
+    public virtual void Update(T entity, string entityTypeName)
+    {
+        _applicationDbContext.Set<T>(entityTypeName).Update(entity);
     }
 }

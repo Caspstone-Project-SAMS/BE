@@ -30,11 +30,25 @@ namespace Base.Repository.Repository
 
         public async Task<List<StudentClassInfoDto>> GetStudentClassInfoAsync()
         {
-            var result = await _applicationDbContext
-            .Set<StudentClassInfoDto>()
-            .FromSqlRaw("EXEC GetStudentClassInfo")
-            .ToListAsync();
+            var studentClassInfo = from sc in _applicationDbContext.Set<StudentClass>("StudentClass")
+                                   join u in _applicationDbContext.Users on sc.StudentID equals u.Id
+                                   join c in _applicationDbContext.Classes on sc.ClassID equals c.ClassID
+                                   join s in _applicationDbContext.Semesters on c.SemesterID equals s.SemesterID
+                                   join st in _applicationDbContext.Students on u.StudentID equals st.StudentID
+                                   where sc.IsSendEmail == false && sc.AbsencePercentage > 20
+                                   select new StudentClassInfoDto
+                                   {
+                                       ID = sc.StudentID,
+                                       Email = u.Email,
+                                       ClassCode = c.ClassCode,
+                                       IsSendEmail = sc.IsSendEmail,
+                                       AbsencePercentage = sc.AbsencePercentage,
+                                       SemesterName = s.SemesterCode,
+                                       StudentCode = st.StudentCode,
+                                       ClassID = sc.ClassID,                                      
+                                   };
 
+            var result = await studentClassInfo.ToListAsync();
             return result;
         }
     }

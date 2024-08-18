@@ -56,11 +56,11 @@ namespace Base.API.Controllers
 
 
         [HttpPost]
-        public async Task<IActionResult> CreateSchedules(List<ScheduleVM> resources)
+        public async Task<IActionResult> CreateSchedules(List<ScheduleVM> resources,int semesterId)
         {
             try
             {
-                var response = await _scheduleService.Create(resources);
+                var response = await _scheduleService.Create(resources,semesterId);
                 if (response.IsSuccess)
                 {
                     return Ok(response);

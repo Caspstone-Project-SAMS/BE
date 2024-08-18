@@ -5,6 +5,7 @@ using Base.Repository.IRepository;
 using Base.Service.IService;
 using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using FingerprintTemplateClass = Base.Repository.Entity.FingerprintTemplate;
@@ -20,18 +21,24 @@ public class HelloController : ControllerBase
     private readonly SessionManager _sessionManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IStudentService _studentService;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly HangfireService _hangFireService;
 
     public HelloController(WebSocketConnectionManager webSocketConnectionManager, 
         WebSocketConnectionManager1 webSocketConnectionManager1,
         SessionManager sessionManager,
         IUnitOfWork unitOfWork,
-        IStudentService studentService)
+        IStudentService studentService,
+        IServiceScopeFactory serviceScopeFactory,
+        HangfireService hangFireService)
     {
         _webSocketConnectionManager = webSocketConnectionManager;
         _webSocketConnectionManager1 = webSocketConnectionManager1;
         _sessionManager = sessionManager;
         _unitOfWork = unitOfWork;
         _studentService = studentService;
+        _serviceScopeFactory = serviceScopeFactory;
+        _hangFireService = hangFireService;
     }
 
     private static IList<FingerprintTemplate> fingerprintTemplates = new List<FingerprintTemplate>();
@@ -224,6 +231,13 @@ public class HelloController : ControllerBase
         return Ok("Module check: " + _webSocketConnectionManager1.CheckModuleSocket(moduleId));
     }
 
+    [HttpGet("studentClass")]
+    public async Task<IActionResult> Test()
+    {
+        await _hangFireService.SendAbsenceEmails();
+
+        return Ok();
+    }
 
     public class FingerprintTemplateTest
     {
