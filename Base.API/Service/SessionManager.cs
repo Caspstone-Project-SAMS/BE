@@ -597,7 +597,7 @@ public class SessionManager
     }
 
 
-    private async Task NotifyPreparationProgress(int sessionId, float progress, Guid userId)
+    public async Task NotifyPreparationProgress(int sessionId, float progress, Guid userId)
     {
         var messageSend = new WebsocketMessage
         {
@@ -612,15 +612,13 @@ public class SessionManager
         await _webSocketConnectionManager.SendMessageToClient(jsonPayload, userId);
     }
 
-    private Task WaitCancelSession(int sessionId, CancellationToken cancellationToken)
+    private async Task WaitCancelSession(int sessionId)
     {
-        while (!cancellationToken.IsCancellationRequested)
-        {
-        }
+        await Task.Delay(TimeSpan.FromSeconds(240));
 
         DeleteSession(sessionId);
 
-        return Task.CompletedTask;
+        // Notify module and client about the session cancelled
     }
 }
 

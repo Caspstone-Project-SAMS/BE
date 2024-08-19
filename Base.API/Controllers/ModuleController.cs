@@ -366,6 +366,13 @@ public class ModuleController : ControllerBase
                                 websocketEventHandler.PrepareAttendanceSession -= OnModuleMode3EventHandler;
                             }
 
+                            // Notify the action is started
+                            var existedSessionMode3 = _sessionManager.GetSessionById(activateModule.SessionId ?? 0);
+                            if(existedSessionMode3 is not null)
+                            {
+                                _ = _sessionManager.NotifyPreparationProgress(existedSessionMode3.SessionId, 0, existedSessionMode3.UserID);
+                            }
+
                             return Ok(new
                             {
                                 Title = "Activate module successfully",
@@ -397,7 +404,7 @@ public class ModuleController : ControllerBase
                     {
                         return BadRequest(new
                         {
-                            Title = "Activate module failed",
+                            Title = "Stop attendance failed",
                             Errors = new string[1] { "Invalid input" }
                         });
                     }
@@ -406,8 +413,24 @@ public class ModuleController : ControllerBase
                     {
                         return BadRequest(new
                         {
-                            Title = "Activate module failed",
+                            Title = "Stop attendance failed",
                             Errors = new string[1] { "Schedule not found" }
+                        });
+                    }
+                    if(existedSscheduleMode4.ScheduleStatus == 3)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Stop attendance failed",
+                            Errors = new string[1] { "Schedule is already finished" }
+                        });
+                    }
+                    if (existedSscheduleMode4.ScheduleStatus == 1)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Stop attendance failed",
+                            Errors = new string[1] { "Schedule is not started" }
                         });
                     }
 
@@ -451,7 +474,7 @@ public class ModuleController : ControllerBase
 
                     return BadRequest(new
                     {
-                        Title = "Activate module failed",
+                        Title = "Stop attendance failed",
                         Errors = new string[1] { "Module is not being connected" }
                     });
 
@@ -726,7 +749,7 @@ public class ModuleController : ControllerBase
                     {
                         return BadRequest(new
                         {
-                            Title = "Activate module failed",
+                            Title = "Start attendance failed",
                             Errors = new string[1] { "Invalid input" }
                         });
                     }
@@ -735,8 +758,24 @@ public class ModuleController : ControllerBase
                     {
                         return BadRequest(new
                         {
-                            Title = "Activate module failed",
+                            Title = "Start attendance failed",
                             Errors = new string[1] { "Schedule not found" }
+                        });
+                    }
+                    if (existedSscheduleMode10.ScheduleStatus == 3)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Start attendance failed",
+                            Errors = new string[1] { "Schedule is already finished" }
+                        });
+                    }
+                    if (existedSscheduleMode10.ScheduleStatus == 1)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Start attendance failed",
+                            Errors = new string[1] { "Schedule is not started" }
                         });
                     }
 
@@ -759,16 +798,25 @@ public class ModuleController : ControllerBase
                     if (resultMode10)
                     {
                         cts.CancelAfter(TimeSpan.FromSeconds(6));
-                        if (WaitForModuleMode10(cts.Token))
+                        bool resultMode10Check = false;
+                        if (WaitForModuleMode10(cts.Token, out resultMode10Check))
                         {
                             if (websocketEventHandler is not null)
                             {
                                 websocketEventHandler.StartAttendance -= OnModuleMode10EventHandler;
                             }
 
-                            return Ok(new
+                            if (resultMode10Check)
                             {
-                                Title = "Start attendance successfully",
+                                return Ok(new
+                                {
+                                    Title = "Start attendance successfully",
+                                });
+                            }
+
+                            return BadRequest(new
+                            {
+                                Title = "Start attendance failed"
                             });
                         }
                     }
@@ -780,7 +828,7 @@ public class ModuleController : ControllerBase
 
                     return BadRequest(new
                     {
-                        Title = "Activate module failed",
+                        Title = "Start attendance failed",
                         Errors = new string[1] { "Module is not being connected" }
                     });
 
@@ -1163,7 +1211,7 @@ public class ModuleController : ControllerBase
         return false;
     }
 
-    private bool WaitForModuleMode10(CancellationToken cancellationToken)
+    private bool WaitForModuleMode10(CancellationToken cancellationToken, out bool result)
     {
         try
         {
@@ -1171,6 +1219,7 @@ public class ModuleController : ControllerBase
             {
                 if (websocketEventState.ModuleMode10)
                 {
+                    result = websocketEventState.ModuleMode10Check;
                     return true;
                 }
             }
@@ -1178,6 +1227,7 @@ public class ModuleController : ControllerBase
         catch (OperationCanceledException)
         {
         }
+        result = false;
         return false;
     }
 
@@ -1312,6 +1362,14 @@ public class ModuleController : ControllerBase
     {
         if (e.Event.Contains("Start attendance " + websocketEventState.ScheduleId))
         {
+            if (e.Event.Contains("successfully"))
+            {
+                websocketEventState.ModuleMode10Check = true;
+            }
+            else if (e.Event.Contains("failed"))
+            {
+                websocketEventState.ModuleMode10Check = false;
+            }
             websocketEventState.ModuleMode10 = true;
         }
     }
@@ -1375,6 +1433,7 @@ public class WebsocketEventState
     public bool ModuleMode9 { get; set; } = false;
     public int SessionIdMode9 { get; set; } = 0;
     public bool ModuleMode10 { get; set; } = false;
+    public bool ModuleMode10Check { get; set; } = false;
     public bool ModuleMode11 { get; set; } = false;
     public bool ModuleMode11Check { get; set; } = false;
     public bool ModuleMode12 { get; set; } = false;

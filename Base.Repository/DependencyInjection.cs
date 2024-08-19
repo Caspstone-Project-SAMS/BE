@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<IModuleActivityRepository, ModuleActivityRepository>();
         services.AddScoped<IImportSchedulesRecordRepository, ImportSchedulesRecordRepository>();
         services.AddScoped<ISystemConfigurationRepository, SystemConfigurationRepository>();
+        services.AddScoped<IStoredFingerprintDemoRepository, StoredFingerprintDemoRepository>();
         #endregion
 
         return services;

@@ -23,9 +23,151 @@ namespace Base.Service.Service
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
         }
-        public Task<ServiceResponseVM<Slot>> Create(SlotVM newEntity)
+
+        public async Task<ServiceResponseVM<Slot>> Create(SlotVM newEntity)
         {
-            throw new NotImplementedException();
+            var errors = new List<string>();
+            if (newEntity.SlotNumber is null)
+            {
+                errors.Add("Slot number is required");
+            }
+            if (newEntity.StartTime is null)
+            {
+                errors.Add("Start time is required");
+            }
+            if (newEntity.Endtime is null)
+            {
+                errors.Add("End time is required");
+            }
+            if(errors.Count > 0)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = errors.ToArray()
+                };
+            }
+
+            var existedSlot = await _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotNumber == newEntity.SlotNumber)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+            if (existedSlot is not null)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = new string[1] { "Slot number is already taken" }
+                };
+            }
+
+            // Validate slot
+            if(newEntity.StartTime > newEntity.Endtime)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = new string[1] { "Start time must be earlier than end time" }
+                };
+            }
+            var slotDuration = _unitOfWork.SystemConfigurationRepository
+                .Get(s => true)
+                .AsNoTracking()
+                .FirstOrDefault()
+                ?.SlotDurationInMins ?? 45;
+            var difference = newEntity.Endtime!.Value - newEntity.StartTime!.Value;
+            if((int)difference.TotalMinutes != slotDuration)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = new string[2] { $"The total duration of the slot is {(int)difference.TotalMinutes} minutes", $"The total duration of a slot must be {slotDuration} minutes" }
+                };
+            }
+
+            // Check overlap
+            var checkOverlappingSlot = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted &&
+                    ((s.StartTime <= newEntity.StartTime && s.Endtime >= newEntity.StartTime) ||
+                    (s.StartTime <= newEntity.Endtime && s.Endtime >= newEntity.Endtime) ||
+                    (s.StartTime >= newEntity.StartTime && s.Endtime <= newEntity.Endtime))
+                    )
+                .AsNoTracking()
+                .Any();
+            if (checkOverlappingSlot)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = new string[1] { "Overlap with existing slot" }
+                };
+            }
+
+            // Identify the order of slot
+            var addedSlot = new Slot
+            {
+                SlotNumber = newEntity.SlotNumber ?? 0,
+                Status = newEntity.Status ?? 1,
+                StartTime = newEntity.StartTime.Value,
+                Endtime =  newEntity.Endtime.Value
+            };
+            var slots = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted)
+                .ToList();
+            slots.Add(addedSlot);
+            var orderedSlot = slots.OrderBy(s => s.StartTime).ToList();
+            int order = 1;
+            foreach(var slot in orderedSlot)
+            {
+                slot.Order = order++;
+            }
+
+            try
+            {
+                await _unitOfWork.SlotRepository.AddAsync(addedSlot);
+                var result = await _unitOfWork.SaveChangesAsync();
+
+                if (result)
+                {
+                    return new ServiceResponseVM<Slot>
+                    {
+                        IsSuccess = true,
+                        Title = "Create slot successfully",
+                        Result = addedSlot
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM<Slot>
+                    {
+                        IsSuccess = false,
+                        Title = "Create slot failed",
+                    };
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = new string[1] { ex.Message }
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Create slot failed",
+                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                };
+            }
         }
 
         public Task<ServiceResponseVM> Delete(int id)
@@ -38,9 +180,139 @@ namespace Base.Service.Service
             return await _unitOfWork.SlotRepository.Get(s => s.IsDeleted != true).ToArrayAsync();
         }
 
-        public Task<ServiceResponseVM<Slot>> Update(SlotVM updateEntity, int id)
+        public async Task<ServiceResponseVM<Slot>> Update(SlotVM updateEntity, int id)
         {
-            throw new NotImplementedException();
+            var existedSlot = await _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotID == id)
+                .FirstOrDefaultAsync();
+            if (existedSlot is null)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Update slot failed",
+                    Errors = new string[1] { "Slot not found" }
+                };
+            }
+
+            if(updateEntity.SlotNumber is not null)
+            {
+                var checkSlotNumber = _unitOfWork.SlotRepository
+                    .Get(s => !s.IsDeleted && s.SlotID != id && s.SlotNumber == updateEntity.SlotNumber)
+                    .Any();
+                if (checkSlotNumber)
+                {
+                    return new ServiceResponseVM<Slot>
+                    {
+                        IsSuccess = false,
+                        Title = "Update slot failed",
+                        Errors = new string[1] { "Slot number is already taken" }
+                    };
+                }
+                existedSlot.SlotNumber = updateEntity.SlotNumber ?? 0;
+            }
+
+            existedSlot.StartTime = updateEntity.StartTime is null ? existedSlot.StartTime : updateEntity.StartTime.Value;
+            existedSlot.Endtime = updateEntity.Endtime is null ? existedSlot.Endtime : updateEntity.Endtime.Value;
+            existedSlot.Status = updateEntity.Status is null ? existedSlot.Status : updateEntity.Status ?? 1;
+
+            // Validate slot
+            if (existedSlot.StartTime > existedSlot.Endtime)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Update slot failed",
+                    Errors = new string[1] { "Start time must be earlier than end time" }
+                };
+            }
+            var slotDuration = _unitOfWork.SystemConfigurationRepository
+                .Get(s => true)
+                .AsNoTracking()
+                .FirstOrDefault()
+                ?.SlotDurationInMins ?? 45;
+            var difference = existedSlot.Endtime - existedSlot.StartTime;
+            if ((int)difference.TotalMinutes != slotDuration)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Update slot failed",
+                    Errors = new string[2] { $"The total duration of the slot is {(int)difference.TotalMinutes} minutes", $"The total duration of a slot must be {slotDuration} minutes" }
+                };
+            }
+
+            // Check overlap slot
+            var checkOverlappingSlot = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID &&
+                    ((s.StartTime <= existedSlot.StartTime && s.Endtime >= existedSlot.StartTime) ||
+                    (s.StartTime <= existedSlot.Endtime && s.Endtime >= existedSlot.Endtime) ||
+                    (s.StartTime >= existedSlot.StartTime && s.Endtime <= existedSlot.Endtime))
+                    )
+                .AsNoTracking()
+                .Any();
+            if (checkOverlappingSlot)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Update slot failed",
+                    Errors = new string[1] { "Overlap with existing slot" }
+                };
+            }
+
+            // Identify the order of slot
+            var slots = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID)
+                .ToList();
+            slots.Add(existedSlot);
+            var orderedSlot = slots.OrderBy(s => s.StartTime).ToList();
+            int order = 1;
+            foreach (var slot in orderedSlot)
+            {
+                slot.Order = order++;
+            }
+
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+
+                if (result)
+                {
+                    return new ServiceResponseVM<Slot>
+                    {
+                        IsSuccess = true,
+                        Title = "Update slot successfully",
+                        Result = existedSlot
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM<Slot>
+                    {
+                        IsSuccess = false,
+                        Title = "Update slot failed",
+                    };
+                }
+            }
+            catch (DbUpdateException ex)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Update slot failed",
+                    Errors = new string[1] { ex.Message }
+                };
+            }
+            catch (OperationCanceledException ex)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = false,
+                    Title = "Update slot failed",
+                    Errors = new string[2] { "The operation has been cancelled", ex.Message }
+                };
+            }
         }
 
         public async Task<Slot?> GetById(int id)

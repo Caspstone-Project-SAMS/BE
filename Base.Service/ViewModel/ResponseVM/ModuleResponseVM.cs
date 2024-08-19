@@ -14,6 +14,7 @@ public class ModuleResponseVM
     public int? Mode { get; set; }
     public bool? AutoPrepare { get; set; }
     public TimeOnly? PreparedTime { get; set; }
+    public int? AttendanceDurationMinutes { get; set; }
     public int? ConnectionLifeTimeSeconds { get; set; }
     public bool? ConnectionSound { get; set; }
     public int? ConnectionSoundDurationMs { get; set; }

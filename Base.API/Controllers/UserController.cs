@@ -45,7 +45,8 @@ namespace Base.API.Controllers
                 return BadRequest(new ServiceResponseVM
                 {
                     IsSuccess = false,
-                    Title = "Invalid input"
+                    Title = "Create user failed",
+                    Errors = new string[1] { "Invalid input" }
                 });
             }
         }

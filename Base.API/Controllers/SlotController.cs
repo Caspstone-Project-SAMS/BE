@@ -1,5 +1,7 @@
 ﻿using AutoMapper;
+using Base.API.Service;
 using Base.Service.IService;
+using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,10 +14,12 @@ namespace Base.API.Controllers
     {
         private readonly ISlotService _slotService;
         private readonly IMapper _mapper;
-        public SlotController(ISlotService slotService, IMapper mapper)
+        private readonly HangfireService _hangFireService;
+        public SlotController(ISlotService slotService, IMapper mapper, HangfireService hangfireService)
         {
             _slotService = slotService; 
             _mapper = mapper;
+            _hangFireService = hangfireService;
         }
 
         [HttpGet]
@@ -46,6 +50,66 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Get slot information failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateNewSlot([FromBody]SlotVM resource)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _slotService.Create(resource);
+                if (result.IsSuccess)
+                {
+                    // Set job for created slot
+                    _hangFireService.SetASlotProgress(result.Result!.SlotID, result.Result.StartTime, result.Result.Endtime);
+
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = _mapper.Map<SlotResponseVM>(result.Result)
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = result.Title,
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Create slot failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateSlot(int id, [FromBody] SlotVM resource)
+        {
+            if (ModelState.IsValid)
+            {
+                var result = await _slotService.Update(resource, id);
+                if (result.IsSuccess)
+                {
+                    // Set job for updated slot
+                    _hangFireService.SetASlotProgress(result.Result!.SlotID, result.Result.StartTime, result.Result.Endtime);
+
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = _mapper.Map<SlotResponseVM>(result.Result)
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = result.Title,
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Update slot failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }

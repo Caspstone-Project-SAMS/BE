@@ -48,6 +48,8 @@ public interface IUnitOfWork
 
     ISystemConfigurationRepository SystemConfigurationRepository { get; }
 
+    IStoredFingerprintDemoRepository StoredFingerprintDemoRepository { get; }
+
     Task<bool> SaveChangesAsync();
     void Dispose();
 }
@@ -96,6 +98,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
 
     public ISystemConfigurationRepository SystemConfigurationRepository { get; private set; }
 
+    public IStoredFingerprintDemoRepository StoredFingerprintDemoRepository { get; private set; }
 
     public UnitOfWork(ApplicationDbContext applicationDbContext,
         IUserRepository userRepository,
@@ -117,7 +120,8 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         INotificationTypeRepository notificationTypeRepository,
         IModuleActivityRepository moduleActivityRepository,
         IImportSchedulesRecordRepository importSchedulesRecordRepository,
-        ISystemConfigurationRepository systemConfigurationRepository)
+        ISystemConfigurationRepository systemConfigurationRepository,
+        IStoredFingerprintDemoRepository storedFingerprintDemoRepository)
     {
         _applicationDbContext = applicationDbContext;
         UserRepository = userRepository;
@@ -140,6 +144,7 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         ModuleActivityRepository = moduleActivityRepository;
         ImportSchedulesRecordRepository = importSchedulesRecordRepository;
         SystemConfigurationRepository = systemConfigurationRepository;
+        StoredFingerprintDemoRepository = storedFingerprintDemoRepository;
     }
 
     public async Task<bool> SaveChangesAsync()

@@ -16,5 +16,6 @@ public class HangfireServiceSingleton
         var hangfireService = serviceScope.ServiceProvider.GetRequiredService<HangfireService>();
 
         hangfireService.CheckAbsenceRoutine();
+        _ = hangfireService.SlotProgress();
     }
 }

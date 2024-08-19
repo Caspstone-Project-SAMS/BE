@@ -53,12 +53,13 @@ namespace Base.Service.Service
                 return new ServiceResponseVM<Semester>
                 {
                     IsSuccess = false,
-                    Title = "Update Semester failed",
+                    Title = "Create Semester failed",
                     Errors = new string[1] { "Start date must be earlier than end date" }
                 };
             }
             var semesterDuration = _unitOfWork.SystemConfigurationRepository
                 .Get(s => true)
+                .AsNoTracking()
                 .FirstOrDefault()
                 ?.SemesterDurationInDays ?? 90;
             var difference = newEntity.EndDate.ToDateTime(TimeOnly.MinValue) - newEntity.StartDate.ToDateTime(TimeOnly.MinValue);
@@ -67,7 +68,7 @@ namespace Base.Service.Service
                 return new ServiceResponseVM<Semester>
                 {
                     IsSuccess = false,
-                    Title = "Update Semester failed",
+                    Title = "Create Semester failed",
                     Errors = new string[2] { $"The total duration of the semester is {difference.Days} days", $"The total duration of a semester must be {semesterDuration} days" }
                 };
             }

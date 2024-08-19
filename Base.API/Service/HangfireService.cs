@@ -16,6 +16,8 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Base.Service.ViewModel.RequestVM;
+using Base.Service.Service;
 
 
 
@@ -30,7 +32,6 @@ public class HangfireService
     private readonly ICurrentUserService _currentUserService;
     private readonly WebsocketEventManager _websocketEventManager;
     private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
-    //private readonly IUnitOfWork _unitOfWork;
     private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public HangfireService(IBackgroundJobClient backgroundJobClient,
@@ -39,7 +40,6 @@ public class HangfireService
                            SessionManager sessionManager,
                            ICurrentUserService currentUserService,
                            WebsocketEventManager websocketEventManager,
-                           //IUnitOfWork unitOfWork,
                            IServiceScopeFactory serviceScopeFactory)
     {
         _backgroundJobClient = backgroundJobClient;
@@ -49,7 +49,62 @@ public class HangfireService
         _currentUserService = currentUserService;
         _websocketEventManager = websocketEventManager;
         _serviceScopeFactory = serviceScopeFactory;
-        //_unitOfWork = unitOfWork;
+    }
+
+    public async Task SlotProgress()
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _slotService = serviceScope.ServiceProvider.GetRequiredService<ISlotService>();
+
+        var slots = await _slotService.Get();
+
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.4 * 2))
+        };
+        Parallel.ForEach(slots, parallelOptions, (slot, state) =>
+        {
+            _recurringJobManager.AddOrUpdate(
+                $"Set slot progress_SlotId-{slot.SlotID}_Start",
+                () => SetSlotStart(slot.SlotID),
+                ConvertToCronExpression(slot.StartTime),
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+                }
+            );
+            _recurringJobManager.AddOrUpdate(
+                $"Set slot progress_SlotId-{slot.SlotID}_End",
+                () => SetSlotEnd(slot.SlotID),
+                ConvertToCronExpression(slot.Endtime),
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+                }
+            );
+        });
+    }
+
+    public void SetASlotProgress(int slotId, TimeOnly startTime, TimeOnly endTime)
+    {
+        _recurringJobManager.AddOrUpdate(
+                $"Set slot progress_SlotId-{slotId}_Start",
+                () => SetSlotStart(slotId),
+                ConvertToCronExpression(startTime),
+                new RecurringJobOptions
+                {
+                    TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+                }
+            );
+        _recurringJobManager.AddOrUpdate(
+            $"Set slot progress_SlotId-{slotId}_End",
+            () => SetSlotEnd(slotId),
+            ConvertToCronExpression(endTime),
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+            }
+        );
     }
 
     public void CheckAbsenceRoutine()
@@ -137,11 +192,64 @@ public class HangfireService
         _recurringJobManager.RemoveIfExists(jobId);
     }
 
+    private static string ConvertToCronExpression(TimeOnly? prepareTime)
+    {
+        if (prepareTime.HasValue)
+        {
+            TimeOnly time = prepareTime.Value;
+            return Cron.Daily(time.Hour, time.Minute);
+        }
+        else
+        {
+            return Cron.Daily();
+        }
+    }
+
+
+
+    public async Task SetSlotStart(int slotId)
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        var schedules = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
+            .ToList();
+
+        foreach(var schedule in schedules)
+        {
+            schedule.ScheduleStatus = 2;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task SetSlotEnd(int slotId)
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        var schedules = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
+            .ToList();
+
+        foreach (var schedule in schedules)
+        {
+            schedule.ScheduleStatus = 3;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+    }
+
     public async Task<string> SetupPreparationForModule(DateOnly date, int moduleId)
     {
         var sessionId = await ConnectModule(moduleId);
-        if(sessionId is null)
+        if (sessionId is null)
         {
+            // Should record failed case
+            await RecordFailedModuleActivity(date, moduleId);
             return "Module not connected";
         }
 
@@ -178,23 +286,6 @@ public class HangfireService
             return $"Error sending data to module: {ex.Message}";
         }*/
     }
-
-    private static string ConvertToCronExpression(TimeOnly? prepareTime)
-    {
-        if (prepareTime.HasValue)
-        {
-            TimeOnly time = prepareTime.Value;
-            return Cron.Daily(time.Hour, time.Minute);
-        }
-        else
-        {
-            return Cron.Daily();
-        }
-    }
-
-
-
-
 
     public async Task<int?> ConnectModule(int moduleId)
     {
@@ -255,6 +346,8 @@ public class HangfireService
         var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
 
         var session = _sessionManager.GetSessionById(sessionId);
+        if(session is null) return false;
+
         var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, session.UserID, null, preparedDate, preparedDate);
         if (!getSchedulesResult.IsSuccess) return false;
 
@@ -323,6 +416,97 @@ public class HangfireService
         }
 
         return false;
+    }
+
+    private async Task RecordFailedModuleActivity(DateOnly date, int moduleId)
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+        var _moduleActivityService = serviceScope.ServiceProvider.GetRequiredService<IModuleActivityService>();
+
+        var existedModule = _unitOfWork.ModuleRepository
+            .Get(m => !m.IsDeleted && m.ModuleID == moduleId,
+            new Expression<Func<Module, object?>>[]
+            {
+                m => m.Employee!.User
+            })
+            .AsNoTracking()
+            .FirstOrDefault();
+        if (existedModule is null) return;
+
+        var scheduleIds = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Date == date && s.Class!.LecturerID == existedModule.Employee!.User!.Id)
+            .AsNoTracking()
+            .Select(s => s.ScheduleID)
+            .ToList();
+
+        var classCodeList = _scheduleService.GetClassCodeList(", ", scheduleIds);
+
+        // Create activity
+        var preparationTask = new PreparationTaskVM
+        {
+            Progress = 0,
+            PreparedScheduleIds = Enumerable.Empty<int>(),
+            PreparedDate = date,
+            UploadedFingers = 0,
+            TotalFingers = 0
+        };
+        var newActivity = new ActivityHistoryVM
+        {
+            UserId = existedModule.Employee?.User?.Id,
+            StartTime = ServerDateTime.GetVnDateTime(),
+            EndTime = ServerDateTime.GetVnDateTime(),
+            IsSuccess = false,
+            Errors = new string[1] { "Module is not being connected" },
+            ModuleID = moduleId,
+            Title = "Schedules preparation",
+            Description = "Prepare attendance data for classes " + (classCodeList ?? "***")
+                    + " on " + date.ToString("yyyy-MM-dd") + " failed",
+            PreparationTaskVM = preparationTask
+        };
+
+        var createNewActivityResult = await _moduleActivityService.Create(newActivity);
+
+        if (createNewActivityResult.IsSuccess)
+        {
+            // Create notification about the activity
+            var notificationTypeService = serviceScope.ServiceProvider.GetRequiredService<INotificationTypeService>();
+            var notificationService = serviceScope.ServiceProvider.GetRequiredService<INotificationService>();
+            var errorType = (await notificationTypeService.GetAll(1, 1, 1, "Error", null)).Result?.FirstOrDefault();
+            if (errorType is null)
+            {
+                errorType = (await notificationTypeService.Create(new NotificationTypeVM
+                {
+                    TypeName = "Error",
+                    TypeDescription = "Used to inform user there is something bad happened"
+                })).Result;
+            }
+            var newNotification = new NotificationVM
+            {
+                Title = newActivity.Title,
+                Description = newActivity.Description,
+                Read = false,
+                UserID = existedModule.Employee?.User?.Id ?? Guid.Empty,
+            };
+            newNotification.NotificationTypeID = errorType!.NotificationTypeID;
+            var notificationResult = await notificationService.Create(newNotification);
+
+            // Notify the notification
+            if (notificationResult.IsSuccess)
+            {
+                var messageSend = new WebsocketMessage
+                {
+                    Event = "NewNotification",
+                    Data = new
+                    {
+                        NotificationId = notificationResult.Result!.NotificationID
+                    }
+                };
+                var jsonPayload = JsonSerializer.Serialize(messageSend);
+                await _websocketConnectionManager.SendMessageToClient(jsonPayload, existedModule.Employee?.User?.Id ?? Guid.Empty);
+            }
+        }
     }
 
 
