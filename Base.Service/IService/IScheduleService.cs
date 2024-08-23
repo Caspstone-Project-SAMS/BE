@@ -19,6 +19,8 @@ namespace Base.Service.IService
         Task<ImportServiceResposneVM<Schedule>> ImportSchedule(List<Schedule> schedules, int semesterId, Guid userID, DateOnly startDate, DateOnly endDate);
         Task<ServiceResponseVM<Schedule>> CreateNewSchedule(CreateScheduleVM resource);
         Task<ServiceResponseVM> DeleteSchedules(DeleteSchedulesVM resource);
+        Task<ServiceResponseVM> DeleteById(int id);
+        Task<ServiceResponseVM<Schedule>> UpdateSchedule(UpdateScheduleVM resource, int id);
 
         Task<Schedule?> GetByIdForModule(int scheduleId);
     }

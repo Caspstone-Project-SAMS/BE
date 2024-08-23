@@ -170,7 +170,7 @@ namespace Base.API.Controllers
                     return BadRequest(new
                     {
                         Title = "Import schedules failed",
-                        Errors = new string[1] { "Invalid input" }
+                        Errors = new string[2] { "Invalid input", "Imported date not found" }
                     });
                 }
 
@@ -208,7 +208,12 @@ namespace Base.API.Controllers
                     }
                 });
 
-                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID, resource.StartDate, resource.EndDate);
+                var defaultStartDate = resource.Dates.FirstOrDefault()!.Date;
+                var startDate = resource.StartDate is not null ? resource.StartDate.Value : new DateOnly(resource.Year, defaultStartDate.Month, defaultStartDate.Day);
+                var defaultEndDate = resource.Dates.LastOrDefault()!.Date;
+                var endDate = resource.EndDate is not null ? resource.EndDate.Value : new DateOnly(resource.Year, defaultEndDate.Month, defaultEndDate.Day);
+
+                var result = await _scheduleService.ImportSchedule(schedules.ToList(), resource.SemesterID, resource.UserID, startDate, endDate);
                 if (result.IsSuccess)
                 {
                     return Ok(_mapper.Map<ImportScheduleServiceResponseVM>(result));
@@ -301,6 +306,59 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteScheduleById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var result = await _scheduleService.DeleteById(id);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = result.Title,
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Delete schedule failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateSchedule([FromBody] UpdateScheduleVM resource, int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var result = await _scheduleService.UpdateSchedule(resource, id);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        Title = result.Title,
+                        Result = result.Result
+                    });
+                }
+                return BadRequest(new
+                {
+                    Title = result.Title,
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Delete schedule failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 
     public class ScheduleImport
@@ -313,8 +371,8 @@ namespace Base.API.Controllers
         public int Year { get; set; }
         public int DatesCount { get; set; }
         public int SlotsCount { get; set; }
-        public DateOnly StartDate { get; set; }
-        public DateOnly EndDate { get; set; }
+        public DateOnly? StartDate { get; set; }
+        public DateOnly? EndDate { get; set; }
         [Required]
         public IEnumerable<Import_Date> Dates { get; set; } = new List<Import_Date>();
         [Required]

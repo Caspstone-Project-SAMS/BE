@@ -370,7 +370,7 @@ public class WebSocketController : ControllerBase
                 await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
 
                 var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                cts.CancelAfter(TimeSpan.FromSeconds(2));
 
                 var pongReceived = WaitForPong(cts.Token);
 
@@ -392,7 +392,7 @@ public class WebSocketController : ControllerBase
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(7)); // Ping interval
+                await Task.Delay(TimeSpan.FromSeconds(6)); // Ping interval
             }
             catch (Exception ex)
             {

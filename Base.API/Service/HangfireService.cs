@@ -23,7 +23,7 @@ using Base.Service.Service;
 
 namespace Base.API.Service;
 
-public class HangfireService
+public class HangfireService : IHangfireService
 {
     private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly IRecurringJobManager _recurringJobManager;
@@ -66,7 +66,7 @@ public class HangfireService
         {
             _recurringJobManager.AddOrUpdate(
                 $"Set slot progress_SlotId-{slot.SlotID}_Start",
-                () => SetSlotStart(slot.SlotID),
+                () => SetSlotStart(slot.SlotID, null),
                 ConvertToCronExpression(slot.StartTime),
                 new RecurringJobOptions
                 {
@@ -75,7 +75,7 @@ public class HangfireService
             );
             _recurringJobManager.AddOrUpdate(
                 $"Set slot progress_SlotId-{slot.SlotID}_End",
-                () => SetSlotEnd(slot.SlotID),
+                () => SetSlotEnd(slot.SlotID, null),
                 ConvertToCronExpression(slot.Endtime),
                 new RecurringJobOptions
                 {
@@ -89,7 +89,7 @@ public class HangfireService
     {
         _recurringJobManager.AddOrUpdate(
                 $"Set slot progress_SlotId-{slotId}_Start",
-                () => SetSlotStart(slotId),
+                () => SetSlotStart(slotId, null),
                 ConvertToCronExpression(startTime),
                 new RecurringJobOptions
                 {
@@ -98,7 +98,7 @@ public class HangfireService
             );
         _recurringJobManager.AddOrUpdate(
             $"Set slot progress_SlotId-{slotId}_End",
-            () => SetSlotEnd(slotId),
+            () => SetSlotEnd(slotId, null),
             ConvertToCronExpression(endTime),
             new RecurringJobOptions
             {
@@ -207,12 +207,21 @@ public class HangfireService
 
 
 
-    public async Task SetSlotStart(int slotId)
+    public async Task SetSlotStart(int slotId, DateOnly? date)
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        DateOnly currentDate;
+        if (date is not null)
+        {
+            currentDate = date.Value;
+        }
+        else
+        {
+            currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        }
+        
         var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
             .ToList();
@@ -225,12 +234,21 @@ public class HangfireService
         await _unitOfWork.SaveChangesAsync();
     }
 
-    public async Task SetSlotEnd(int slotId)
+    public async Task SetSlotEnd(int slotId, DateOnly? date)
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        DateOnly currentDate;
+        if (date is not null)
+        {
+            currentDate = date.Value;
+        }
+        else
+        {
+            currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        }
+
         var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
             .ToList();
@@ -361,14 +379,19 @@ public class HangfireService
         // Count total work amount
         int totalWorkCount = 0;
         int totalFingers = 0;
-        var classeIds = schedules.Select(s => s.ClassID).ToHashSet();
+        var classeIds = schedules.Select(s => s.ClassID);
+        var addedClassId = new List<int>();
         foreach (var item in classeIds)
         {
             var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, item);
             if (totalStudents is not null)
             {
                 totalWorkCount = totalWorkCount + totalStudents.Count();
-                totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
+                if (!addedClassId.Contains(item))
+                {
+                    totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
+                    addedClassId.Add(item);
+                }
             }
         }
 
@@ -410,6 +433,9 @@ public class HangfireService
                 {
                     websocketEventHandler.PrepareSchedules -= OnModulePrepareScheduls;
                 }
+
+                // Notify the action is started
+                _ = _sessionManager.NotifyPreparationProgress(sessionId, 0, session.UserID);
 
                 return true;
             }

@@ -265,7 +265,7 @@ public class WebSocketConnectionManager1
         return true;
     }
 
-    public async void SendMessageToAllModule(string message)
+    public async Task SendMessageToAllModule(string message)
     {
         var websockets = _moduleSockets.Select(s => s.Socket);
         if (websockets is null) return;

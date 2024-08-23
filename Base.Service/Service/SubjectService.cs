@@ -102,6 +102,20 @@ namespace Base.Service.Service
                 };
             }
 
+            var checkSubjectIsAlreadyInUse = _unitOfWork.ClassRepository
+                .Get(c => c.SubjectID == id)
+                .AsNoTracking()
+                .Count() > 0;
+            if (checkSubjectIsAlreadyInUse)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete subject failed",
+                    Errors = new string[2] { "Cannot delete this subject", "Subject is already in use" }
+                };
+            }
+
             existedSubject.IsDeleted = true;
             try
             {

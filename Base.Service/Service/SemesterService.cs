@@ -159,10 +159,16 @@ namespace Base.Service.Service
                 };
             }
         }
-
+        
         public async Task<ServiceResponseVM> Delete(int id)
         {
-            var existedSemester = await _unitOfWork.SemesterRepository.Get(r => r.SemesterID == id && !r.IsDeleted).FirstOrDefaultAsync();
+            var existedSemester = await _unitOfWork.SemesterRepository
+                .Get(r => r.SemesterID == id && !r.IsDeleted,
+                new Expression<Func<Semester, object?>>[]
+                {
+                    s => s.Classes.Where(c => !c.IsDeleted)
+                })
+                .FirstOrDefaultAsync();
             if (existedSemester is null)
             {
                 return new ServiceResponseVM
@@ -170,6 +176,24 @@ namespace Base.Service.Service
                     IsSuccess = false,
                     Title = "Delete semester failed",
                     Errors = new string[1] { "Semester not found" }
+                };
+            }
+
+            var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+            if(existedSemester.Classes.Count() > 0)
+            {
+                var errors = new List<string>();
+                if (existedSemester.StartDate <= currentDate && existedSemester.EndDate >= currentDate)
+                {
+                    errors.Add("The semester is already start");
+                }
+                errors.Add($"There are already {existedSemester.Classes.Count()} classes in the semester");
+
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete semester failed",
+                    Errors = errors
                 };
             }
 
@@ -297,6 +321,40 @@ namespace Base.Service.Service
                         IsSuccess = false,
                         Title = "Update Semester failed",
                         Errors = new string[1] { "Overlap with existing Semester" }
+                    };
+                }
+            }
+
+            if (updateSemester.StartDate > existedSemester.StartDate)
+            {
+                var checkExistedSchedules = _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && s.Class!.SemesterID == id && s.Date >= existedSemester.StartDate && s.Date < updateSemester.StartDate)
+                    .AsNoTracking()
+                    .ToArray();
+                if (checkExistedSchedules.Any())
+                {
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Semester failed",
+                        Errors = new string[1] { $"There are already {checkExistedSchedules.Count()} schedules scheduled from {existedSemester.StartDate.ToString("dd-MM-yyyy")} to {updateSemester.StartDate.AddDays(-1).ToString("dd-MM-yyyy")}" }
+                    };
+                }
+            }
+
+            if (updateSemester.EndDate < existedSemester.EndDate)
+            {
+                var checkExistedSchedules = _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && s.Class!.SemesterID == id && s.Date > updateSemester.EndDate && s.Date <= existedSemester.EndDate)
+                    .AsNoTracking()
+                    .ToArray();
+                if (checkExistedSchedules.Any())
+                {
+                    return new ServiceResponseVM<Semester>
+                    {
+                        IsSuccess = false,
+                        Title = "Update Semester failed",
+                        Errors = new string[1] { $"There are already {checkExistedSchedules.Count()} schedules scheduled from {updateSemester.EndDate.AddDays(1).ToString("dd-MM-yyyy")} to {existedSemester.EndDate.ToString("dd-MM-yyyy")}" }
                     };
                 }
             }

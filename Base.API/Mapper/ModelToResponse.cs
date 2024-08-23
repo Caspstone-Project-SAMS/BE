@@ -87,7 +87,9 @@ namespace Base.API.Mapper
             CreateMap<Subject, Subject_ClassResponseVM>();
             CreateMap<User, Lecturer_ClassResponseVM>()
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Employee!.Department));
-            CreateMap<Schedule, Schedule_ClassResponseVM>();
+            CreateMap<Room, Room_Schedule_ClassResponseVM>();
+            CreateMap<Schedule, Schedule_ClassResponseVM>()
+                .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Room));
             CreateMap<Slot, Slot_ClassResponseVM>();
             CreateMap<Class, ClassResponseVM>()
                 .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students))

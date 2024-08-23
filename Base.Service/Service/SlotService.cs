@@ -170,9 +170,65 @@ namespace Base.Service.Service
             }
         }
 
-        public Task<ServiceResponseVM> Delete(int id)
+        public async Task<ServiceResponseVM> Delete(int id)
         {
-            throw new NotImplementedException();
+            var existedSlot = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotID == id)
+                .FirstOrDefault();
+            if(existedSlot is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete slot failed",
+                    Errors = new string[1] { "Slot not found" }
+                };
+            }
+
+            var checkSlotIsAlreadyInUse = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && s.SlotID == id)
+                .AsNoTracking()
+                .Count() > 0;
+            if (checkSlotIsAlreadyInUse)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete slot failes",
+                    Errors = new string[2] { "Cannot delete this slot", "Slot is already in use" }
+                };
+            }
+
+            existedSlot.IsDeleted = true;
+
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete slot successfully"
+                    };
+                }
+
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete slot failed",
+                    Errors = new string[1] { "Error when saving changes" }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete slot failed",
+                    Errors = new string[2] { "Error when saving changes", ex.Message }
+                };
+            }
         }
 
         public async Task<IEnumerable<Slot>> Get()
@@ -195,6 +251,8 @@ namespace Base.Service.Service
                 };
             }
 
+            var copySlot = (Slot)existedSlot.Clone();
+
             if(updateEntity.SlotNumber is not null)
             {
                 var checkSlotNumber = _unitOfWork.SlotRepository
@@ -209,7 +267,7 @@ namespace Base.Service.Service
                         Errors = new string[1] { "Slot number is already taken" }
                     };
                 }
-                existedSlot.SlotNumber = updateEntity.SlotNumber ?? 0;
+                existedSlot.SlotNumber = updateEntity.SlotNumber.Value;
             }
 
             existedSlot.StartTime = updateEntity.StartTime is null ? existedSlot.StartTime : updateEntity.StartTime.Value;
@@ -261,6 +319,17 @@ namespace Base.Service.Service
                 };
             }
 
+            if(copySlot.SlotNumber == existedSlot.SlotNumber && copySlot.Status == existedSlot.Status &&
+               copySlot.StartTime == existedSlot.StartTime && copySlot.Endtime == existedSlot.Endtime)
+            {
+                return new ServiceResponseVM<Slot>
+                {
+                    IsSuccess = true,
+                    Title = "Update slot successfully",
+                    Result = existedSlot
+                };
+            }
+
             // Identify the order of slot
             var slots = _unitOfWork.SlotRepository
                 .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID)
@@ -292,6 +361,7 @@ namespace Base.Service.Service
                     {
                         IsSuccess = false,
                         Title = "Update slot failed",
+                        Errors = new string[1] { "Errors when saving changes" }
                     };
                 }
             }
@@ -301,7 +371,7 @@ namespace Base.Service.Service
                 {
                     IsSuccess = false,
                     Title = "Update slot failed",
-                    Errors = new string[1] { ex.Message }
+                    Errors = new string[2] { "Errors when saving changes", ex.Message }
                 };
             }
             catch (OperationCanceledException ex)

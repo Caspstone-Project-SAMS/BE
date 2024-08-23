@@ -193,6 +193,7 @@ namespace Base.Service.Service
                 .Set<Schedule>()
                 .Where(s => !s.IsDeleted && s.ClassID == classId)
                 .Include(s => s.Slot)
+                .Include(s => s.Room)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -512,6 +513,68 @@ namespace Base.Service.Service
                 result.IsSuccess = false;
                 result.Errors = new string[2] { "Error when saving changes", ex.Message };
                 return result;
+            }
+        }
+        
+        public async Task<ServiceResponseVM> DeleteClassById(int classId)
+        {
+            var existedClass = _unitOfWork.ClassRepository
+                .Get(c => !c.IsDeleted && c.ClassID == classId,
+                new Expression<Func<Class, object?>>[]
+                {
+                    c => c.Schedules.Where(s => !s.IsDeleted)
+                })
+                .FirstOrDefault();
+
+            if(existedClass is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[1] { "Class not found" }
+                };
+            }
+
+            if(existedClass.Schedules.Count() > 0)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[1] { "Delete all schedules of the class first" }
+                };
+            }
+
+            existedClass.IsDeleted = true;
+
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete class successfully"
+                    };
+                }
+
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[1] { "Error when saving changes" }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[2] { "Error when saving changes", ex.Message }
+                };
             }
         }
 
