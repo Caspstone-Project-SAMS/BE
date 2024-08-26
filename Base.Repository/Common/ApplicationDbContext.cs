@@ -217,7 +217,7 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
         builder.Entity<Slot>( entity => {
             entity.ToTable("Slot");
 
-            entity.HasIndex(s => s.SlotNumber).IsUnique();
+            //entity.HasIndex(s => s.SlotNumber).IsUnique();
         });
 
         builder.Entity<Semester>(entity => {

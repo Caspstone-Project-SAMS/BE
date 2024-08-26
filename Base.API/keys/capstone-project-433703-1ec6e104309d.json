@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "capstone-project-433703",
+  "private_key_id": "1ec6e104309d9338327ff0a4d68522e98a018162",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCew6C5NUiwVCfX\nZkEkJa2TrSCoWebQ7mK7ZOwCByCctWeirQHGm+Mor1tcLllX3zjZHHKcjbUBkNW6\nggCNNV9HKZJ50qy5TZCF5KxaEjv+wSmlxT+X6rGbkZvEjFsJ/g/9Cigr2/lcVn4t\n/Kjfw2Xw5QYMJvib1rQLypc/htX/cxH/FXjBvSZ4Z8/ckmhay71EnaFXsJFrNATc\nQ9kgmZZaSvdtcpRr4jrzKU2yb4jw0iyjxN77prW/O3xOTfDM+fxGcb6V5AL/Zp+S\nZwUdCYnE/mXPcVkFM3gG9AlqtwJ6pJm6hRqzT21bQ4Trhw7t/gqorNon/F+spGHD\nDP2bnnDfAgMBAAECggEASbENA5qPbEULnyf32YLhoBeufmYIRHc5/bhY8ZIEWai7\n+16pYdoOpN5MHivnTWmvtdrF+hOubhUfl2vrPKAG4v2RXxliEbrGd9eOBlrLXTKk\nlazKGUYW/VonPqJVSXyTSET0I3N9uZXuCINrkT1drmRnm7FlGNSeCpEVBigcYW54\nOaidLA3Vb3fE5yf18dcxXl35OSyrxW8QOJSTiIprGKerb7Or9/oh4WwaduReiu84\n/NLE9Go4oJbJcSa8vtRoTSYGqsxB7wEhKieZqX8PmB2UunD3aWzDJGJgzCvnoheN\nNB3inPCNCqyaivlXRkPMyrZH8j/S4Yw8AzdUc7p17QKBgQDgJhYT3LSEN5Pu1AHB\n1OWcIQa8Mll6S+QzDNPkPO7nIOAGFHMVDptl+OP+n8gD70NDMMdTN3GLlzzbQgBU\nUkcaBm3EAUVUqm6s0xmo9Qth9tDw3Aa8dNuKicEbyetl4YT0a2wNDnJlyrVHmmA7\nwPgniMSS+Y7MVRrutsYr42DFwwKBgQC1Uwe6H28h4ewvPaKjWh2HJzA+kK21epKS\nPLuvFJqrF3IajUEO6K9zzTWRf2chxkjZGOCseOpg7DXnIUPaqoyEBhItdowRXGUT\nqaenMHt45JdYCvqIexWE6jcUb70iXFxs4W7HBXPjg6pzgCMh7tFsbQpX4cjN6n13\nCqZH4RMKtQKBgQC56FzfVGqUTtRvfX+HmGBoQiwn40q7WD6I6NbFspQjNu0XndZl\nXJwe03OmODfYq5WKIObxakbOlD1xTSigxy0ZtMNNkhBCzKjGxr+9lqA+PEvHuXYM\n0I9WNDLqLWsEMSvo3T/dBGJ1cs8v+CZg6QfpIlKH5Fw/tUaFPyrWM9yLqQKBgCS7\nOSl/DKg0d//p4HRu4ORsD93cuRO2TNLK8so4xkw6Z6bxTmiSwlgXDe73fBDfdgpk\ne770j6Yqs5CqsHAvdF+aSzxic2Vg7ijZiVjY/Wo0BGSVdMMJDAbs21OMfyfixeZY\nlHREqoFAPts+7d8F3e60+A9tcZwlEF15Ds4ozg6xAoGBAMMJu5t+ZCv4Swki27Fn\nGK9RXUfx06TfJULMpgeiFAowjZ/jT7WzUe2tbWzR7sUlYmnsMAWfTygQhROv1SIW\nHYI+RsTaZAbj1vdFb4lytSHOY7ywriAv7RPVA5Mg43zFcENsyFYeJHGgxE+K6Drf\nHncpx5UvTLIyXQnsOKIgPp5s\n-----END PRIVATE KEY-----\n",
+  "client_email": "cloud-vision-api@capstone-project-433703.iam.gserviceaccount.com",
+  "client_id": "109130521175663057979",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/cloud-vision-api%40capstone-project-433703.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

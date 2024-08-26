@@ -25,7 +25,7 @@ internal class StudentClassService : IStudentClassService
             new System.Linq.Expressions.Expression<Func<Repository.Entity.Class, object?>>[]
             {
                 c => c.StudentClasses,
-                c => c.Schedules
+                c => c.Schedules.Where(s => !s.IsDeleted)
             })
             .FirstOrDefault();
         

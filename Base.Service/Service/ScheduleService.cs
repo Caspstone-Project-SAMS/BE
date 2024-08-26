@@ -25,11 +25,14 @@ namespace Base.Service.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IValidateGet _validateGet;
         private readonly ICurrentUserService _currentUserService;
-        public ScheduleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService)
+        private readonly IHangfireService _hangfireService;
+
+        public ScheduleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService, IHangfireService hangfireService)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
             _currentUserService = currentUserService;
+            _hangfireService = hangfireService;
         }
 
         public async Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities, int semesterId)
@@ -248,7 +251,7 @@ namespace Base.Service.Service
             return String.Join(deliminate, classCodeList);
         }
 
-        public async Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate)
+        public async Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate, IEnumerable<int> scheduleIds)
         {
             var result = new ServiceResponseVM<IEnumerable<Schedule>>()
             {
@@ -261,6 +264,15 @@ namespace Base.Service.Service
             if (quantityResult == 0)
             {
                 errors.Add("Invalid get quantity");
+                result.Errors = errors;
+                return result;
+            }
+
+            MethodInfo? containsMethod = typeof(List<int>).GetMethod("Contains", new[] { typeof(int) });
+
+            if (containsMethod is null)
+            {
+                errors.Add("Method Contains can not found from list type");
                 result.Errors = errors;
                 return result;
             }
@@ -292,6 +304,11 @@ namespace Base.Service.Service
             if(endDate is not null)
             {
                 expressions.Add(Expression.LessThanOrEqual(Expression.Property(pe, nameof(Schedule.Date)), Expression.Constant(endDate)));
+            }
+
+            if(scheduleIds != Enumerable.Empty<int>() && scheduleIds.Count() > 0)
+            {
+                expressions.Add(Expression.Call(Expression.Constant(scheduleIds.ToList()), containsMethod, Expression.Property(pe, nameof(Schedule.ScheduleID))));
             }
 
             Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
@@ -552,8 +569,15 @@ namespace Base.Service.Service
                 result.ErrorEntities = errorSchedules.ToList();
                 return result;
             }
-            
 
+
+            // Tại đây check overlap cho 2 kiểu luôn, nên lấy hết lịch trong time frame từ importStartDate đến importEndDate
+            // (gom nhóm lại ra từng ngày cho dễ quản lý - đỡ phải iterate hết list)
+            //
+            // Từng lịch cần check, tìm danh sách lịch trong ngày đó ra trc (Check trùng ngày)
+            // 1. -> Check trùng slot Id
+            // 2. -> Lấy ra các slot bị overlap -> Check trùng timeframe
+            //
             // Lets check whether if the schedule overlap the existed schedule
             DbContextFactory dbFactory = new DbContextFactory();
             importedSchedules = new ConcurrentBag<Schedule>();
@@ -663,6 +687,13 @@ namespace Base.Service.Service
                 return result;
             }
 
+            // Set hangfire to make record unable to revert after the duration
+            var recordId = newRecord.ImportSchedulesRecordID;
+            var revertableDuration = _unitOfWork.SystemConfigurationRepository.Get(s => true).FirstOrDefault()?.RevertableDurationInHours ?? 12;
+            var recordTimeStamp = newRecord.RecordTimestamp;
+            var endTimeStamp = recordTimeStamp.AddHours(revertableDuration);
+            _hangfireService.SetRecordIrreversible(recordId, endTimeStamp);
+
             result.IsSuccess = true;
             result.Title = "Import schedules successfully";
             result.ImportedEntities = createSchedules;
@@ -678,7 +709,14 @@ namespace Base.Service.Service
                 IsSuccess = false
             };
 
-            var existedSlot = _unitOfWork.SlotRepository.Get(s => !s.IsDeleted && s.SlotID == resource.SlotId).AsNoTracking().FirstOrDefault();
+            var existedSlot = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotID == resource.SlotId,
+                new Expression<Func<Slot, object?>>[]
+                {
+                    s => s.SlotType
+                })
+                .AsNoTracking()
+                .FirstOrDefault();
             if(existedSlot is null)
             {
                 result.IsSuccess = false;
@@ -696,6 +734,25 @@ namespace Base.Service.Service
                 result.IsSuccess = false;
                 result.Title = "Create new schedule failed";
                 result.Errors = new string[1] { "Class not found" };
+                return result;
+            }
+
+            // Validate slot type
+            if(existedSlot.SlotTypeId != existedClass.SlotTypeId)
+            {
+                var errors = new List<string>()
+                {
+                    "Slot type is not compatible"
+                };
+                var requiredSlotType = await _unitOfWork.SlotTypeRepository.FindAsync(existedClass!.SlotTypeId ?? 0);
+                if(requiredSlotType is not null)
+                {
+                    errors.Add($"{requiredSlotType.SessionCount}-sessions slot type is mandatory");
+                }
+
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = errors;
                 return result;
             }
 
@@ -741,7 +798,9 @@ namespace Base.Service.Service
                 result.Errors = new string[1] { "Schedule is already added" };
                 return result;
             }
-
+            
+            // Validate slot step 1
+            // Check whether if any other schedules of the lecturer on the same date and used the same slot id
             var checkOverlapSchedule = _unitOfWork.ScheduleRepository
                 .Get(s => !s.IsDeleted && s.Date == resource.Date && s.SlotID == resource.SlotId && s.Class!.LecturerID == existedClass.LecturerID,
                     new Expression<Func<Schedule, object?>>[]
@@ -757,6 +816,49 @@ namespace Base.Service.Service
                 result.Title = "Create new schedule failed";
                 result.Errors = new string[1] { "There is already a class " + checkOverlapSchedule.Class?.ClassCode + " scheduled on " + checkOverlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + checkOverlapSchedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + checkOverlapSchedule.Slot?.Endtime.ToString("hh:mm:ss") };
                 return result;
+            }
+
+            // Validate slot step 2
+            // Validate the timeframe of slot
+            var startTime = existedSlot.StartTime;
+            var endTime = existedSlot.Endtime;
+            var overlapSlotIds = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotTypeId != existedSlot.SlotTypeId &&
+                    (   
+                        (s.StartTime <= startTime && startTime <= s.Endtime) || 
+                        (s.StartTime <= endTime && endTime <= s.Endtime) ||
+                        (startTime <= s.StartTime && s.StartTime <= endTime)
+                    ))
+                .AsNoTracking()
+                .Select(s => s.SlotID)
+                .ToList();
+            if(overlapSlotIds is not null && overlapSlotIds.Count() > 0)
+            {
+                var otherOverlapSchedules = _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && s.Date == resource.Date && 
+                        s.Class!.LecturerID == existedClass.LecturerID && overlapSlotIds.Contains(s.SlotID),
+                        new Expression<Func<Schedule, object?>>[]
+                        {
+                            s => s.Class,
+                            s => s.Slot
+                        })
+                    .AsNoTracking()
+                    .ToList();
+                if(otherOverlapSchedules is not null && otherOverlapSchedules.Count() > 0)
+                {
+                    var errors = new List<string>();
+                    foreach(var schedule in otherOverlapSchedules)
+                    {
+                        errors.Add("There is already a class " + schedule.Class?.ClassCode + 
+                            " scheduled on " + schedule.Date.ToString("dd-MM-yyyy") + 
+                            " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss"));
+                    }
+
+                    result.IsSuccess = false;
+                    result.Title = "Create new schedule failed";
+                    result.Errors = errors;
+                    return result;
+                }
             }
 
             var createdSchedule = new Schedule
@@ -1074,6 +1176,28 @@ namespace Base.Service.Service
                 }
                 else
                 {
+                    if (existedSlot.SlotTypeId != existedSchedule.Class!.SlotTypeId)
+                    {
+                        var errors = new List<string>()
+                        {
+                            "Slot type is not compatible"
+                        };
+                        var requiredSlotType = await _unitOfWork.SlotTypeRepository
+                            .Get(s => !s.IsDeleted && s.SlotTypeID ==  existedSchedule.Class.SlotTypeId)
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync();
+                        if (requiredSlotType is not null)
+                        {
+                            errors.Add($"{requiredSlotType.SessionCount}-sessions slot type is mandatory");
+                        }
+
+                        return new ServiceResponseVM<Schedule>()
+                        {
+                            IsSuccess = false,
+                            Title = "Update schedule failed",
+                            Errors = errors
+                        };
+                    }
                     existedSchedule.SlotID = (int)resource.SlotId;
                 }
             }
@@ -1127,6 +1251,56 @@ namespace Base.Service.Service
                         Title = "Update schedule failed",
                         Errors = new string[1] { "There is already a class " + checkOverlapSchedule.Class!.ClassCode + " scheduled on " + checkOverlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + checkOverlapSchedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + checkOverlapSchedule.Slot?.Endtime.ToString("hh:mm:ss") }
                     };
+                }
+
+                var existedSlot = _unitOfWork.SlotRepository
+                    .Get(s => !s.IsDeleted && s.SlotID == existedSchedule.SlotID)
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                if(existedSlot is not null)
+                {
+                    var startTime = existedSlot.StartTime;
+                    var endTime = existedSlot.Endtime;
+                    var overlapSlotIds = _unitOfWork.SlotRepository
+                        .Get(s => !s.IsDeleted && s.SlotTypeId != existedSlot.SlotTypeId &&
+                            (
+                                (s.StartTime <= startTime && startTime <= s.Endtime) ||
+                                (s.StartTime <= endTime && endTime <= s.Endtime) ||
+                                (startTime <= s.StartTime && s.StartTime <= endTime)
+                            ))
+                        .AsNoTracking()
+                        .Select(s => s.SlotID)
+                        .ToList();
+                    if (overlapSlotIds is not null && overlapSlotIds.Count() > 0)
+                    {
+                        var otherOverlapSchedules = _unitOfWork.ScheduleRepository
+                            .Get(s => !s.IsDeleted && s.Date == resource.Date &&
+                                s.Class!.LecturerID == existedSchedule.Class!.LecturerID && overlapSlotIds.Contains(s.SlotID),
+                                new Expression<Func<Schedule, object?>>[]
+                                {
+                                    s => s.Class,
+                                    s => s.Slot
+                                })
+                            .AsNoTracking()
+                            .ToList();
+                        if (otherOverlapSchedules is not null && otherOverlapSchedules.Count() > 0)
+                        {
+                            var errors = new List<string>();
+                            foreach (var schedule in otherOverlapSchedules)
+                            {
+                                errors.Add("There is already a class " + schedule.Class?.ClassCode +
+                                    " scheduled on " + schedule.Date.ToString("dd-MM-yyyy") +
+                                    " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss"));
+                            }
+
+                            return new ServiceResponseVM<Schedule>
+                            {
+                                IsSuccess = false,
+                                Title = "Update schedule failed",
+                                Errors = errors
+                            };
+                        }
+                    }
                 }
             }
 

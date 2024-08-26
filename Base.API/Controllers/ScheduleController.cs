@@ -111,7 +111,8 @@ namespace Base.API.Controllers
             [FromQuery] Guid? lecturerId,
             [FromQuery] int? semesterId,
             [FromQuery] DateTime? startDate,
-            [FromQuery] DateTime? endDate)
+            [FromQuery] DateTime? endDate,
+            [FromQuery] IEnumerable<int> scheduleIds)
         {
             if (ModelState.IsValid)
             {
@@ -125,7 +126,7 @@ namespace Base.API.Controllers
                 {
                     endDateOnly = DateOnly.FromDateTime(endDate.Value);
                 }
-                var result = await _scheduleService.GetAllSchedules(startPage, endPage, quantity, lecturerId, semesterId, startDateOnly, endDateOnly);
+                var result = await _scheduleService.GetAllSchedules(startPage, endPage, quantity, lecturerId, semesterId, startDateOnly, endDateOnly, scheduleIds);
                 if (result.IsSuccess)
                 {
                     return Ok(new
@@ -136,7 +137,7 @@ namespace Base.API.Controllers
                 }
                 return BadRequest(new
                 {
-                    Title = "Get schedules falied",
+                    Title = "Get schedules failed",
                     Errors = result.Errors
                 });
             }

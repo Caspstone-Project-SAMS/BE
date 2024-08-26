@@ -124,7 +124,10 @@ namespace Base.API.Mapper
 
             // For employee detail
             CreateMap<Role, Role_EmployeeResponseVM>();
-            CreateMap<Class, Class_EmployeeResponseVM>();
+            CreateMap<Class, Class_EmployeeResponseVM>()
+                .ForMember(dest => dest.SemesterCode, opt => opt.MapFrom(src => src.Semester != null ? src.Semester.SemesterCode : null))
+                .ForMember(dest => dest.SubjectCode, opt => opt.MapFrom(src => src.Subject != null ? src.Subject.SubjectCode : null))
+                .ForMember(dest => dest.RoomName, opt => opt.MapFrom(src => src.Room != null ? src.Room.RoomName : null));
             CreateMap<Module, Module_EmployeeResponseVM>();
             CreateMap<User, EmployeeResponseVM>()
                 .ForMember(dest => dest.Department, opt => opt.MapFrom(src => src.Employee!.Department))

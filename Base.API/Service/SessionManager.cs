@@ -549,7 +549,7 @@ public class SessionManager
                 }
             };
             var jsonPayload = JsonSerializer.Serialize(messageSend);
-            _ = _webSocketConnectionManager.SendMessageToClient(jsonPayload, existedSession.UserID);
+            _ = _webSocketConnectionManager.SendMessageToRootClient(jsonPayload, existedSession.UserID);
         }
 
 
@@ -609,7 +609,8 @@ public class SessionManager
             }
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
-        await _webSocketConnectionManager.SendMessageToClient(jsonPayload, userId);
+        _ = _webSocketConnectionManager.SendMessageToClient(jsonPayload, userId);
+        await _webSocketConnectionManager.SendMessageToRootClient(jsonPayload, userId);
     }
 
     private async Task WaitCancelSession(int sessionId)

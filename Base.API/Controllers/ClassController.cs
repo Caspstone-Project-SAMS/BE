@@ -147,8 +147,7 @@ namespace Base.API.Controllers
                 {
                     return Ok(new
                     {
-                        result.Title,
-                        result.Errors
+                        result.Title
                     });
                 }
                 return BadRequest(new

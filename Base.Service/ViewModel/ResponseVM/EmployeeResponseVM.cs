@@ -34,6 +34,9 @@ public class Class_EmployeeResponseVM
     public int ClassID { get; set; }
     public string? ClassCode { get; set; }
     public int? ClassStatus { get; set; }
+    public string? SemesterCode { get; set; }
+    public string? SubjectCode { get; set; }
+    public string? RoomName { get; set; }
 }
 
 public class Module_EmployeeResponseVM

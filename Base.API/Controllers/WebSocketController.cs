@@ -276,7 +276,7 @@ public class WebSocketController : ControllerBase
 
 
     [HttpGet("/ws/client")]
-    public async Task GetClient()
+    public async Task GetClient([FromQuery] bool root = false, [FromQuery] bool mobile = false)
     {
         var userId = _currentUserService.UserId;
         if(userId == "Undefined")
@@ -289,7 +289,7 @@ public class WebSocketController : ControllerBase
         {
             using (var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync())
             {
-                _websocketConnectionManager1.AddClientSocket(webSocket, currentUser.Id);
+                _websocketConnectionManager1.AddClientSocket(webSocket, currentUser.Id, root, mobile);
 
                 var buffer = new byte[1024 * 4];
                 var receiveResult = await webSocket.ReceiveAsync(

@@ -13,6 +13,9 @@ public class Slot : AuditableEntity, ICloneable
     public TimeOnly StartTime { get; set; }
     public TimeOnly Endtime { get; set; }
 
+    public int? SlotTypeId { get; set; }
+    public SlotType? SlotType { get; set; }
+
     public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();
 
     public object Clone()

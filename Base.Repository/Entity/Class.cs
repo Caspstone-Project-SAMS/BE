@@ -22,6 +22,9 @@ public class Class : AuditableEntity, ICloneable
     public int SubjectID { get; set; }
     public Subject? Subject { get; set; }
 
+    public int? SlotTypeId { get; set; }
+    public SlotType? SlotType { get; set; }
+
 
     // A class is managed by a lecturer
     public Guid LecturerID { get; set; }

@@ -1,4 +1,5 @@
 ﻿using Base.API.Service;
+using Base.Service.Common;
 using Base.Service.IService;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -53,6 +54,19 @@ public class ScriptController : ControllerBase
     public IActionResult ResetServerTime()
     {
         _scriptService.ResetServerTime();
+
+        var currentTime = ServerDateTime.GetVnDateTime();
+        var messageSend = new WebsocketMessage
+        {
+            Event = "SetupDateTime",
+            Data = new
+            {
+                UpdatedDateTime = currentTime.ToString("yyyy-MM-dd HH:mm:ss")
+            }
+        };
+        var jsonPayload = JsonSerializer.Serialize(messageSend);
+        _ = _websocketConnectionManager.SendMessageToAllModule(jsonPayload);
+
         return Ok(new
         {
             Title = "Reset server time successfully"

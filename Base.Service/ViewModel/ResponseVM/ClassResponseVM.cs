@@ -70,6 +70,7 @@ public class Schedule_ClassResponseVM
     public DateOnly? Date { get; set; }
     public int? DateOfWeek { get; set; }
     public int? ScheduleStatus { get; set; }
+    public int? Attended { get; set; }
     public Slot_ClassResponseVM? Slot { get; set; }
     public Room_Schedule_ClassResponseVM? Room { get; set; }
 }
