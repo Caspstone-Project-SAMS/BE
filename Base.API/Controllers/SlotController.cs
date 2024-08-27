@@ -55,7 +55,7 @@ namespace Base.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateNewSlot([FromBody]SlotVM resource)
+        public async Task<IActionResult> CreateNewSlot([FromBody]CreateSlotVM resource)
         {
             if (ModelState.IsValid)
             {

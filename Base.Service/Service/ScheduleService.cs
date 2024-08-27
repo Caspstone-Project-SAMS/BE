@@ -579,10 +579,28 @@ namespace Base.Service.Service
             // 2. -> Lấy ra các slot bị overlap -> Check trùng timeframe
             //
             // Lets check whether if the schedule overlap the existed schedule
+            var checkingScheduleGroups = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && importStartDate <= s.Date && s.Date <= importEndDate &&
+                        s.Class!.LecturerID == userID && s.Class!.SemesterID == semesterId,
+                     new Expression<Func<Schedule, object?>>[]
+                     {
+                         s => s.Class,
+                         s => s.Slot
+                     })
+                .AsNoTracking()
+                .GroupBy(s => s.Date)
+                .ToImmutableArray();
+
             DbContextFactory dbFactory = new DbContextFactory();
             importedSchedules = new ConcurrentBag<Schedule>();
             Parallel.ForEach(verifiedSchedules, parallelOptions, (schedule, state) =>
             {
+                // Validate here
+                //========================
+                //========================
+                //========================
+                //========================
+
                 using (var context = dbFactory.CreateDbContext(Array.Empty<string>()))
                 {
                     var overlapSchedule = context
@@ -592,6 +610,7 @@ namespace Base.Service.Service
                             s.SlotID == schedule.SlotID &&
                             s.ClassID != schedule.ClassID)
                         .Include(s => s.Class)
+                        .Include(s => s.Slot)
                         .AsNoTracking()
                         .FirstOrDefault();
                     if(overlapSchedule is not null)
@@ -601,7 +620,7 @@ namespace Base.Service.Service
                             ErrorEntity = schedule,
                             Errors = new List<string>() 
                             { 
-                                "There is already a class " + overlapSchedule.Class?.ClassCode + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + " - " + schedule.Slot?.Endtime.ToString("hh:mm:ss")
+                                "There is already a class " + overlapSchedule.Class?.ClassCode + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss")
                             }
                         });
                     }

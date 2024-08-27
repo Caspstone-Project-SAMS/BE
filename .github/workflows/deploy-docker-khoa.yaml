@@ -1,29 +1,29 @@
-name: Build, publish, test and containerize to image
+# name: Build, publish, test and containerize to image
 
-on:
-  push:
-    branches:
-      - khoa
-  workflow_dispatch:
+# on:
+#   push:
+#     branches:
+#       - khoa
+#   workflow_dispatch:
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v2
+#     steps:
+#       - uses: actions/checkout@v2
 
-      - name: Set up .NET Core
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: '6.0.x'
-          include-prerelease: true
+#       - name: Set up .NET Core
+#         uses: actions/setup-dotnet@v1
+#         with:
+#           dotnet-version: '6.0.x'
+#           include-prerelease: true
 
-      - name: Build with dotnet
-        run: dotnet build --configuration Release
+#       - name: Build with dotnet
+#         run: dotnet build --configuration Release
 
-      - name: Build docker image and push it to docker hub
-        run: |
-          docker build -t khoale111/sams-project:latest .
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push khoale111/sams-project:latest
+#       - name: Build docker image and push it to docker hub
+#         run: |
+#           docker build -t khoale111/sams-project:latest .
+#           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
+#           docker push khoale111/sams-project:latest

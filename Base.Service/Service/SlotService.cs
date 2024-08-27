@@ -24,33 +24,10 @@ namespace Base.Service.Service
             _validateGet = validateGet;
         }
 
-        public async Task<ServiceResponseVM<Slot>> Create(SlotVM newEntity)
+        public async Task<ServiceResponseVM<Slot>> Create(CreateSlotVM newEntity)
         {
-            var errors = new List<string>();
-            if (newEntity.SlotNumber is null)
-            {
-                errors.Add("Slot number is required");
-            }
-            if (newEntity.StartTime is null)
-            {
-                errors.Add("Start time is required");
-            }
-            if (newEntity.Endtime is null)
-            {
-                errors.Add("End time is required");
-            }
-            if(errors.Count > 0)
-            {
-                return new ServiceResponseVM<Slot>
-                {
-                    IsSuccess = false,
-                    Title = "Create slot failed",
-                    Errors = errors.ToArray()
-                };
-            }
-
             var existedSlot = await _unitOfWork.SlotRepository
-                .Get(s => !s.IsDeleted && s.SlotNumber == newEntity.SlotNumber)
+                .Get(s => !s.IsDeleted && s.SlotNumber == newEntity.SlotNumber && s.SlotTypeId == newEntity.SlotTypeId)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
             if (existedSlot is not null)
@@ -73,12 +50,12 @@ namespace Base.Service.Service
                     Errors = new string[1] { "Start time must be earlier than end time" }
                 };
             }
-            var slotDuration = _unitOfWork.SystemConfigurationRepository
-                .Get(s => true)
+            var slotDuration = (_unitOfWork.SlotTypeRepository
+                .Get(s => !s.IsDeleted && s.SlotTypeID == newEntity.SlotTypeId)
                 .AsNoTracking()
                 .FirstOrDefault()
-                ?.SlotDurationInMins ?? 45;
-            var difference = newEntity.Endtime!.Value - newEntity.StartTime!.Value;
+                ?.SessionCount ?? 1) * 45;
+            var difference = newEntity.Endtime - newEntity.StartTime;
             if((int)difference.TotalMinutes != slotDuration)
             {
                 return new ServiceResponseVM<Slot>
@@ -91,7 +68,7 @@ namespace Base.Service.Service
 
             // Check overlap
             var checkOverlappingSlot = _unitOfWork.SlotRepository
-                .Get(s => !s.IsDeleted &&
+                .Get(s => !s.IsDeleted && s.SlotTypeId == newEntity.SlotTypeId &&
                     ((s.StartTime <= newEntity.StartTime && s.Endtime >= newEntity.StartTime) ||
                     (s.StartTime <= newEntity.Endtime && s.Endtime >= newEntity.Endtime) ||
                     (s.StartTime >= newEntity.StartTime && s.Endtime <= newEntity.Endtime))
@@ -111,13 +88,14 @@ namespace Base.Service.Service
             // Identify the order of slot
             var addedSlot = new Slot
             {
-                SlotNumber = newEntity.SlotNumber ?? 0,
-                Status = newEntity.Status ?? 1,
-                StartTime = newEntity.StartTime.Value,
-                Endtime =  newEntity.Endtime.Value
+                SlotNumber = newEntity.SlotNumber,
+                Status = newEntity.Status,
+                StartTime = newEntity.StartTime,
+                Endtime =  newEntity.Endtime,
+                SlotTypeId = newEntity.SlotTypeId,
             };
             var slots = _unitOfWork.SlotRepository
-                .Get(s => !s.IsDeleted)
+                .Get(s => !s.IsDeleted && s.SlotTypeId == addedSlot.SlotTypeId)
                 .ToList();
             slots.Add(addedSlot);
             var orderedSlot = slots.OrderBy(s => s.StartTime).ToList();
@@ -284,11 +262,11 @@ namespace Base.Service.Service
                     Errors = new string[1] { "Start time must be earlier than end time" }
                 };
             }
-            var slotDuration = _unitOfWork.SystemConfigurationRepository
-                .Get(s => true)
+            var slotDuration = (_unitOfWork.SlotTypeRepository
+                .Get(s => !s.IsDeleted && s.SlotTypeID == existedSlot.SlotTypeId)
                 .AsNoTracking()
                 .FirstOrDefault()
-                ?.SlotDurationInMins ?? 45;
+                ?.SessionCount ?? 1) * 45;
             var difference = existedSlot.Endtime - existedSlot.StartTime;
             if ((int)difference.TotalMinutes != slotDuration)
             {
@@ -302,7 +280,7 @@ namespace Base.Service.Service
 
             // Check overlap slot
             var checkOverlappingSlot = _unitOfWork.SlotRepository
-                .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID &&
+                .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID && s.SlotTypeId == existedSlot.SlotTypeId &&
                     ((s.StartTime <= existedSlot.StartTime && s.Endtime >= existedSlot.StartTime) ||
                     (s.StartTime <= existedSlot.Endtime && s.Endtime >= existedSlot.Endtime) ||
                     (s.StartTime >= existedSlot.StartTime && s.Endtime <= existedSlot.Endtime))
@@ -332,7 +310,7 @@ namespace Base.Service.Service
 
             // Identify the order of slot
             var slots = _unitOfWork.SlotRepository
-                .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID)
+                .Get(s => !s.IsDeleted && s.SlotID != existedSlot.SlotID && s.SlotTypeId == existedSlot.SlotTypeId)
                 .ToList();
             slots.Add(existedSlot);
             var orderedSlot = slots.OrderBy(s => s.StartTime).ToList();
