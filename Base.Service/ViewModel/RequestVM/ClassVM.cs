@@ -21,7 +21,8 @@ public class ClassVM
     public int SubjectId { get; set; }
     [Required]
     public Guid LecturerID { get; set; }
-
+    [Required]
+    public int SlotTypeId { get; set; }
 }
 
 public class UpdateClassVM

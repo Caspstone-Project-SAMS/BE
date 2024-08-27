@@ -53,6 +53,7 @@ public class PreparationTask
 
     public ModuleActivity? ModuleActivity { get; set; }
 
+    // Ghi số vân tay trên mỗi schedule
     public IEnumerable<int> GetPreparedSchedules()
     {
         var scheduleIds = new List<int>();

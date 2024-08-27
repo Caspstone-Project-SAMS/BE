@@ -120,7 +120,7 @@ internal class ImportSchedulesRecordService : IImportSchedulesRecordService
             {
                 IsSuccess = false,
                 Title = "Revert record failed",
-                Errors = new string[1] { "Record can not be reverted" }
+                Errors = new string[2] { "Record can not be reverted", $"Record can only be reverted within {revertableDuration} hours after created" }
             };
         }
 

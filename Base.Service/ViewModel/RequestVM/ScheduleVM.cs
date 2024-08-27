@@ -35,4 +35,11 @@ namespace Base.Service.ViewModel.RequestVM
         public DateOnly EndDate { get; set; }
         public IEnumerable<int> SlotIDs { get; set; } = new List<int>();
     }
+
+    public class UpdateScheduleVM
+    {
+        public DateOnly? Date { get; set; }
+        public int? SlotId { get; set; }
+        public int? RoomId { get; set; }
+    }
 }

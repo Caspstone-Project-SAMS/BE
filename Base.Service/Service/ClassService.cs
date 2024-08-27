@@ -33,18 +33,14 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Class>> Create(ClassVM newEntity)
         {
+            var errors = new List<string>();
+
             var existedSemester = await _unitOfWork.SemesterRepository
                 .Get(r => !r.IsDeleted && r.SemesterID == newEntity.SemesterId)
                 .FirstOrDefaultAsync();
             if (existedSemester is null)
             {
-                return new ServiceResponseVM<Class>
-                {
-                    IsSuccess = false,
-                    Title = "Create Class failed",
-                    Errors = new string[1] { "Semester not found" }
-                };
-
+                errors.Add("Semester not found");
             }
 
             var existedRoom = await _unitOfWork.RoomRepository
@@ -52,13 +48,7 @@ namespace Base.Service.Service
                 .FirstOrDefaultAsync();
             if (existedRoom is null)
             {
-                return new ServiceResponseVM<Class>
-                {
-                    IsSuccess = false,
-                    Title = "Create Class failed",
-                    Errors = new string[1] { "Room not found" }
-                };
-
+                errors.Add("Room not found");
             }
 
             var existedClassCode = await _unitOfWork.ClassRepository
@@ -66,13 +56,7 @@ namespace Base.Service.Service
                 .FirstOrDefaultAsync();
             if (existedClassCode is not null)
             {
-                return new ServiceResponseVM<Class>
-                {
-                    IsSuccess = false,
-                    Title = "Create Class failed",
-                    Errors = new string[1] { "Class Code is already existed" }
-                };
-
+                errors.Add("Class Code is already existed");
             }
 
             var existedSubject = await _unitOfWork.SubjectRepository
@@ -80,12 +64,7 @@ namespace Base.Service.Service
                 .FirstOrDefaultAsync();
             if (existedSubject is null)
             {
-                return new ServiceResponseVM<Class>
-                {
-                    IsSuccess = false,
-                    Title = "Create Class failed",
-                    Errors = new string[1] { "Subject not found" }
-                };
+                errors.Add("Subject not found");
             }
 
             var existedLecturer = await _unitOfWork.UserRepository
@@ -93,11 +72,24 @@ namespace Base.Service.Service
                 .FirstOrDefaultAsync();
             if(existedLecturer is null)
             {
+                errors.Add("Lecturer not found");
+            }
+
+            var existedSlotType = _unitOfWork.SlotTypeRepository
+                .Get(s => !s.IsDeleted && s.SlotTypeID == newEntity.SlotTypeId)
+                .FirstOrDefault();
+            if(existedSlotType is null)
+            {
+                errors.Add("Slot type not found");
+            }
+
+            if(errors.Count() > 0)
+            {
                 return new ServiceResponseVM<Class>
                 {
                     IsSuccess = false,
                     Title = "Create Class failed",
-                    Errors = new string[1] { "Lecturer not found" }
+                    Errors = errors
                 };
             }
 
@@ -105,10 +97,11 @@ namespace Base.Service.Service
             {
                 ClassCode = newEntity.ClassCode,
                 ClassStatus = 1,
-                SemesterID = existedSemester.SemesterID,
-                RoomID = existedRoom.RoomID,
-                SubjectID = existedSubject.SubjectID,
+                SemesterID = newEntity.SemesterId,
+                RoomID = newEntity.RoomId,
+                SubjectID = newEntity.SubjectId,
                 LecturerID = newEntity.LecturerID,
+                SlotTypeId = newEntity.SlotTypeId,
                 CreatedBy = _currentUserService.UserId,
                 CreatedAt = ServerDateTime.GetVnDateTime(),
                 IsDeleted = false
@@ -193,6 +186,7 @@ namespace Base.Service.Service
                 .Set<Schedule>()
                 .Where(s => !s.IsDeleted && s.ClassID == classId)
                 .Include(s => s.Slot)
+                .Include(s => s.Room)
                 .AsNoTracking()
                 .ToListAsync();
 
@@ -512,6 +506,68 @@ namespace Base.Service.Service
                 result.IsSuccess = false;
                 result.Errors = new string[2] { "Error when saving changes", ex.Message };
                 return result;
+            }
+        }
+        
+        public async Task<ServiceResponseVM> DeleteClassById(int classId)
+        {
+            var existedClass = _unitOfWork.ClassRepository
+                .Get(c => !c.IsDeleted && c.ClassID == classId,
+                new Expression<Func<Class, object?>>[]
+                {
+                    c => c.Schedules.Where(s => !s.IsDeleted)
+                })
+                .FirstOrDefault();
+
+            if(existedClass is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[1] { "Class not found" }
+                };
+            }
+
+            if(existedClass.Schedules.Count() > 0)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[1] { "Delete all schedules of the class first" }
+                };
+            }
+
+            existedClass.IsDeleted = true;
+
+            try
+            {
+                var result = await _unitOfWork.SaveChangesAsync();
+                if (result)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete class successfully"
+                    };
+                }
+
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[1] { "Error when saving changes" }
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete class failed",
+                    Errors = new string[2] { "Error when saving changes", ex.Message }
+                };
             }
         }
 

@@ -25,11 +25,14 @@ namespace Base.Service.Service
         private readonly IUnitOfWork _unitOfWork;
         private readonly IValidateGet _validateGet;
         private readonly ICurrentUserService _currentUserService;
-        public ScheduleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService)
+        private readonly IHangfireService _hangfireService;
+
+        public ScheduleService(IUnitOfWork unitOfWork, IValidateGet validateGet, ICurrentUserService currentUserService, IHangfireService hangfireService)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
             _currentUserService = currentUserService;
+            _hangfireService = hangfireService;
         }
 
         public async Task<ServiceResponseVM<List<ScheduleVM>>> Create(List<ScheduleVM> newEntities, int semesterId)
@@ -248,7 +251,7 @@ namespace Base.Service.Service
             return String.Join(deliminate, classCodeList);
         }
 
-        public async Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate)
+        public async Task<ServiceResponseVM<IEnumerable<Schedule>>> GetAllSchedules(int startPage, int endPage, int quantity, Guid? lecturerId, int? semesterId, DateOnly? startDate, DateOnly? endDate, IEnumerable<int> scheduleIds)
         {
             var result = new ServiceResponseVM<IEnumerable<Schedule>>()
             {
@@ -261,6 +264,15 @@ namespace Base.Service.Service
             if (quantityResult == 0)
             {
                 errors.Add("Invalid get quantity");
+                result.Errors = errors;
+                return result;
+            }
+
+            MethodInfo? containsMethod = typeof(List<int>).GetMethod("Contains", new[] { typeof(int) });
+
+            if (containsMethod is null)
+            {
+                errors.Add("Method Contains can not found from list type");
                 result.Errors = errors;
                 return result;
             }
@@ -292,6 +304,11 @@ namespace Base.Service.Service
             if(endDate is not null)
             {
                 expressions.Add(Expression.LessThanOrEqual(Expression.Property(pe, nameof(Schedule.Date)), Expression.Constant(endDate)));
+            }
+
+            if(scheduleIds != Enumerable.Empty<int>() && scheduleIds.Count() > 0)
+            {
+                expressions.Add(Expression.Call(Expression.Constant(scheduleIds.ToList()), containsMethod, Expression.Property(pe, nameof(Schedule.ScheduleID))));
             }
 
             Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
@@ -448,20 +465,7 @@ namespace Base.Service.Service
             }
 
 
-            // Lets filter schedules within the range
-            var filterSchedules = importedSchedules.ToList();
-            importedSchedules = new ConcurrentBag<Schedule>();
-            Parallel.ForEach(filterSchedules, parallelOptions, (schedule, state) =>
-            {
-                if (schedule.Date >= importStartDate && schedule.Date <= importEndDate)
-                {
-                    importedSchedules.Add(schedule);
-                }
-            });
-
-
             // Lets handle import schedules in a time frame
-
             var noDuplicatedSchedules = importedSchedules.ToList();
             Parallel.ForEach(noDuplicatedSchedules, parallelOptions, (schedule, state) =>
             {
@@ -524,6 +528,17 @@ namespace Base.Service.Service
                 }
             });
 
+            // Lets filter schedules within the range
+            var filterSchedules = importedSchedules.ToList();
+            importedSchedules = new ConcurrentBag<Schedule>();
+            Parallel.ForEach(filterSchedules, parallelOptions, (schedule, state) =>
+            {
+                if (schedule.Date >= importStartDate && schedule.Date <= importEndDate)
+                {
+                    importedSchedules.Add(schedule);
+                }
+            });
+
             // Lets check whether if the schedule is already added
             var verifiedSchedules = importedSchedules.ToList();
             var copySchedules = verifiedSchedules.ToList();
@@ -554,13 +569,38 @@ namespace Base.Service.Service
                 result.ErrorEntities = errorSchedules.ToList();
                 return result;
             }
-            
 
+
+            // Tại đây check overlap cho 2 kiểu luôn, nên lấy hết lịch trong time frame từ importStartDate đến importEndDate
+            // (gom nhóm lại ra từng ngày cho dễ quản lý - đỡ phải iterate hết list)
+            //
+            // Từng lịch cần check, tìm danh sách lịch trong ngày đó ra trc (Check trùng ngày)
+            // 1. -> Check trùng slot Id
+            // 2. -> Lấy ra các slot bị overlap -> Check trùng timeframe
+            //
             // Lets check whether if the schedule overlap the existed schedule
+            var checkingScheduleGroups = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && importStartDate <= s.Date && s.Date <= importEndDate &&
+                        s.Class!.LecturerID == userID && s.Class!.SemesterID == semesterId,
+                     new Expression<Func<Schedule, object?>>[]
+                     {
+                         s => s.Class,
+                         s => s.Slot
+                     })
+                .AsNoTracking()
+                .GroupBy(s => s.Date)
+                .ToImmutableArray();
+
             DbContextFactory dbFactory = new DbContextFactory();
             importedSchedules = new ConcurrentBag<Schedule>();
             Parallel.ForEach(verifiedSchedules, parallelOptions, (schedule, state) =>
             {
+                // Validate here
+                //========================
+                //========================
+                //========================
+                //========================
+
                 using (var context = dbFactory.CreateDbContext(Array.Empty<string>()))
                 {
                     var overlapSchedule = context
@@ -570,6 +610,7 @@ namespace Base.Service.Service
                             s.SlotID == schedule.SlotID &&
                             s.ClassID != schedule.ClassID)
                         .Include(s => s.Class)
+                        .Include(s => s.Slot)
                         .AsNoTracking()
                         .FirstOrDefault();
                     if(overlapSchedule is not null)
@@ -579,7 +620,7 @@ namespace Base.Service.Service
                             ErrorEntity = schedule,
                             Errors = new List<string>() 
                             { 
-                                "There is already a class " + overlapSchedule.Class?.ClassCode + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + " - " + schedule.Slot?.Endtime.ToString("hh:mm:ss")
+                                "There is already a class " + overlapSchedule.Class?.ClassCode + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss")
                             }
                         });
                     }
@@ -601,6 +642,44 @@ namespace Base.Service.Service
                 result.ErrorEntities = errorSchedules.ToList();
                 return result;
             }
+
+
+            var currentDateTime = ServerDateTime.GetVnDateTime();
+            var currentDateOnly = DateOnly.FromDateTime(currentDateTime);
+            var currentTimeOnly = TimeOnly.FromDateTime(currentDateTime);
+            var currentSlot = slots.Where(s => s.StartTime <= currentTimeOnly && s.Endtime >= currentTimeOnly)
+                .Select(s => s.SlotID)
+                .FirstOrDefault();
+            var pastSlot = slots.Where(s => s.StartTime > currentTimeOnly)
+                .Select(s => s.SlotID);
+            var futureSlot = slots.Where(s => s.Endtime < currentTimeOnly)
+                .Select(s => s.SlotID);
+            Parallel.ForEach(importedSchedules, parallelOptions, (schedule, state) =>
+            {
+                if (schedule.Date == currentDateOnly)
+                {
+                    if (schedule.SlotID == currentSlot)
+                    {
+                        schedule.ScheduleStatus = 2;
+                    }
+                    else if (futureSlot.Any(s => s == schedule.SlotID))
+                    {
+                        schedule.ScheduleStatus = 1;
+                    }
+                    else if (pastSlot.Any(s => s == schedule.SlotID))
+                    {
+                        schedule.ScheduleStatus = 3;
+                    }
+                }
+                else if (schedule.Date > currentDateOnly)
+                {
+                    schedule.ScheduleStatus = 1;
+                }
+                else if (schedule.Date < currentDateOnly)
+                {
+                    schedule.ScheduleStatus = 3;
+                }
+            });
 
 
             // Lets create schedules
@@ -627,6 +706,13 @@ namespace Base.Service.Service
                 return result;
             }
 
+            // Set hangfire to make record unable to revert after the duration
+            var recordId = newRecord.ImportSchedulesRecordID;
+            var revertableDuration = _unitOfWork.SystemConfigurationRepository.Get(s => true).FirstOrDefault()?.RevertableDurationInHours ?? 12;
+            var recordTimeStamp = newRecord.RecordTimestamp;
+            var endTimeStamp = recordTimeStamp.AddHours(revertableDuration);
+            _hangfireService.SetRecordIrreversible(recordId, endTimeStamp);
+
             result.IsSuccess = true;
             result.Title = "Import schedules successfully";
             result.ImportedEntities = createSchedules;
@@ -642,7 +728,14 @@ namespace Base.Service.Service
                 IsSuccess = false
             };
 
-            var existedSlot = _unitOfWork.SlotRepository.Get(s => !s.IsDeleted && s.SlotID == resource.SlotId).AsNoTracking().FirstOrDefault();
+            var existedSlot = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotID == resource.SlotId,
+                new Expression<Func<Slot, object?>>[]
+                {
+                    s => s.SlotType
+                })
+                .AsNoTracking()
+                .FirstOrDefault();
             if(existedSlot is null)
             {
                 result.IsSuccess = false;
@@ -651,12 +744,53 @@ namespace Base.Service.Service
                 return result;
             }
 
-            var existedClass = _unitOfWork.ClassRepository.Get(c => !c.IsDeleted && c.ClassID == resource.ClassId).AsNoTracking().FirstOrDefault();
+            var existedClass = _unitOfWork.ClassRepository
+                .Get(c => !c.IsDeleted && c.ClassID == resource.ClassId)
+                .AsNoTracking()
+                .FirstOrDefault();
             if(existedClass is null)
             {
                 result.IsSuccess = false;
                 result.Title = "Create new schedule failed";
                 result.Errors = new string[1] { "Class not found" };
+                return result;
+            }
+
+            // Validate slot type
+            if(existedSlot.SlotTypeId != existedClass.SlotTypeId)
+            {
+                var errors = new List<string>()
+                {
+                    "Slot type is not compatible"
+                };
+                var requiredSlotType = await _unitOfWork.SlotTypeRepository.FindAsync(existedClass!.SlotTypeId ?? 0);
+                if(requiredSlotType is not null)
+                {
+                    errors.Add($"{requiredSlotType.SessionCount}-sessions slot type is mandatory");
+                }
+
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = errors;
+                return result;
+            }
+
+            var existedSemester = _unitOfWork.SemesterRepository
+                .Get(s => !s.IsDeleted && s.SemesterID == existedClass.SemesterID)
+                .AsNoTracking()
+                .FirstOrDefault();
+            if(existedSemester is null)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new string[1] { "The schedule is not within the range of semester" };
+                return result;
+            }
+            if(resource.Date < existedSemester.StartDate || resource.Date > existedSemester.EndDate)
+            {
+                result.IsSuccess = false;
+                result.Title = "Create new schedule failed";
+                result.Errors = new string[1] { "The schedule is not within the range of semester " + existedSemester.SemesterCode };
                 return result;
             }
 
@@ -683,7 +817,9 @@ namespace Base.Service.Service
                 result.Errors = new string[1] { "Schedule is already added" };
                 return result;
             }
-
+            
+            // Validate slot step 1
+            // Check whether if any other schedules of the lecturer on the same date and used the same slot id
             var checkOverlapSchedule = _unitOfWork.ScheduleRepository
                 .Get(s => !s.IsDeleted && s.Date == resource.Date && s.SlotID == resource.SlotId && s.Class!.LecturerID == existedClass.LecturerID,
                     new Expression<Func<Schedule, object?>>[]
@@ -701,6 +837,49 @@ namespace Base.Service.Service
                 return result;
             }
 
+            // Validate slot step 2
+            // Validate the timeframe of slot
+            var startTime = existedSlot.StartTime;
+            var endTime = existedSlot.Endtime;
+            var overlapSlotIds = _unitOfWork.SlotRepository
+                .Get(s => !s.IsDeleted && s.SlotTypeId != existedSlot.SlotTypeId &&
+                    (   
+                        (s.StartTime <= startTime && startTime <= s.Endtime) || 
+                        (s.StartTime <= endTime && endTime <= s.Endtime) ||
+                        (startTime <= s.StartTime && s.StartTime <= endTime)
+                    ))
+                .AsNoTracking()
+                .Select(s => s.SlotID)
+                .ToList();
+            if(overlapSlotIds is not null && overlapSlotIds.Count() > 0)
+            {
+                var otherOverlapSchedules = _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && s.Date == resource.Date && 
+                        s.Class!.LecturerID == existedClass.LecturerID && overlapSlotIds.Contains(s.SlotID),
+                        new Expression<Func<Schedule, object?>>[]
+                        {
+                            s => s.Class,
+                            s => s.Slot
+                        })
+                    .AsNoTracking()
+                    .ToList();
+                if(otherOverlapSchedules is not null && otherOverlapSchedules.Count() > 0)
+                {
+                    var errors = new List<string>();
+                    foreach(var schedule in otherOverlapSchedules)
+                    {
+                        errors.Add("There is already a class " + schedule.Class?.ClassCode + 
+                            " scheduled on " + schedule.Date.ToString("dd-MM-yyyy") + 
+                            " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss"));
+                    }
+
+                    result.IsSuccess = false;
+                    result.Title = "Create new schedule failed";
+                    result.Errors = errors;
+                    return result;
+                }
+            }
+
             var createdSchedule = new Schedule
             {
                 Date = resource.Date,
@@ -709,6 +888,33 @@ namespace Base.Service.Service
                 ClassID = resource.ClassId,
                 RoomID = resource.RoomId
             };
+
+            var currentDate = ServerDateTime.GetVnDateTime();
+            var currentDateOnly = DateOnly.FromDateTime(currentDate);
+            var currentTimeOnly = TimeOnly.FromDateTime(currentDate);
+            if (createdSchedule.Date == currentDateOnly)
+            {
+                if(existedSlot.StartTime <= currentTimeOnly && existedSlot.Endtime >= currentTimeOnly)
+                {
+                    createdSchedule.ScheduleStatus = 2;
+                }
+                else if(existedSlot.StartTime > currentTimeOnly)
+                {
+                    createdSchedule.ScheduleStatus = 1;
+                }
+                else if (existedSlot.Endtime < currentTimeOnly)
+                {
+                    createdSchedule.ScheduleStatus = 3;
+                }
+            }
+            else if(createdSchedule.Date > currentDateOnly)
+            {
+                createdSchedule.ScheduleStatus = 1;
+            }
+            else if (createdSchedule.Date < currentDateOnly)
+            {
+                createdSchedule.ScheduleStatus = 3;
+            }
 
             try
             {
@@ -758,6 +964,13 @@ namespace Base.Service.Service
             }
 
             var schedules = deletedSchedules.ToArray();
+
+            if(schedules.Count() == 0)
+            {
+                result.IsSuccess = true;
+                result.Title = "Delete schedules successfully";
+                return result;
+            }
 
             var parallelOptions = new ParallelOptions
             {
@@ -810,5 +1023,352 @@ namespace Base.Service.Service
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<ServiceResponseVM> DeleteById(int id)
+        {
+            var existedSchedule = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && s.ScheduleID == id,
+                new Expression<Func<Schedule, object?>>[]
+                {
+                    s => s.Attendances
+                })
+                .FirstOrDefault();
+
+            if(existedSchedule is null)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete schedule failed",
+                    Errors = new string[1] { "Schedule not found" }
+                };
+            }
+
+            if(existedSchedule.ScheduleStatus == 2)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete schedule failed",
+                    Errors = new string[1] { "The schedule is already in progress" }
+                };
+            }
+
+            if(existedSchedule.ScheduleStatus == 3)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete schedule failed",
+                    Errors = new string[1] { "The schedule is already ended" }
+                };
+            }
+
+            existedSchedule.IsDeleted = true;
+            foreach (var attendance in existedSchedule.Attendances)
+            {
+                attendance.IsDeleted = true;
+            }
+
+            try
+            {
+                var saveChangesResult = await _unitOfWork.SaveChangesAsync();
+                if (saveChangesResult)
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = true,
+                        Title = "Delete schedule successfully",
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM
+                    {
+                        IsSuccess = false,
+                        Title = "Delete schedule failed",
+                        Errors = new string[1] { "Error when saving changes" }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponseVM
+                {
+                    IsSuccess = false,
+                    Title = "Delete schedule failed",
+                    Errors = new string[2] { "Error when saving changes", ex.Message }
+                };
+            }
+        }
+
+        public async Task<ServiceResponseVM<Schedule>> UpdateSchedule(UpdateScheduleVM resource, int id)
+        {
+            var existedSchedule = _unitOfWork.ScheduleRepository
+                .Get(s => !s.IsDeleted && s.ScheduleID == id,
+                new Expression<Func<Schedule, object?>>[]
+                {
+                    s => s.Class
+                })
+                .FirstOrDefault();
+
+            if (resource.SlotId is null && resource.RoomId is null && resource.Date is null)
+            {
+                return new ServiceResponseVM<Schedule>
+                {
+                    IsSuccess = true,
+                    Title = "Update schedule successfully",
+                    Result = existedSchedule
+                };
+            }
+
+            if (existedSchedule is null)
+            {
+                return new ServiceResponseVM<Schedule>
+                {
+                    IsSuccess = false,
+                    Title = "Update schedule failed",
+                    Errors = new string[1] { "Schedule not found" }
+                };
+            }
+
+            if ((resource.SlotId != null && existedSchedule.SlotID != resource.SlotId) || (resource.Date != null && existedSchedule.Date != resource.Date))
+            {
+                if (existedSchedule.ScheduleStatus == 2)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "The schedule is already in progress" }
+                    };
+                }
+
+                if (existedSchedule.ScheduleStatus == 3)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "The schedule is already ended" }
+                    };
+                }
+            }
+
+            var copySchedule = (Schedule)existedSchedule.Clone();
+
+            if(resource.RoomId is not null)
+            {
+                var existedRoom = _unitOfWork.RoomRepository
+                    .Get(r => !r.IsDeleted && r.RoomID == resource.RoomId)
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                if(existedRoom is null)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "Room not found" }
+                    };
+                }
+                else
+                {
+                    existedSchedule.RoomID = resource.RoomId;
+                }
+            }
+
+            if(resource.SlotId is not null)
+            {
+                var existedSlot = _unitOfWork.SlotRepository
+                    .Get(s => !s.IsDeleted && s.SlotID == resource.SlotId)
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                if(existedSlot is null)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "Slot not found" }
+                    };
+                }
+                else
+                {
+                    if (existedSlot.SlotTypeId != existedSchedule.Class!.SlotTypeId)
+                    {
+                        var errors = new List<string>()
+                        {
+                            "Slot type is not compatible"
+                        };
+                        var requiredSlotType = await _unitOfWork.SlotTypeRepository
+                            .Get(s => !s.IsDeleted && s.SlotTypeID ==  existedSchedule.Class.SlotTypeId)
+                            .AsNoTracking()
+                            .FirstOrDefaultAsync();
+                        if (requiredSlotType is not null)
+                        {
+                            errors.Add($"{requiredSlotType.SessionCount}-sessions slot type is mandatory");
+                        }
+
+                        return new ServiceResponseVM<Schedule>()
+                        {
+                            IsSuccess = false,
+                            Title = "Update schedule failed",
+                            Errors = errors
+                        };
+                    }
+                    existedSchedule.SlotID = (int)resource.SlotId;
+                }
+            }
+
+            if(resource.Date is not null)
+            {
+                var existedSemester = _unitOfWork.SemesterRepository
+                    .Get(s => !s.IsDeleted && s.SemesterID == existedSchedule.Class!.SemesterID)
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                if(existedSemester is null)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "The schedule is not within the range of semester" }
+                    };
+                }
+                if (resource.Date < existedSemester.StartDate || resource.Date > existedSemester.EndDate)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "The schedule is not within the range of the semester " + existedSemester.SemesterCode }
+                    };
+                }
+
+                existedSchedule.Date = resource.Date.Value;
+            }
+
+            if(resource.SlotId is not null || resource.Date is not null)
+            {
+                var checkOverlapSchedule = _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && s.ScheduleID != existedSchedule.ScheduleID &&
+                        s.Date == resource.Date && s.SlotID == existedSchedule.SlotID &&
+                        s.Class!.LecturerID == existedSchedule.Class!.LecturerID,
+                    new Expression<Func<Schedule, object?>>[]
+                    {
+                        s => s.Class,
+                        s => s.Slot
+                    })
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                if (checkOverlapSchedule is not null)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "There is already a class " + checkOverlapSchedule.Class!.ClassCode + " scheduled on " + checkOverlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + checkOverlapSchedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + checkOverlapSchedule.Slot?.Endtime.ToString("hh:mm:ss") }
+                    };
+                }
+
+                var existedSlot = _unitOfWork.SlotRepository
+                    .Get(s => !s.IsDeleted && s.SlotID == existedSchedule.SlotID)
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                if(existedSlot is not null)
+                {
+                    var startTime = existedSlot.StartTime;
+                    var endTime = existedSlot.Endtime;
+                    var overlapSlotIds = _unitOfWork.SlotRepository
+                        .Get(s => !s.IsDeleted && s.SlotTypeId != existedSlot.SlotTypeId &&
+                            (
+                                (s.StartTime <= startTime && startTime <= s.Endtime) ||
+                                (s.StartTime <= endTime && endTime <= s.Endtime) ||
+                                (startTime <= s.StartTime && s.StartTime <= endTime)
+                            ))
+                        .AsNoTracking()
+                        .Select(s => s.SlotID)
+                        .ToList();
+                    if (overlapSlotIds is not null && overlapSlotIds.Count() > 0)
+                    {
+                        var otherOverlapSchedules = _unitOfWork.ScheduleRepository
+                            .Get(s => !s.IsDeleted && s.Date == resource.Date &&
+                                s.Class!.LecturerID == existedSchedule.Class!.LecturerID && overlapSlotIds.Contains(s.SlotID),
+                                new Expression<Func<Schedule, object?>>[]
+                                {
+                                    s => s.Class,
+                                    s => s.Slot
+                                })
+                            .AsNoTracking()
+                            .ToList();
+                        if (otherOverlapSchedules is not null && otherOverlapSchedules.Count() > 0)
+                        {
+                            var errors = new List<string>();
+                            foreach (var schedule in otherOverlapSchedules)
+                            {
+                                errors.Add("There is already a class " + schedule.Class?.ClassCode +
+                                    " scheduled on " + schedule.Date.ToString("dd-MM-yyyy") +
+                                    " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss"));
+                            }
+
+                            return new ServiceResponseVM<Schedule>
+                            {
+                                IsSuccess = false,
+                                Title = "Update schedule failed",
+                                Errors = errors
+                            };
+                        }
+                    }
+                }
+            }
+
+            if(existedSchedule.RoomID == copySchedule.RoomID && 
+                existedSchedule.SlotID == copySchedule.SlotID && 
+                existedSchedule.Date == copySchedule.Date)
+            {
+                return new ServiceResponseVM<Schedule>
+                {
+                    IsSuccess = true,
+                    Title = "Update schedule successfully",
+                    Result = existedSchedule
+                };
+            }
+
+            try
+            {
+                var saveChangesResult = await _unitOfWork.SaveChangesAsync();
+                if (saveChangesResult)
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = true,
+                        Title = "Update schedule successfully",
+                        Result = existedSchedule
+                    };
+                }
+                else
+                {
+                    return new ServiceResponseVM<Schedule>
+                    {
+                        IsSuccess = false,
+                        Title = "Update schedule failed",
+                        Errors = new string[1] { "Error when saving changes" }
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResponseVM<Schedule>
+                {
+                    IsSuccess = false,
+                    Title = "Update schedule failed",
+                    Errors = new string[2] { "Error when saving changes", ex.Message }
+                };
+            }
+        }
     }
 }
+
+
+

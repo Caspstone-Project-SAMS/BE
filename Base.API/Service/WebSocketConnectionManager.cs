@@ -199,21 +199,46 @@ public class WebSocketConnectionManager1
         }
     }
 
-    public void AddClientSocket(WebSocket socket, Guid userId)
+    public void AddClientSocket(WebSocket socket, Guid userId, bool root, bool mobile)
     {
         var existedWebsocket = _clientWebSocket.FirstOrDefault(s => s.UserID == userId);
         if(existedWebsocket is null)
         {
-            _clientWebSocket.Add(new ClientWebSocket
+            var newClientSocket = new ClientWebSocket
             {
-                Socket = socket,
-                UserID = userId
-            });
+                UserID = userId,
+            };
+            if (root)
+            {
+                newClientSocket.RootSocket = socket;
+            }
+            else if (mobile)
+            {
+                newClientSocket.MobileSocket = socket;
+            }
+            else
+            {
+                newClientSocket.Socket = socket;
+            }
+            _clientWebSocket.Add(newClientSocket);
         }
         else
         {
-            existedWebsocket.Socket?.Dispose();
-            existedWebsocket.Socket = socket;
+            if (root)
+            {
+                existedWebsocket.RootSocket?.Dispose();
+                existedWebsocket.RootSocket = socket;
+            }
+            else if (mobile)
+            {
+                existedWebsocket.MobileSocket?.Dispose();
+                existedWebsocket.MobileSocket = socket;
+            }
+            else
+            {
+                existedWebsocket.Socket?.Dispose();
+                existedWebsocket.Socket = socket;
+            }
         }
     }
 
@@ -265,33 +290,114 @@ public class WebSocketConnectionManager1
         return true;
     }
 
-    public async void SendMessageToAllModule(string message)
+    public async Task<bool> SendMessageToRootClient(string message, Guid userId)
     {
-        var websockets = _moduleSockets.Select(s => s.Socket);
-        if (websockets is null) return;
-        var buffer = Encoding.UTF8.GetBytes(message);
-        foreach (WebSocket? ws in websockets)
+        var socket = _clientWebSocket.Where(c => c.UserID == userId).FirstOrDefault()?.RootSocket;
+        if (socket is null)
         {
-            if (ws != null)
+            return false;
+        }
+
+        if (socket.State != WebSocketState.Open)
+        {
+            return false;
+        }
+
+        var buffer = Encoding.UTF8.GetBytes(message);
+        await socket.SendAsync(
+           new ArraySegment<byte>(buffer, 0, message.Length),
+           WebSocketMessageType.Text,
+           true,
+           CancellationToken.None
+        );
+
+        return true;
+    }
+
+    public async Task<bool> SendMessageToMobileClient(string message, Guid userId)
+    {
+        var socket = _clientWebSocket.Where(c => c.UserID == userId).FirstOrDefault()?.MobileSocket;
+        if (socket is null)
+        {
+            return false;
+        }
+
+        if (socket.State != WebSocketState.Open)
+        {
+            return false;
+        }
+
+        var buffer = Encoding.UTF8.GetBytes(message);
+        await socket.SendAsync(
+           new ArraySegment<byte>(buffer, 0, message.Length),
+           WebSocketMessageType.Text,
+           true,
+           CancellationToken.None
+        );
+
+        return true;
+    }
+
+    /*public async Task<bool> SendNotificationToClient(string message, Guid userId)
+    {
+        // send to root and mobile
+        var clientWebsocket = _clientWebSocket.Where(c => c.UserID == userId).FirstOrDefault();
+        if (clientWebsocket is null)
+        {
+            return false;
+        }
+
+        var buffer = Encoding.UTF8.GetBytes(message);
+
+        if (clientWebsocket.RootSocket is not null && clientWebsocket.RootSocket.State == WebSocketState.Open)
+        {
+            await clientWebsocket.RootSocket.SendAsync(
+               new ArraySegment<byte>(buffer, 0, message.Length),
+               WebSocketMessageType.Text,
+               true,
+               CancellationToken.None
+            );
+        }
+
+        if (clientWebsocket.MobileSocket is not null && clientWebsocket.MobileSocket.State == WebSocketState.Open)
+        {
+            await clientWebsocket.MobileSocket.SendAsync(
+               new ArraySegment<byte>(buffer, 0, message.Length),
+               WebSocketMessageType.Text,
+               true,
+               CancellationToken.None
+            );
+        }
+
+        return true;
+    }*/
+
+    public async Task SendMessageToAllModule(string message)
+    {
+        var websockets = _moduleSockets.Select(s => s.Socket).ToList();
+        if (websockets is null || websockets.Count() <= 0) return;
+        var buffer = Encoding.UTF8.GetBytes(message);
+        foreach (var ws in websockets)
+        {
+            if (ws != null && (ws.State == WebSocketState.Open))
             {
                 await ws.SendAsync(
                     new ArraySegment<byte>(buffer, 0, message.Length),
                     WebSocketMessageType.Text,
                     true,
-                    CancellationToken.None
-            );
+                    CancellationToken.None);
             }
         }
     }
 
-    public async void SendMessageToAllClient(string message)
+    public async Task SendMessageToAllClient(string message)
     {
         var websockets = _clientWebSocket.Select(s => s.Socket);
         if (websockets is null) return;
         var buffer = Encoding.UTF8.GetBytes(message);
         foreach (WebSocket? ws in websockets)
         {
-            if (ws != null)
+            if (ws != null && ws.State == WebSocketState.Open)
             {
                 await ws.SendAsync(
                     new ArraySegment<byte>(buffer, 0, message.Length),
@@ -314,9 +420,9 @@ public class WebSocketConnectionManager1
         if (socket is not null && socket.State == WebSocketState.Open)
         {
             await socket.CloseAsync(closeStatus ?? WebSocketCloseStatus.NormalClosure, null, cancellationToken ?? CancellationToken.None);
-            _moduleSockets.Remove(moduleSocket);
         }
         socket?.Dispose();
+        _moduleSockets.Remove(moduleSocket);
     }
 
     public async Task CloseClientSocket(Guid userId, WebSocketCloseStatus? closeStatus, string? closeDescription, CancellationToken? cancellationToken)
@@ -330,9 +436,9 @@ public class WebSocketConnectionManager1
         if (socket is not null && socket.State == WebSocketState.Open)
         {
             await socket.CloseAsync(closeStatus ?? WebSocketCloseStatus.NormalClosure, null, cancellationToken ?? CancellationToken.None);
-            _clientWebSocket.Remove(clientSocket);
         }
         socket?.Dispose();
+        _clientWebSocket.Remove(clientSocket);
     }
 
     public IEnumerable<ModuleWebSocket> GetAllModuleSocket()
@@ -355,6 +461,8 @@ public class WebSocketConnectionManager1
     {
         public WebSocket? Socket { get; set; }
         public Guid? UserID { get; set; }
+        public WebSocket? RootSocket { get; set; }
+        public WebSocket? MobileSocket { get; set; }
     }
 }
 

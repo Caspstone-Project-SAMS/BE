@@ -346,6 +346,7 @@ builder.Services.AddSingleton<WebSocketConnectionManager1>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<HangfireService>();
+builder.Services.AddScoped<IHangfireService, HangfireService>();
 builder.Services.AddSingleton<HangfireServiceSingleton>();
 
 var app = builder.Build();

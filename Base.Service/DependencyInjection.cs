@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<IImportSchedulesRecordService, ImportSchedulesRecordService>();
         services.AddScoped<ISystemService, SystemSevice>();
         services.AddScoped<IScriptService, ScriptService>();
+        services.AddScoped<IStudentClassService, StudentClassService>();
         #endregion
 
         #region Validation

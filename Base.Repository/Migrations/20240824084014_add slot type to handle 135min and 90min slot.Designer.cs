@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240824084014_add slot type to handle 135min and 90min slot")]
+    partial class addslottypetohandle135minand90minslot
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -599,6 +601,9 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("SlotID");
 
+                    b.HasIndex("SlotNumber")
+                        .IsUnique();
+
                     b.HasIndex("SlotTypeId");
 
                     b.ToTable("Slot", (string)null);
@@ -626,7 +631,7 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<int>("SessionCount")
+                    b.Property<int>("SlotDurationInMins")
                         .HasColumnType("int");
 
                     b.Property<int>("Status")

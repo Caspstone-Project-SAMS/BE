@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Base.Repository.Common;
 using Base.Repository.Identity;
 
@@ -20,6 +21,9 @@ public class Class : AuditableEntity, ICloneable
 
     public int SubjectID { get; set; }
     public Subject? Subject { get; set; }
+
+    public int? SlotTypeId { get; set; }
+    public SlotType? SlotType { get; set; }
 
 
     // A class is managed by a lecturer

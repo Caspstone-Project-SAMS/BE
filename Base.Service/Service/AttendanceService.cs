@@ -54,7 +54,9 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<Attendance>> UpdateAttendanceStatus(int scheduleID, int attendanceStatus, DateTime? attendanceTime, Guid studentID)
         {
-            var existedAttendance = await _unitOfWork.AttendanceRepository.Get(a => a.ScheduleID == scheduleID && a.StudentID.Equals(studentID) && !a.IsDeleted).FirstOrDefaultAsync();
+            var existedAttendance = await _unitOfWork.AttendanceRepository
+                .Get(a => a.ScheduleID == scheduleID && a.StudentID.Equals(studentID) && !a.IsDeleted)
+                .FirstOrDefaultAsync();
             if (existedAttendance is null)
             {
                 return new ServiceResponseVM<Attendance>
@@ -67,6 +69,18 @@ namespace Base.Service.Service
 
             existedAttendance.AttendanceStatus = attendanceStatus;
             existedAttendance.AttendanceTime = attendanceTime ?? ServerDateTime.GetVnDateTime();
+
+            // Chấm công tại đây
+            var existedSchedule = _unitOfWork.ScheduleRepository
+                .Get(s => s.ScheduleID == scheduleID)
+                .FirstOrDefault();
+            if(existedSchedule is not null)
+            {
+                if(existedSchedule.Attended == 1)
+                {
+                    existedSchedule.Attended = 2;
+                }
+            }
 
             _unitOfWork.AttendanceRepository.Update(existedAttendance);
             var result = await _unitOfWork.SaveChangesAsync();
@@ -120,6 +134,24 @@ namespace Base.Service.Service
                     {
                         errors.Add($"Error updating attendance for student ID {student.StudentID} in schedule ID {student.ScheduleID}: {ex.Message}");
                         continue;
+                    }
+                }
+
+                var scheduleIds = studentArr.Select(a => a.ScheduleID).Distinct().ToArray();
+                if(scheduleIds.Count() > 0)
+                {
+                    foreach(int scheduleId in scheduleIds)
+                    {
+                        var existedSchedule = _unitOfWork.ScheduleRepository
+                            .Get(s => s.ScheduleID == scheduleId)
+                            .FirstOrDefault();
+                        if (existedSchedule is not null)
+                        {
+                            if (existedSchedule.Attended == 1)
+                            {
+                                existedSchedule.Attended = 2;
+                            }
+                        }
                     }
                 }
 

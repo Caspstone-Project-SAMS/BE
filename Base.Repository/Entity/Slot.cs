@@ -3,7 +3,7 @@ using Base.Repository.Common;
 
 namespace Base.Repository.Entity;
 
-public class Slot : AuditableEntity
+public class Slot : AuditableEntity, ICloneable
 {
     [Key]
     public int SlotID { get; set; }
@@ -13,5 +13,13 @@ public class Slot : AuditableEntity
     public TimeOnly StartTime { get; set; }
     public TimeOnly Endtime { get; set; }
 
+    public int? SlotTypeId { get; set; }
+    public SlotType? SlotType { get; set; }
+
     public IEnumerable<Schedule> Schedules { get; set; } = new List<Schedule>();
+
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
 }

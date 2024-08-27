@@ -46,6 +46,9 @@ internal class EmployeeService : IEmployeeService
         };
         return await _unitOfWork.UserRepository
             .Get(u => u.EmployeeID == id, includes)
+            .Include(nameof(User.ManagedClasses) + "." + nameof(Class.Room))
+            .Include(nameof(User.ManagedClasses) + "." + nameof(Class.Semester))
+            .Include(nameof(User.ManagedClasses) + "." + nameof(Class.Subject))
             .AsNoTracking()
             .FirstOrDefaultAsync();
     }

@@ -276,7 +276,7 @@ public class WebSocketController : ControllerBase
 
 
     [HttpGet("/ws/client")]
-    public async Task GetClient()
+    public async Task GetClient([FromQuery] bool root = false, [FromQuery] bool mobile = false)
     {
         var userId = _currentUserService.UserId;
         if(userId == "Undefined")
@@ -289,7 +289,7 @@ public class WebSocketController : ControllerBase
         {
             using (var webSocket = await HttpContext.WebSockets.AcceptWebSocketAsync())
             {
-                _websocketConnectionManager1.AddClientSocket(webSocket, currentUser.Id);
+                _websocketConnectionManager1.AddClientSocket(webSocket, currentUser.Id, root, mobile);
 
                 var buffer = new byte[1024 * 4];
                 var receiveResult = await webSocket.ReceiveAsync(
@@ -370,7 +370,7 @@ public class WebSocketController : ControllerBase
                 await webSocket.SendAsync(buffer, WebSocketMessageType.Binary, true, CancellationToken.None);
 
                 var cts = new CancellationTokenSource();
-                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                cts.CancelAfter(TimeSpan.FromSeconds(2));
 
                 var pongReceived = WaitForPong(cts.Token);
 
@@ -392,7 +392,7 @@ public class WebSocketController : ControllerBase
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(7)); // Ping interval
+                await Task.Delay(TimeSpan.FromSeconds(6)); // Ping interval
             }
             catch (Exception ex)
             {

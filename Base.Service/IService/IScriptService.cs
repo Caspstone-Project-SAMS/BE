@@ -8,6 +8,7 @@ namespace Base.Service.IService;
 
 public interface IScriptService
 {
+    void ResetServerTime();
     void SetServerTime(DateTime time);
     Task AutoRegisterFingerprint();
 }

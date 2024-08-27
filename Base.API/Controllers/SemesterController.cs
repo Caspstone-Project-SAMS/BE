@@ -67,10 +67,17 @@ namespace Base.API.Controllers
                 var result = await _semesterService.Delete(id);
                 if (result.IsSuccess)
                 {
-                    return Ok(result);
+                    return Ok(new
+                    {
+                        result.Title
+                    });
                 }
 
-                return BadRequest(result);
+                return BadRequest(new
+                {
+                    result.Title,
+                    result.Errors
+                });
             }
 
             return BadRequest(new

@@ -23,7 +23,7 @@ using Base.Service.Service;
 
 namespace Base.API.Service;
 
-public class HangfireService
+public class HangfireService : IHangfireService
 {
     private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly IRecurringJobManager _recurringJobManager;
@@ -51,6 +51,30 @@ public class HangfireService
         _serviceScopeFactory = serviceScopeFactory;
     }
 
+
+    public void SetRecordIrreversible(int recordId, DateTime endTimeStamp)
+    {
+        var currentDateTime = ServerDateTime.GetVnDateTime();
+        if(endTimeStamp > currentDateTime)
+        {
+            var difference = endTimeStamp - currentDateTime;
+            var delay = difference.TotalMinutes;
+            _backgroundJobClient.Schedule(() => SetRecordReversibleStatus(false, recordId), TimeSpan.FromMinutes(delay));
+        }
+    }
+
+    public void CheckDailyRoutine()
+    {
+        _recurringJobManager.AddOrUpdate(
+            "Check daily routine",
+            () => CheckDaily(),
+            "50 23 * * *",
+            new RecurringJobOptions
+            {
+                TimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time")
+            });
+    }
+
     public async Task SlotProgress()
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
@@ -66,7 +90,7 @@ public class HangfireService
         {
             _recurringJobManager.AddOrUpdate(
                 $"Set slot progress_SlotId-{slot.SlotID}_Start",
-                () => SetSlotStart(slot.SlotID),
+                () => SetSlotStart(slot.SlotID, null),
                 ConvertToCronExpression(slot.StartTime),
                 new RecurringJobOptions
                 {
@@ -75,7 +99,7 @@ public class HangfireService
             );
             _recurringJobManager.AddOrUpdate(
                 $"Set slot progress_SlotId-{slot.SlotID}_End",
-                () => SetSlotEnd(slot.SlotID),
+                () => SetSlotEnd(slot.SlotID, null),
                 ConvertToCronExpression(slot.Endtime),
                 new RecurringJobOptions
                 {
@@ -89,7 +113,7 @@ public class HangfireService
     {
         _recurringJobManager.AddOrUpdate(
                 $"Set slot progress_SlotId-{slotId}_Start",
-                () => SetSlotStart(slotId),
+                () => SetSlotStart(slotId, null),
                 ConvertToCronExpression(startTime),
                 new RecurringJobOptions
                 {
@@ -98,7 +122,7 @@ public class HangfireService
             );
         _recurringJobManager.AddOrUpdate(
             $"Set slot progress_SlotId-{slotId}_End",
-            () => SetSlotEnd(slotId),
+            () => SetSlotEnd(slotId, null),
             ConvertToCronExpression(endTime),
             new RecurringJobOptions
             {
@@ -207,12 +231,100 @@ public class HangfireService
 
 
 
-    public async Task SetSlotStart(int slotId)
+
+
+    public async Task SetRecordReversibleStatus(bool status, int recordId)
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
+        var existedRecord = _unitOfWork.ImportSchedulesRecordRepository
+            .Get(r => r.ImportSchedulesRecordID == recordId)
+            .FirstOrDefault();
+
+        if(existedRecord is not null)
+        {
+            existedRecord.IsReversible = status;
+            await _unitOfWork.SaveChangesAsync();
+        }
+        else
+        {
+            // Problem go here
+        }
+    }
+
+    public async Task CheckDaily()
+    {
         var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        await CheckNotification(_unitOfWork, currentDate);
+        await CheckScheduleAttendance(_unitOfWork, currentDate);
+    }
+
+    public async Task CheckNotification(IUnitOfWork _unitOfWork, DateOnly currentDate)
+    {
+        var timeline = currentDate.AddDays(-20).ToDateTime(TimeOnly.MinValue);
+        var outdatedNotification = _unitOfWork.NotificationRepository
+            .Get(n => !n.IsDeleted && n.TimeStamp < timeline)
+            .ToList();
+
+        if(outdatedNotification.Count() <= 0)
+        {
+            return;
+        }
+
+        var parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.4 * 2))
+        };
+        Parallel.ForEach(outdatedNotification, parallelOptions, (notification, state) =>
+        {
+            lock (notification)
+            {
+                notification.IsDeleted = true;
+            }
+        });
+
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task CheckScheduleAttendance(IUnitOfWork _unitOfWork, DateOnly currentDate)
+    {
+        var timelineAttended = 0; // 0 means in a day, -1 means next day, -2 means 2 next days, ...
+        currentDate = currentDate.AddDays(timelineAttended);
+
+        var schedules = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Date == currentDate && s.Attended == 1)
+            .ToList();
+
+        if (schedules.Count() <= 0) return;
+
+        foreach(var schedule in schedules)
+        {
+            schedule.Attended = 3;
+        }
+
+        await _unitOfWork.SaveChangesAsync();
+    }
+
+    public async Task SetSlotStart(int slotId, DateOnly? date)
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        DateOnly currentDate;
+        if (date is not null)
+        {
+            currentDate = date.Value;
+        }
+        else
+        {
+            currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        }
+        
         var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
             .ToList();
@@ -225,12 +337,21 @@ public class HangfireService
         await _unitOfWork.SaveChangesAsync();
     }
 
-    public async Task SetSlotEnd(int slotId)
+    public async Task SetSlotEnd(int slotId, DateOnly? date)
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        var currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        DateOnly currentDate;
+        if (date is not null)
+        {
+            currentDate = date.Value;
+        }
+        else
+        {
+            currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
+        }
+
         var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
             .ToList();
@@ -348,7 +469,7 @@ public class HangfireService
         var session = _sessionManager.GetSessionById(sessionId);
         if(session is null) return false;
 
-        var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, session.UserID, null, preparedDate, preparedDate);
+        var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, session.UserID, null, preparedDate, preparedDate, Enumerable.Empty<int>());
         if (!getSchedulesResult.IsSuccess) return false;
 
         var schedules = getSchedulesResult.Result;
@@ -361,14 +482,19 @@ public class HangfireService
         // Count total work amount
         int totalWorkCount = 0;
         int totalFingers = 0;
-        var classeIds = schedules.Select(s => s.ClassID).ToHashSet();
+        var classeIds = schedules.Select(s => s.ClassID);
+        var addedClassId = new List<int>();
         foreach (var item in classeIds)
         {
             var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, item);
             if (totalStudents is not null)
             {
                 totalWorkCount = totalWorkCount + totalStudents.Count();
-                totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
+                if (!addedClassId.Contains(item))
+                {
+                    totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
+                    addedClassId.Add(item);
+                }
             }
         }
 
@@ -410,6 +536,9 @@ public class HangfireService
                 {
                     websocketEventHandler.PrepareSchedules -= OnModulePrepareScheduls;
                 }
+
+                // Notify the action is started
+                _ = _sessionManager.NotifyPreparationProgress(sessionId, 0, session.UserID);
 
                 return true;
             }
@@ -493,6 +622,7 @@ public class HangfireService
             var notificationResult = await notificationService.Create(newNotification);
 
             // Notify the notification
+            // Should notify to root socket and mobile socket
             if (notificationResult.IsSuccess)
             {
                 var messageSend = new WebsocketMessage
@@ -504,7 +634,7 @@ public class HangfireService
                     }
                 };
                 var jsonPayload = JsonSerializer.Serialize(messageSend);
-                await _websocketConnectionManager.SendMessageToClient(jsonPayload, existedModule.Employee?.User?.Id ?? Guid.Empty);
+                await _websocketConnectionManager.SendMessageToRootClient(jsonPayload, existedModule.Employee?.User?.Id ?? Guid.Empty);
             }
         }
     }

@@ -92,11 +92,13 @@ namespace Base.API.Controllers
                 {
                     return NotFound(new
                     {
-                        Title = "Class not found"
+                        Title = "Get class information failed",
+                        Errors = new string[1] { "Class not found" }
                     });
                 }
                 return Ok(new
                 {
+                    Title = "Get class information successfully",
                     Result = _mapper.Map<ClassResponseVM>(existedClass)
                 });
             }
@@ -131,6 +133,32 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Update class failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteClassById(int id)
+        {
+            if(ModelState.IsValid && id > 0)
+            {
+                var result = await _classService.DeleteClassById(id);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        result.Title
+                    });
+                }
+                return BadRequest(new
+                {
+                    result.Title,
+                    result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Delete class failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }

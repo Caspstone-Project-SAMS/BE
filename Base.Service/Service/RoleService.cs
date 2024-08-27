@@ -105,6 +105,18 @@ public class RoleService : IRoleService
             };
         }
 
+        var checkRoleIsAlreadyInUse = _unitOfWork.UserRepository
+            .Get(u => u.RoleID == id).AsNoTracking().Count() > 0;
+        if (checkRoleIsAlreadyInUse)
+        {
+            return new ServiceResponseVM
+            {
+                IsSuccess = false,
+                Title = "Delete role failed",
+                Errors = new string[1] { "Role is already in use" }
+            };
+        }
+
         existedRole.Deleted = true;
         try
         {

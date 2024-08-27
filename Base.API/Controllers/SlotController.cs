@@ -55,7 +55,7 @@ namespace Base.API.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateNewSlot([FromBody]SlotVM resource)
+        public async Task<IActionResult> CreateNewSlot([FromBody]CreateSlotVM resource)
         {
             if (ModelState.IsValid)
             {
@@ -110,6 +110,32 @@ namespace Base.API.Controllers
             return BadRequest(new
             {
                 Title = "Update slot failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteSlot(int id)
+        {
+            if (ModelState.IsValid && id > 0)
+            {
+                var result = await _slotService.Delete(id);
+                if (result.IsSuccess)
+                {
+                    return Ok(new
+                    {
+                        result.Title
+                    });
+                }
+                return BadRequest(new
+                {
+                    result.Title,
+                    result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Delete slot failed",
                 Errors = new string[1] { "Invalid input" }
             });
         }
