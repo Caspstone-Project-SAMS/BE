@@ -155,7 +155,7 @@ public class ImportService
         // Validate slot
         foreach(var slot in slots)
         {
-            var getSlotResult = await _slotService.GetAllSlots(1, 1, 10, slot.SlotNumber, null, null);
+            var getSlotResult = await _slotService.GetAllSlots(1, 1, 10, slot.SlotNumber, null, null, null);
             if (getSlotResult.IsSuccess)
             {
                 var existedSlot = getSlotResult.Result?.FirstOrDefault();
@@ -450,7 +450,7 @@ public class ImportService
         var copySlots = slots.ToList();
         foreach (var slot in copySlots)
         {
-            var getSlotResult = await _slotService.GetAllSlots(1, 1, 10, slot.SlotNumber, null, null);
+            var getSlotResult = await _slotService.GetAllSlots(1, 1, 10, slot.SlotNumber, null, null, null);
             if (getSlotResult.IsSuccess)
             {
                 var existedSlot = getSlotResult.Result?.FirstOrDefault();

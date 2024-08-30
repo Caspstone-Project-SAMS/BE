@@ -23,10 +23,33 @@ namespace Base.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetSlots()
+        public async Task<IActionResult> GetSlots(
+            [FromQuery] int startPage,
+            [FromQuery] int endPage,
+            [FromQuery] int quantity,
+            [FromQuery] int? slotNumber,
+            [FromQuery] int? status,
+            [FromQuery] int? order,
+            [FromQuery] int? slotTypeId)
         {
-            var slots = await _slotService.Get();
-            return Ok(_mapper.Map<IEnumerable<SlotResponse>>(slots));
+            if (ModelState.IsValid)
+            {
+                var result = await _slotService.GetAllSlots(startPage, endPage, quantity, slotNumber, status, order, slotTypeId);
+                if (result.IsSuccess)
+                {
+                    return Ok(_mapper.Map<IEnumerable<SlotResponse>>(result.Result));
+                }
+                return BadRequest(new
+                {
+                    Title = "Get slots falied",
+                    Errors = result.Errors
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Get slots failed",
+                Errors = new string[1] { "Invalid input" }
+            });
         }
 
         [HttpGet("{id}")]

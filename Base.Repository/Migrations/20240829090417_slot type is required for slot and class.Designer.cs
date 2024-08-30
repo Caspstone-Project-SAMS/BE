@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240829090417_slot type is required for slot and class")]
+    partial class slottypeisrequiredforslotandclass
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -417,6 +419,9 @@ namespace Base.Repository.Migrations
                     b.Property<int?>("PreparedScheduleId")
                         .HasColumnType("int");
 
+                    b.Property<string>("PreparedSchedules")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<float>("Progress")
                         .HasColumnType("real");
 
@@ -428,40 +433,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("PreparationTaskID");
 
-                    b.HasIndex("PreparedScheduleId");
-
                     b.ToTable("PreparationTask", (string)null);
-                });
-
-            modelBuilder.Entity("Base.Repository.Entity.PreparedSchedule", b =>
-                {
-                    b.Property<int>("ScheduleID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PreparationTaskID")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("TotalFingerprints")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UploadedFingerprints")
-                        .HasColumnType("int");
-
-                    b.HasKey("ScheduleID", "PreparationTaskID");
-
-                    b.HasIndex("PreparationTaskID");
-
-                    b.ToTable("PreparedSchedule", (string)null);
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Room", b =>
@@ -1149,34 +1121,6 @@ namespace Base.Repository.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Base.Repository.Entity.PreparationTask", b =>
-                {
-                    b.HasOne("Base.Repository.Entity.Schedule", "PreparedSchedule")
-                        .WithMany()
-                        .HasForeignKey("PreparedScheduleId");
-
-                    b.Navigation("PreparedSchedule");
-                });
-
-            modelBuilder.Entity("Base.Repository.Entity.PreparedSchedule", b =>
-                {
-                    b.HasOne("Base.Repository.Entity.PreparationTask", "PreparationTask")
-                        .WithMany("PreparedSchedules")
-                        .HasForeignKey("PreparationTaskID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Base.Repository.Entity.Schedule", "Schedule")
-                        .WithMany("PreparedSchedules")
-                        .HasForeignKey("ScheduleID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PreparationTask");
-
-                    b.Navigation("Schedule");
-                });
-
             modelBuilder.Entity("Base.Repository.Entity.Schedule", b =>
                 {
                     b.HasOne("Base.Repository.Entity.Class", "Class")
@@ -1318,8 +1262,6 @@ namespace Base.Repository.Migrations
             modelBuilder.Entity("Base.Repository.Entity.PreparationTask", b =>
                 {
                     b.Navigation("ModuleActivity");
-
-                    b.Navigation("PreparedSchedules");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Room", b =>
@@ -1332,8 +1274,6 @@ namespace Base.Repository.Migrations
             modelBuilder.Entity("Base.Repository.Entity.Schedule", b =>
                 {
                     b.Navigation("Attendances");
-
-                    b.Navigation("PreparedSchedules");
 
                     b.Navigation("SubstituteTeaching");
                 });

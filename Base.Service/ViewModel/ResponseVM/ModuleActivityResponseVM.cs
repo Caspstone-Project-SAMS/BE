@@ -27,7 +27,7 @@ public class PreparationTask_ModuleActivityResponseVM
     public int? PreparedScheduleId { get; set; }
     public int TotalFingers { get; set; }
     public int UploadedFingers { get; set; }
-    public IEnumerable<int> PreparedSchedules { get; set; } = new List<int>();
+    public IEnumerable<PreparedSchedule_ModuleActivityResponseVM> PreparedSchedules { get; set; } = new List<PreparedSchedule_ModuleActivityResponseVM>();
 }
 
 public class Module_ModuleActivityResponseVM
@@ -37,4 +37,11 @@ public class Module_ModuleActivityResponseVM
     public int? ConnectionStatus { get; set; }
     public int? Mode { get; set; }
     public bool? AutoPrepare { get; set; } = false;
+}
+
+public class PreparedSchedule_ModuleActivityResponseVM
+{
+    public int? ScheduleId { get; set; }
+    public int TotalFingers { get; set; }
+    public int UploadedFingers { get; set; }
 }

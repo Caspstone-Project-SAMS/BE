@@ -1070,7 +1070,28 @@ public class ModuleController : ControllerBase
             {
                 _hangFireService.RemoveRecurringJobsAsync($"Prepare for module {id}");
             }
-            
+
+            // Apply setting here
+            var updatedModule = result.Result;
+            if(updatedModule is not null)
+            {
+                var messageSend = new WebsocketMessage
+                {
+                    Event = "ApplyConfigurations",
+                    Data = new
+                    {
+                        ConnectionSound = updatedModule.ConnectionSound,
+                        ConnectionSoundDurationMs = updatedModule.ConnectionSoundDurationMs,
+                        AttendanceSound = updatedModule.AttendanceSound,
+                        AttendanceSoundDurationMs = updatedModule.AttendanceSoundDurationMs,
+                        ConnectionLifeTimeSeconds = updatedModule.ConnectionLifeTimeSeconds,
+                        AttendanceDurationMinutes = updatedModule.AttendanceDurationMinutes
+                    }
+                };
+                var jsonPayload = JsonSerializer.Serialize(messageSend);
+                _ = _websocketConnectionManager.SendMesageToModule(jsonPayload, id);
+            }
+
             return Ok(result.Title);
         }
 

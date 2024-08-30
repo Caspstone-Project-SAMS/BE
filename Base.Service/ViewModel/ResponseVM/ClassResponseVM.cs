@@ -12,6 +12,7 @@ public class ClassResponseVM
     public int ClassID { get; set; }
     public string? ClassCode { get; set; } = string.Empty;
     public int? ClassStatus { get; set; }
+    public SlotType_ClassResponseVM? SlotType { get; set; }
     public Semester_ClassResponseVM? Semester { get; set; }
     public Room_ClassResponseVM? Room { get; set; }
     public Subject_ClassResponseVM? Subject { get; set; }
@@ -91,4 +92,12 @@ public class Slot_ClassResponseVM
     public int? Order { get; set; }
     public TimeOnly? StartTime { get; set; }
     public TimeOnly? Endtime { get; set; }
+}
+
+public class SlotType_ClassResponseVM
+{
+    public string? TypeName { get; set; }
+    public string? Description { get; set; }
+    public int? Status { get; set; }
+    public int? SessionCount { get; set; }
 }

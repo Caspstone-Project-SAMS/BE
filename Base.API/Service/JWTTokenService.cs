@@ -45,7 +45,7 @@ public class JWTTokenService<T> : IJWTTokenService<T> where T : IdentityUser<Gui
             issuer: _configuration["Jwt:Issuer"],
             audience: _configuration["Jwt:Issuer"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),
+            expires: DateTime.UtcNow.AddDays(2),
             signingCredentials: creds);
 
         return new JwtSecurityTokenHandler().WriteToken(jwtToken);

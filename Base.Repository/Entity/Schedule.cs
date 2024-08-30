@@ -28,6 +28,8 @@ public class Schedule : AuditableEntity, ICloneable
 
     public IEnumerable<Attendance> Attendances { get; set; } = new List<Attendance>();
 
+    public IEnumerable<PreparedSchedule> PreparedSchedules { get; set; } = new List<PreparedSchedule>();
+
     public object Clone()
     {
         return this.MemberwiseClone();

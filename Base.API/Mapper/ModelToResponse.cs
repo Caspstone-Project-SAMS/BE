@@ -79,6 +79,7 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Room, opt => opt.MapFrom(src => src.Schedule!.Room != null ? (src.Schedule.Room.IsDeleted ? null : src.Schedule.Room) : (src.Schedule.Class!.Room!.IsDeleted ? null : src.Schedule.Class.Room)));
 
             // For class detail
+            CreateMap<SlotType, SlotType_ClassResponseVM>();
             CreateMap<User, Student_ClassResponseVM>()
                 .ForMember(dest => dest.StudentCode, opt => opt.MapFrom(src => src.Student!.StudentCode))
                 .ForMember(dest => dest.AbsencePercentage, opt => opt.MapFrom(src => src.GetAbsencePercentage()));
@@ -93,7 +94,8 @@ namespace Base.API.Mapper
             CreateMap<Slot, Slot_ClassResponseVM>();
             CreateMap<Class, ClassResponseVM>()
                 .ForMember(dest => dest.Students, opt => opt.MapFrom(src => src.Students))
-                .ForMember(dest => dest.Schedules, opt => opt.MapFrom(src => src.Schedules));
+                .ForMember(dest => dest.Schedules, opt => opt.MapFrom(src => src.Schedules))
+                .ForMember(dest => dest.SlotType, opt => opt.MapFrom(src => src.SlotType));
 
             // For schedule detail
             CreateMap<Slot, Slot_ScheduleResponseVM>();
@@ -111,7 +113,9 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Classes, opt => opt.MapFrom(src => src.Classes));
 
             // For slot detail
-            CreateMap<Slot, SlotResponseVM>();
+            CreateMap<SlotType, SlotType_SlotResponseVM>();
+            CreateMap<Slot, SlotResponseVM>()
+                .ForMember(dest => dest.SlotType, opt => opt.MapFrom(src => src.SlotType));
 
             // For student detail
             CreateMap<Class, Class_StudentResponseVM>()
@@ -135,8 +139,12 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Modules, opt => opt.MapFrom(src => src.Employee!.Modules));
 
             // For module
+            CreateMap<PreparedSchedule, PreparedSchedule_ModuleResponseVM>()
+                .ForMember(dest => dest.ScheduleId, opt => opt.MapFrom(src => src.ScheduleID))
+                .ForMember(dest => dest.TotalFingers, opt => opt.MapFrom(src => src.TotalFingerprints))
+                .ForMember(dest => dest.UploadedFingers, opt => opt.MapFrom(src => src.UploadedFingerprints));
             CreateMap<PreparationTask, PreparationTask_ModuleResponseVM>()
-                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.GetPreparedSchedules()));
+                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.PreparedSchedules));
             CreateMap<ModuleActivity, ModuleActivity_ModuleResponseVM>()
                 .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.GetErrors()))
                 .ForMember(dest => dest.PreparationTask, opt => opt.MapFrom(src => src.PreparationTask));
@@ -165,8 +173,12 @@ namespace Base.API.Mapper
                 .ForMember(dest => dest.Notifications, opt => opt.MapFrom(src => src.Notifications));
 
             // For module activity
+            CreateMap<PreparedSchedule, PreparedSchedule_ModuleActivityResponseVM>()
+                .ForMember(dest => dest.ScheduleId, opt => opt.MapFrom(src => src.ScheduleID))
+                .ForMember(dest => dest.TotalFingers, opt => opt.MapFrom(src => src.TotalFingerprints))
+                .ForMember(dest => dest.UploadedFingers, opt => opt.MapFrom(src => src.UploadedFingerprints));
             CreateMap<PreparationTask, PreparationTask_ModuleActivityResponseVM>()
-                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.GetPreparedSchedules()));
+                .ForMember(dest => dest.PreparedSchedules, opt => opt.MapFrom(src => src.PreparedSchedules));
             CreateMap<Module, Module_ModuleActivityResponseVM>();
             CreateMap<ModuleActivity, ModuleActivityResponseVM>()
                 .ForMember(dest => dest.Errors, opt => opt.MapFrom(src => src.GetErrors()))
@@ -189,6 +201,11 @@ namespace Base.API.Mapper
             CreateMap<User, User_ImportSchedulesRecordResponseVM>();
             CreateMap<ImportSchedulesRecord, ImportSchedulesRecordResponseVM>()
                 .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
+
+            // for slot type
+            CreateMap<Slot, Slot_SlotTypeResponseVM>();
+            CreateMap<SlotType, SlotTypeResponseVM>()
+                .ForMember(dest => dest.Slots, opt => opt.MapFrom(src => src.Slots));
         }
     }
 }

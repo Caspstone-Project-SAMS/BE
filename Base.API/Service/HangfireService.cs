@@ -498,8 +498,8 @@ public class HangfireService : IHangfireService
             }
         }
 
-        var sessionResult = _sessionManager.CreatePrepareSchedulesSession(sessionId,
-                        preparedDate, schedules.Select(s => s.ScheduleID), totalWorkCount, totalFingers);
+        var sessionResult = await _sessionManager.CreatePrepareSchedulesSession(sessionId,
+                        preparedDate, schedules, totalWorkCount, totalFingers);
 
         if (!sessionResult)
         {
@@ -553,6 +553,7 @@ public class HangfireService : IHangfireService
         var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
         var _moduleActivityService = serviceScope.ServiceProvider.GetRequiredService<IModuleActivityService>();
+        var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
 
         var existedModule = _unitOfWork.ModuleRepository
             .Get(m => !m.IsDeleted && m.ModuleID == moduleId,
@@ -564,19 +565,31 @@ public class HangfireService : IHangfireService
             .FirstOrDefault();
         if (existedModule is null) return;
 
-        var scheduleIds = _unitOfWork.ScheduleRepository
+        var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == date && s.Class!.LecturerID == existedModule.Employee!.User!.Id)
             .AsNoTracking()
-            .Select(s => s.ScheduleID)
             .ToList();
 
-        var classCodeList = _scheduleService.GetClassCodeList(", ", scheduleIds);
+        var classCodeList = _scheduleService.GetClassCodeList(", ", schedules.Select(s => s.ScheduleID).ToList());
 
         // Create activity
+        var preparedSchedules = new List<PreparedScheduleVM>();
+        foreach ( var schedule in schedules)
+        {
+            var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, schedule.ClassID);
+            var preparedScheulde = new PreparedScheduleVM
+            {
+                ScheduleId = schedule.ScheduleID,
+                TotalFingers = totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count(),
+                UploadedFingers = 0
+            };
+            preparedSchedules.Add(preparedScheulde);
+        }
+
         var preparationTask = new PreparationTaskVM
         {
             Progress = 0,
-            PreparedScheduleIds = Enumerable.Empty<int>(),
+            PreparedSchedules = preparedSchedules,
             PreparedDate = date,
             UploadedFingers = 0,
             TotalFingers = 0

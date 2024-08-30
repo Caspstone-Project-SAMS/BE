@@ -30,8 +30,15 @@ public class PreparationTaskVM
     [Required]
     public float Progress { get; set; } = 0;
     public int? PreparedScheduleId { get; set; }
-    public IEnumerable<int> PreparedScheduleIds { get; set; } = Enumerable.Empty<int>();
+    public IEnumerable<PreparedScheduleVM> PreparedSchedules { get; set; } = new List<PreparedScheduleVM>();
     public DateOnly? PreparedDate { get; set; }
     public int UploadedFingers { get; set; }
     public int TotalFingers { get; set; }
+}
+
+public class PreparedScheduleVM
+{
+    public int ScheduleId { get; set; }
+    public int TotalFingers { get; set; }
+    public int UploadedFingers { get; set; }
 }

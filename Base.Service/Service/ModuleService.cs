@@ -37,7 +37,7 @@ internal class ModuleService : IModuleService
         };
         var module = await _unitOfWork.ModuleRepository
             .Get(m => m.ModuleID == moduleId, includes)
-            .Include(nameof(Module.ModuleActivities) + "." + nameof(ModuleActivity.PreparationTask))
+            .Include(nameof(Module.ModuleActivities) + "." + nameof(ModuleActivity.PreparationTask) + "." + nameof(PreparationTask.PreparedSchedules))
             .AsNoTracking()
             .FirstOrDefaultAsync();
         return module;

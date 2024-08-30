@@ -59,15 +59,38 @@ internal class ModuleActivityService : IModuleActivityService
 
         if(newEntity.PreparationTaskVM is not null)
         {
+            int? preparedScheduleId = null;
+            if (newEntity.PreparationTaskVM.PreparedScheduleId is not null)
+            {
+                var checkExistedSchedule = _unitOfWork.ScheduleRepository
+                    .Get(s => !s.IsDeleted && s.ScheduleID == newEntity.PreparationTaskVM.PreparedScheduleId)
+                    .AsNoTracking()
+                    .FirstOrDefault();
+                preparedScheduleId = checkExistedSchedule?.ScheduleID;
+            }
+
+            var preparedSchedules = new List<PreparedSchedule>();
+            foreach(var preparedSchedule in newEntity.PreparationTaskVM.PreparedSchedules)
+            {
+                preparedSchedules.Add(new PreparedSchedule
+                {
+                    ScheduleID = preparedSchedule.ScheduleId,
+                    TotalFingerprints = preparedSchedule.TotalFingers,
+                    UploadedFingerprints = preparedSchedule.UploadedFingers
+                });
+            }
+
+
             var newPreparationTask = new PreparationTask
             {
                 Progress = newEntity.PreparationTaskVM.Progress,
-                PreparedScheduleId = newEntity.PreparationTaskVM.PreparedScheduleId,
-                PreparedSchedules = newEntity.PreparationTaskVM.PreparedScheduleIds.Count() == 0 ? null : ";" + String.Join(";", newEntity.PreparationTaskVM.PreparedScheduleIds) + ";",
+                PreparedScheduleId = preparedScheduleId,
+                PreparedSchedules = preparedSchedules,
                 PreparedDate = newEntity.PreparationTaskVM.PreparedDate,
                 TotalFingers = newEntity.PreparationTaskVM.TotalFingers,
                 UploadedFingers = newEntity.PreparationTaskVM.UploadedFingers
             };
+
             newActivityHistory.PreparationTask = newPreparationTask;
             await _unitOfWork.PreparationTaskRepository.AddAsync(newPreparationTask);
         }
@@ -147,6 +170,10 @@ internal class ModuleActivityService : IModuleActivityService
         ParameterExpression pe = Expression.Parameter(typeof(ModuleActivity), "m");
         MethodInfo? containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
         MethodInfo? toStringMethodOfDateTime = typeof(DateTime).GetMethod(nameof(DateTime.ToString), new[] { typeof(string) });
+        MethodInfo? anyMethodOfList = typeof(Enumerable).GetMethods()
+            .FirstOrDefault(m => m.Name == "Any" && m.GetParameters().Length == 2)?
+            .MakeGenericMethod(typeof(PreparedSchedule));
+
         if (containsMethod is null)
         {
             errors.Add("Method Contains can not found from string type");
@@ -155,6 +182,11 @@ internal class ModuleActivityService : IModuleActivityService
         if(toStringMethodOfDateTime is null)
         {
             errors.Add("Method ToString can not found from DateTime type");
+            return result;
+        }
+        if(anyMethodOfList is null)
+        {
+            errors.Add("Any method of list not found");
             return result;
         }
 
@@ -199,16 +231,22 @@ internal class ModuleActivityService : IModuleActivityService
                 Expression.Equal(valueExpression, Expression.Constant(scheduleId))
             );
 
-            string searchString = ";" + scheduleId.ToString() + ";";
             var preparedSchedulesProperty = Expression.Property(preparationTaskProperty, "PreparedSchedules");
-            var secondExpression = Expression.Call(preparedSchedulesProperty, containsMethod, Expression.Constant(searchString));
+
+            var preparedScheduleParameter = Expression.Parameter(typeof(PreparedSchedule), "s");
+            var preparedSchedulesIdProperty = Expression.Property(preparedScheduleParameter, "ScheduleID");
+            var preparedSchedulesIdCondition = Expression.Equal(preparedSchedulesIdProperty, Expression.Constant(scheduleId));
+            var anyLambda = Expression.Lambda(preparedSchedulesIdCondition, preparedScheduleParameter);
+
+            var secondExpression = Expression.Call(anyMethodOfList, Expression.Property(preparationTaskProperty, "PreparedSchedules"), anyLambda);
+
             expressions.Add(Expression.Or(firstExpression, secondExpression));
         }
 
         var includes = new Expression<Func<ModuleActivity, object?>>[]
         {
             m => m.Module,
-            m => m.PreparationTask
+            m => m.PreparationTask!.PreparedSchedules
         };
 
         Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
@@ -237,7 +275,7 @@ internal class ModuleActivityService : IModuleActivityService
         var includes = new Expression<Func<ModuleActivity, object?>>[]
         {
             m => m.Module,
-            m => m.PreparationTask
+            m => m.PreparationTask!.PreparedSchedules
         };
         return await _unitOfWork.ModuleActivityRepository
             .Get(m => m.ModuleActivityId == id, includes)

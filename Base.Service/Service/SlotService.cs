@@ -367,6 +367,7 @@ namespace Base.Service.Service
         {
             var includes = new Expression<Func<Slot, object?>>[]
             {
+                s => s.SlotType
             };
             return await _unitOfWork.SlotRepository
                 .Get(s => s.SlotID == id, includes)
@@ -380,7 +381,8 @@ namespace Base.Service.Service
             int quantity, 
             int? slotNumber, 
             int? status, 
-            int? order)
+            int? order,
+            int? slotTypeId)
         {
             var result = new ServiceResponseVM<IEnumerable<Slot>>()
             {
@@ -400,7 +402,9 @@ namespace Base.Service.Service
             var expressions = new List<Expression>();
             ParameterExpression pe = Expression.Parameter(typeof(Slot), "s");
 
-            if(slotNumber is not null)
+            expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Slot.IsDeleted)), Expression.Constant(false)));
+
+            if (slotNumber is not null)
             {
                 expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Slot.SlotNumber)), Expression.Constant(slotNumber)));
             }
@@ -413,6 +417,11 @@ namespace Base.Service.Service
             if(order is not null)
             {
                 expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Slot.Order)), Expression.Constant(order)));
+            }
+
+            if(slotTypeId is not null)
+            {
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Slot.SlotTypeId)), Expression.Constant(slotTypeId)));
             }
 
             Expression combined = expressions.Aggregate((accumulate, next) => Expression.AndAlso(accumulate, next));
