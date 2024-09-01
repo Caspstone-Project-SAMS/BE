@@ -71,9 +71,12 @@ public class ScheduleResponse
     [JsonConverter(typeof(DateOnlyJsonConverter))]
     public DateOnly Date { get; set; }
     public int SlotNumber { get; set; }
+    public int ScheduleStatus { get; set; }
     public string? ClassCode { get; set; }
     public string? SubjectCode { get; set; }
     public string? RoomName { get; set; }
+    public string? AttendStudent { get; set; }
+    public int Attended { get; set; }
     public TimeOnly StartTime { get; set; }
     public TimeOnly EndTime { get; set; }
 

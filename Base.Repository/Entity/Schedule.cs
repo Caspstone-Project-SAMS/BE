@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Base.Repository.Common;
 
 namespace Base.Repository.Entity;
@@ -10,6 +11,8 @@ public class Schedule : AuditableEntity, ICloneable
     public DateOnly Date { get; set; }
     public int DateOfWeek { get; set; }
     public int ScheduleStatus { get; set; } = 1;
+    [NotMapped]
+    public string? AttendStudent { get; set; }
     public int Attended { get; set; } = 1;
 
     public int SlotID { get; set; }
