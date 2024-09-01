@@ -4,6 +4,7 @@ using Base.Repository.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Base.Repository.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240829090417_slot type is required for slot and class")]
+    partial class slottypeisrequiredforslotandclass
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -348,17 +350,11 @@ namespace Base.Repository.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
-                    b.Property<int?>("ModuleActivityId")
-                        .HasColumnType("int");
-
                     b.Property<int>("NotificationTypeID")
                         .HasColumnType("int");
 
                     b.Property<bool>("Read")
                         .HasColumnType("bit");
-
-                    b.Property<int?>("ScheduleID")
-                        .HasColumnType("int");
 
                     b.Property<DateTime>("TimeStamp")
                         .HasColumnType("datetime2");
@@ -372,13 +368,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("NotificationID");
 
-                    b.HasIndex("ModuleActivityId")
-                        .IsUnique()
-                        .HasFilter("[ModuleActivityId] IS NOT NULL");
-
                     b.HasIndex("NotificationTypeID");
-
-                    b.HasIndex("ScheduleID");
 
                     b.HasIndex("UserID");
 
@@ -429,6 +419,9 @@ namespace Base.Repository.Migrations
                     b.Property<int?>("PreparedScheduleId")
                         .HasColumnType("int");
 
+                    b.Property<string>("PreparedSchedules")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<float>("Progress")
                         .HasColumnType("real");
 
@@ -440,40 +433,7 @@ namespace Base.Repository.Migrations
 
                     b.HasKey("PreparationTaskID");
 
-                    b.HasIndex("PreparedScheduleId");
-
                     b.ToTable("PreparationTask", (string)null);
-                });
-
-            modelBuilder.Entity("Base.Repository.Entity.PreparedSchedule", b =>
-                {
-                    b.Property<int>("ScheduleID")
-                        .HasColumnType("int");
-
-                    b.Property<int>("PreparationTaskID")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("TotalFingerprints")
-                        .HasColumnType("int");
-
-                    b.Property<int>("UploadedFingerprints")
-                        .HasColumnType("int");
-
-                    b.HasKey("ScheduleID", "PreparationTaskID");
-
-                    b.HasIndex("PreparationTaskID");
-
-                    b.ToTable("PreparedSchedule", (string)null);
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Room", b =>
@@ -1144,19 +1104,11 @@ namespace Base.Repository.Migrations
 
             modelBuilder.Entity("Base.Repository.Entity.Notification", b =>
                 {
-                    b.HasOne("Base.Repository.Entity.ModuleActivity", "ModuleActivity")
-                        .WithOne("Notification")
-                        .HasForeignKey("Base.Repository.Entity.Notification", "ModuleActivityId");
-
                     b.HasOne("Base.Repository.Entity.NotificationType", "NotificationType")
                         .WithMany("Notifications")
                         .HasForeignKey("NotificationTypeID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("Base.Repository.Entity.Schedule", "Schedule")
-                        .WithMany("Notifications")
-                        .HasForeignKey("ScheduleID");
 
                     b.HasOne("Base.Repository.Identity.User", "User")
                         .WithMany("Notifications")
@@ -1164,41 +1116,9 @@ namespace Base.Repository.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("ModuleActivity");
-
                     b.Navigation("NotificationType");
 
-                    b.Navigation("Schedule");
-
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("Base.Repository.Entity.PreparationTask", b =>
-                {
-                    b.HasOne("Base.Repository.Entity.Schedule", "PreparedSchedule")
-                        .WithMany()
-                        .HasForeignKey("PreparedScheduleId");
-
-                    b.Navigation("PreparedSchedule");
-                });
-
-            modelBuilder.Entity("Base.Repository.Entity.PreparedSchedule", b =>
-                {
-                    b.HasOne("Base.Repository.Entity.PreparationTask", "PreparationTask")
-                        .WithMany("PreparedSchedules")
-                        .HasForeignKey("PreparationTaskID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Base.Repository.Entity.Schedule", "Schedule")
-                        .WithMany("PreparedSchedules")
-                        .HasForeignKey("ScheduleID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("PreparationTask");
-
-                    b.Navigation("Schedule");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Schedule", b =>
@@ -1334,11 +1254,6 @@ namespace Base.Repository.Migrations
                     b.Navigation("ModuleActivities");
                 });
 
-            modelBuilder.Entity("Base.Repository.Entity.ModuleActivity", b =>
-                {
-                    b.Navigation("Notification");
-                });
-
             modelBuilder.Entity("Base.Repository.Entity.NotificationType", b =>
                 {
                     b.Navigation("Notifications");
@@ -1347,8 +1262,6 @@ namespace Base.Repository.Migrations
             modelBuilder.Entity("Base.Repository.Entity.PreparationTask", b =>
                 {
                     b.Navigation("ModuleActivity");
-
-                    b.Navigation("PreparedSchedules");
                 });
 
             modelBuilder.Entity("Base.Repository.Entity.Room", b =>
@@ -1361,10 +1274,6 @@ namespace Base.Repository.Migrations
             modelBuilder.Entity("Base.Repository.Entity.Schedule", b =>
                 {
                     b.Navigation("Attendances");
-
-                    b.Navigation("Notifications");
-
-                    b.Navigation("PreparedSchedules");
 
                     b.Navigation("SubstituteTeaching");
                 });

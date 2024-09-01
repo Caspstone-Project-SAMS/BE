@@ -241,7 +241,7 @@ namespace Base.Service.Service
 
         public string? GetClassCodeList(string deliminate, List<int>? scheduleIds)
         {
-            if(scheduleIds is null)
+            if(scheduleIds is null || scheduleIds.Count() <= 0)
             {
                 return null;
             }
@@ -411,11 +411,15 @@ namespace Base.Service.Service
                 return result;
             }
 
+
+            // This data is for limiting the requests to database
             List<Slot> slots = await _unitOfWork.SlotRepository
                 .Get(s => !s.IsDeleted)
+                .AsNoTracking()
                 .ToListAsync();
             List<Class> classes = await _unitOfWork.ClassRepository
                 .Get(c => !c.IsDeleted && c.SemesterID == semesterId && c.LecturerID == userID)
+                .AsNoTracking()
                 .ToListAsync();
 
             ConcurrentBag<Schedule> importedSchedules = new ConcurrentBag<Schedule>();
@@ -432,17 +436,25 @@ namespace Base.Service.Service
             Parallel.ForEach(schedules, parallelOptions, (schedule, state) =>
             {
                 var errors = new List<string>();
-                var matchedSlot = slots.FirstOrDefault(s => s.SlotNumber == schedule.Slot?.SlotNumber);
+
                 var matchedClass = classes.FirstOrDefault(c => c.ClassCode.ToUpper() == schedule.Class?.ClassCode.ToUpper());
 
-                if(matchedSlot is null)
-                {
-                    errors.Add("Slot " + schedule.Slot?.SlotNumber + " not found");
-                }
-                if(matchedClass is null)
+                Slot? matchedSlot = null;
+
+                if (matchedClass is null)
                 {
                     errors.Add("Class code " + schedule.Class?.ClassCode + " not found");
                 }
+                else
+                {
+                    matchedSlot = slots.FirstOrDefault(s => s.SlotNumber == schedule.Slot?.SlotNumber && s.SlotTypeId == matchedClass.SlotTypeId);
+
+                    if (matchedSlot is null)
+                    {
+                        errors.Add("Slot " + schedule.Slot?.SlotNumber + " not found");
+                    }
+                }
+                
                 if(schedule.Date < startDate || schedule.Date > endDate)
                 {
                     errors.Add("The scheduling date is not belong to semester " + existedSemester?.SemesterCode);
@@ -465,6 +477,15 @@ namespace Base.Service.Service
             });
             if(importedSchedules.Count == 0)
             {
+                Parallel.ForEach(errorSchedules, parallelOptions, (errorEntity, state) =>
+                {
+                    if (errorEntity.ErrorEntity is not null)
+                    {
+                        errorEntity.ErrorEntity.Slot = slots.Where(s => s.SlotID == errorEntity.ErrorEntity.SlotID).FirstOrDefault();
+                        errorEntity.ErrorEntity.Class = classes.Where(s => s.ClassID == errorEntity.ErrorEntity.ClassID).FirstOrDefault();
+                    }
+                });
+
                 result.Title = "Import schedules failed";
                 result.IsSuccess = false;
                 result.Errors = new List<string> { "Invalid schedules" };
@@ -571,6 +592,15 @@ namespace Base.Service.Service
             }
             if (verifiedSchedules.Count == 0)
             {
+                Parallel.ForEach(errorSchedules, parallelOptions, (errorEntity, state) =>
+                {
+                    if (errorEntity.ErrorEntity is not null)
+                    {
+                        errorEntity.ErrorEntity.Slot = slots.Where(s => s.SlotID == errorEntity.ErrorEntity.SlotID).FirstOrDefault();
+                        errorEntity.ErrorEntity.Class = classes.Where(s => s.ClassID == errorEntity.ErrorEntity.ClassID).FirstOrDefault();
+                    }
+                });
+
                 result.Title = "Import schedules failed";
                 result.IsSuccess = false;
                 result.Errors = new List<string> { "Invalid schedules" };
@@ -592,10 +622,10 @@ namespace Base.Service.Service
                         s.Class!.LecturerID == userID && s.Class!.SemesterID == semesterId,
                      new Expression<Func<Schedule, object?>>[]
                      {
-                         s => s.Class,
-                         s => s.Slot
+                         s => s.Class
                      })
                 .AsNoTracking()
+                .ToImmutableArray()
                 .GroupBy(s => s.Date)
                 .ToImmutableArray();
 
@@ -605,30 +635,33 @@ namespace Base.Service.Service
             {
                 // Validate here
                 //========================
-                //========================
-                //========================
-                //========================
-
-                using (var context = dbFactory.CreateDbContext(Array.Empty<string>()))
+                var slot = slots.FirstOrDefault(s => s.SlotID == schedule.SlotID);
+                if(slot is not null)
                 {
-                    var overlapSchedule = context
-                        .Set<Schedule>()
-                        .Where(s => !s.IsDeleted &&
-                            s.Date == schedule.Date &&
-                            s.SlotID == schedule.SlotID &&
-                            s.ClassID != schedule.ClassID)
-                        .Include(s => s.Class)
-                        .Include(s => s.Slot)
-                        .AsNoTracking()
+                    var startTime = slot.StartTime;
+                    var endTime = slot.Endtime;
+                    var overlapSlotIds = slots.Where(s => s.SlotTypeId != slot.SlotTypeId && 
+                    (
+                        (s.StartTime <= startTime && startTime <= s.Endtime) ||
+                        (s.StartTime <= endTime && endTime <= s.Endtime) ||
+                        (startTime <= s.StartTime && s.StartTime <= endTime)
+                    ))
+                    .Select(s => s.SlotID).ToList();
+                    overlapSlotIds.Add(slot.SlotID);
+
+                    var overlapSchedule = checkingScheduleGroups.FirstOrDefault(g => g.Key == schedule.Date)?
+                        .Where(s => overlapSlotIds.Contains(s.SlotID))
                         .FirstOrDefault();
+
                     if(overlapSchedule is not null)
                     {
+                        var overlapSlot = slots.FirstOrDefault(s => s.SlotID == overlapSchedule.SlotID);
                         errorSchedules.Add(new ImportErrorEntity<Schedule>
                         {
                             ErrorEntity = schedule,
-                            Errors = new List<string>() 
-                            { 
-                                "There is already a class " + overlapSchedule.Class?.ClassCode + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at " + schedule.Slot?.StartTime.ToString("hh:mm:ss") + "-" + schedule.Slot?.Endtime.ToString("hh:mm:ss")
+                            Errors = new List<string>()
+                            {
+                                "There is already a class " + (overlapSchedule.Class?.ClassCode ?? "***") + " scheduled on " + overlapSchedule.Date.ToString("dd-MM-yyyy") + " at slot " + (overlapSlot?.SlotNumber.ToString() ?? "***")
                             }
                         });
                     }
@@ -641,9 +674,30 @@ namespace Base.Service.Service
                         importedSchedules.Add(schedule);
                     }
                 }
+                else
+                {
+                    var errorClass = classes.FirstOrDefault(c => c.ClassID == schedule.ClassID);
+                    errorSchedules.Add(new ImportErrorEntity<Schedule>
+                    {
+                        ErrorEntity = schedule,
+                        Errors = new List<string>()
+                            {
+                                $"Unable to add schedule of class {errorClass?.ClassCode ?? "***"} on {schedule.Date}"
+                            }
+                    });
+                }
             });
             if (importedSchedules.Count == 0)
             {
+                Parallel.ForEach(errorSchedules, parallelOptions, (errorEntity, state) =>
+                {
+                    if (errorEntity.ErrorEntity is not null)
+                    {
+                        errorEntity.ErrorEntity.Slot = slots.Where(s => s.SlotID == errorEntity.ErrorEntity.SlotID).FirstOrDefault();
+                        errorEntity.ErrorEntity.Class = classes.Where(s => s.ClassID == errorEntity.ErrorEntity.ClassID).FirstOrDefault();
+                    }
+                });
+
                 result.Title = "Import schedules failed";
                 result.IsSuccess = false;
                 result.Errors = new List<string> { "Invalid schedules" };
@@ -721,6 +775,22 @@ namespace Base.Service.Service
             var endTimeStamp = recordTimeStamp.AddHours(revertableDuration);
             _hangfireService.SetRecordIrreversible(recordId, endTimeStamp);
 
+            // Set class and slot here
+            var task1 = Task.Run(() => Parallel.ForEach(createSchedules, parallelOptions, (schedule, state) =>
+            {
+                schedule.Slot = slots.Where(s => s.SlotID == schedule.SlotID).FirstOrDefault();
+                schedule.Class = classes.Where(s => s.ClassID == schedule.ClassID).FirstOrDefault();
+            }));
+            var task2 = Task.Run(() => Parallel.ForEach(errorSchedules, parallelOptions, (errorEntity, state) =>
+            {
+                if(errorEntity.ErrorEntity is not null)
+                {
+                    errorEntity.ErrorEntity.Slot = slots.Where(s => s.SlotID == errorEntity.ErrorEntity.SlotID).FirstOrDefault();
+                    errorEntity.ErrorEntity.Class = classes.Where(s => s.ClassID == errorEntity.ErrorEntity.ClassID).FirstOrDefault();
+                }
+            }));
+            await Task.WhenAll(task1, task2);
+
             result.IsSuccess = true;
             result.Title = "Import schedules successfully";
             result.ImportedEntities = createSchedules;
@@ -771,7 +841,7 @@ namespace Base.Service.Service
                 {
                     "Slot type is not compatible"
                 };
-                var requiredSlotType = await _unitOfWork.SlotTypeRepository.FindAsync(existedClass!.SlotTypeId ?? 0);
+                var requiredSlotType = await _unitOfWork.SlotTypeRepository.FindAsync(existedClass.SlotTypeId);
                 if(requiredSlotType is not null)
                 {
                     errors.Add($"{requiredSlotType.SessionCount}-sessions slot type is mandatory");

@@ -71,5 +71,23 @@ namespace Base.API.Controllers
                 Errors = new string[1] { "Invalid input" }
             });
         }
+
+        [HttpPut("read")]
+        public async Task<IActionResult> ReadNotification([FromBody] IEnumerable<int> notificationIds)
+        {
+            if(ModelState.IsValid)
+            {
+                await _notificationService.ReadNotifications(notificationIds);
+                return Ok(new
+                {
+                    Title = "Update notifications successfully"
+                });
+            }
+            return BadRequest(new
+            {
+                Title = "Update notifications failed",
+                Errors = new string[1] { "Invalid input" }
+            });
+        }
     }
 }

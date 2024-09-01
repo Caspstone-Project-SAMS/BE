@@ -168,6 +168,7 @@ namespace Base.Service.Service
                 c => c.Subject,
                 c => c.Lecturer!.Employee,
                 c => c.Schedules,
+                c => c.SlotType
             };
 
             var dbContext1 = dbFactory.CreateDbContext(Array.Empty<string>());
@@ -197,6 +198,7 @@ namespace Base.Service.Service
                 .Include(c => c.Room)
                 .Include(c => c.Subject)
                 .Include(c => c.Lecturer!.Employee)
+                .Include(c => c.SlotType)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
@@ -237,11 +239,11 @@ namespace Base.Service.Service
             ParameterExpression pe = Expression.Parameter(typeof(Class), "c");
             MethodInfo? containsMethod = typeof(string).GetMethod("Contains", new[] { typeof(string) });
             MethodInfo? anyMethodStudent = typeof(Enumerable).GetMethods()
-                .First(m => m.Name == "Any" && m.GetParameters().Length == 2)
+                .FirstOrDefault(m => m.Name == "Any" && m.GetParameters().Length == 2)?
                 .MakeGenericMethod(typeof(StudentClass));
 
             MethodInfo? anyMethodSchedule = typeof(Enumerable).GetMethods()
-                .First(m => m.Name == "Any" && m.GetParameters().Length == 2)
+                .FirstOrDefault(m => m.Name == "Any" && m.GetParameters().Length == 2)?
                 .MakeGenericMethod(typeof(Schedule));
 
             if (containsMethod is null)
@@ -314,7 +316,8 @@ namespace Base.Service.Service
                 c => c.Lecturer,
                 c => c.Semester,
                 c => c.Subject,
-                c => c.Room
+                c => c.Room,
+                c => c.SlotType
             };
 
             var classes = await _unitOfWork.ClassRepository

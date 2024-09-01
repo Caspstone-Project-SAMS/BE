@@ -52,7 +52,14 @@ public class PreparationTask_ModuleResponseVM
 {
     public float? Progress { get; set; }
     public int? PreparedScheduleId { get; set; }
-    public IEnumerable<int> PreparedSchedules { get; set; } = new List<int>();
+    public IEnumerable<PreparedSchedule_ModuleResponseVM> PreparedSchedules { get; set; } = new List<PreparedSchedule_ModuleResponseVM>();
+    public int TotalFingers { get; set; }
+    public int UploadedFingers { get; set; }
+}
+
+public class PreparedSchedule_ModuleResponseVM
+{
+    public int? ScheduleId { get; set; }
     public int TotalFingers { get; set; }
     public int UploadedFingers { get; set; }
 }

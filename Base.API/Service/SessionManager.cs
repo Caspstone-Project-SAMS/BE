@@ -1,4 +1,6 @@
 ﻿using Base.API.Controllers;
+using Base.IService.IService;
+using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Service.Common;
 using Base.Service.IService;
@@ -150,10 +152,14 @@ public class SessionManager
 
 
 
-    public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount, int totalFingers)
+    public async Task<bool> CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount, int totalFingers)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
+
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+        var existedScheudleTask = _scheduleService.GetByIdForModule(scheduleId);
 
         var prepareAttendance = new PrepareAttendance()
         {
@@ -167,26 +173,69 @@ public class SessionManager
         session.SessionState = 1;
         session.PrepareAttendance = prepareAttendance;
 
+        await Task.WhenAll(existedScheudleTask);
+        var schedule = existedScheudleTask.Result;
+        if(schedule is not null)
+        {
+            session.Title = "Prepare attendance data for class " + (schedule.Class?.ClassCode ?? "***") + " on " + schedule.Date.ToString("dd-MM-yyyy") + " at slot " + (schedule.Slot?.SlotNumber.ToString() ?? "***");
+        }
+
         return true;
     }
 
-    public bool CreatePrepareSchedulesSession(int sessionId, DateOnly preparedDate, IEnumerable<int> scheduleIds, int totalWorkAmount, int totalFingers)
+    public async Task<bool> CreatePrepareSchedulesSession(int sessionId, DateOnly preparedDate, IEnumerable<Schedule> schedules, int totalWorkAmount, int totalFingers)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
+
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
+        var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+
+        var preparedScheules = new List<PrepareSchedule>();
+
+        foreach (var schedule in schedules)
+        {
+            var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, schedule.ClassID);
+            var preparedScheulde = new PrepareSchedule
+            {
+                ScheduleId = schedule.ScheduleID,
+                TotalFingers = totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count()
+            };
+            preparedScheules.Add(preparedScheulde);
+        }
 
         var prepareAttendance = new PrepareAttendance()
         {
             PreparedDate = preparedDate,
             Progress = 0,
             TotalWorkAmount = totalWorkAmount,
-            ScheduleIds = scheduleIds,
+            PreparedSchedules = preparedScheules,
             TotalFingers = totalFingers
         };
 
         session.Category = 3;
         session.SessionState = 1;
         session.PrepareAttendance = prepareAttendance;
+
+        var classCodeList = _scheduleService.GetClassCodeList(", ", schedules.Select(s => s.ScheduleID).ToList());
+        session.Title = "Prepare attendance data for classes " + (classCodeList ?? "***") + " on " + preparedDate.ToString("dd-MM-yyyy");
+
+        return true;
+    }
+
+    public bool UpdateSchedulePreparationResult(int sessionId, int uploadedFingers, int scheduleId)
+    {
+        var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
+        if (session is null || session.SessionState != 1 || (session.Category != 2 && session.Category != 3)) return false;
+
+        if (session.PrepareAttendance is null) return false;
+
+        var preparedScheudle = session.PrepareAttendance.PreparedSchedules.Where(s => s.ScheduleId == scheduleId).FirstOrDefault();
+
+        if (preparedScheudle is null) return false;
+
+        preparedScheudle.UploadedFingers = uploadedFingers;
 
         return true;
     }
@@ -443,16 +492,16 @@ public class SessionManager
                 description = "Prepare attendance data for class " 
                     + (schedule.Class?.ClassCode ?? "***")
                     + " at " 
-                    + (schedule.Slot?.StartTime.ToString("hh:mm:ss") ?? "***")
-                    + " - " + (schedule.Slot?.Endtime.ToString("hh:mm:ss") ?? "***")
-                    + " on " + (schedule.Date.ToString("yyyy-MM-dd") ?? "***");
+                    + (schedule.Slot?.StartTime.ToString("HH:mm:ss") ?? "***")
+                    + " - " + (schedule.Slot?.Endtime.ToString("HH:mm:ss") ?? "***")
+                    + " on " + (schedule.Date.ToString("dd-MM-yyyy") ?? "***");
             }
         }
         else if (existedSession.Category == 3)
         {
             title = "Schedules preparation";
             var preparedDate = existedSession.PrepareAttendance?.PreparedDate;
-            var classCodeList = scheduleService.GetClassCodeList(", ", existedSession.PrepareAttendance?.ScheduleIds.ToList());
+            var classCodeList = scheduleService.GetClassCodeList(", ", existedSession.PrepareAttendance?.PreparedSchedules.Select(s => s.ScheduleId).ToList());
             description = "Prepare attendance data for classes "
                     + (classCodeList ?? "***")
                     + " on ";
@@ -462,7 +511,7 @@ public class SessionManager
             }
             else
             {
-                description = description + preparedDate.Value.ToString("yyyy-MM-dd");
+                description = description + preparedDate.Value.ToString("dd-MM-yyyy");
             }
         }
         else if (existedSession.Category == 4)
@@ -483,11 +532,25 @@ public class SessionManager
         newActivity.Title = title;
         if (existedSession.Category == 2 || existedSession.Category == 3)
         {
+            var preparedSchedules = new List<PreparedScheduleVM>();
+            if(existedSession.PrepareAttendance?.PreparedSchedules is not null)
+            {
+                foreach (var schedule in existedSession.PrepareAttendance.PreparedSchedules)
+                {
+                    preparedSchedules.Add(new PreparedScheduleVM
+                    {
+                        ScheduleId = schedule.ScheduleId,
+                        TotalFingers = schedule.TotalFingers,
+                        UploadedFingers = schedule.UploadedFingers
+                    });
+                }
+            }
+            
             var preparationTask = new PreparationTaskVM
             {
                 Progress = existedSession.PrepareAttendance?.Progress ?? 0,
                 PreparedScheduleId = existedSession.PrepareAttendance?.ScheduleId,
-                PreparedScheduleIds = existedSession.PrepareAttendance?.ScheduleIds ?? Enumerable.Empty<int>(),
+                PreparedSchedules = preparedSchedules,
                 PreparedDate = existedSession.PrepareAttendance?.PreparedDate,
                 UploadedFingers = uploadedFingers,
                 TotalFingers = existedSession.PrepareAttendance?.TotalFingers ?? 0
@@ -534,6 +597,7 @@ public class SessionManager
         };
         if (isSucess) newNotification.NotificationTypeID = informationType!.NotificationTypeID;
         else newNotification.NotificationTypeID = errorType!.NotificationTypeID;
+        newNotification.ModuleActivityId = createNewActivityResult.Result?.ModuleActivityId;
         var notificationResult = await notificationService.Create(newNotification);
 
 
@@ -573,7 +637,7 @@ public class SessionManager
     {
         strings.Clear();
     }
-    public void CreateNewSessionForTest()
+    /*public void CreateNewSessionForTest()
     {
         var prepareAttendance = new PrepareAttendance
         {
@@ -594,7 +658,7 @@ public class SessionManager
             Category = 2,
             PrepareAttendance = prepareAttendance
         });
-    }
+    }*/
 
 
     public async Task NotifyPreparationProgress(int sessionId, float progress, Guid userId)
@@ -632,6 +696,7 @@ public class Session
     public int SessionState { get; set; }
     public int DurationInMin { get; set; }
     public int ModuleId { get; set; }
+    public string Title { get; set; } = string.Empty;
     public FingerRegistration? FingerRegistration { get; set; }
     public FingerUpdatate? FingerUpdate { get; set; }
     public PrepareAttendance? PrepareAttendance { get; set; }
@@ -662,13 +727,20 @@ public class FingerUpdatate
 
 public class PrepareAttendance
 {
-    public IEnumerable<int> ScheduleIds { get; set; } = Enumerable.Empty<int>();
+    public IEnumerable<PrepareSchedule> PreparedSchedules { get; set; } = new List<PrepareSchedule>();
     public DateOnly? PreparedDate { get; set; }
     public int? ScheduleId { get; set; }
     public float Progress { get; set; }
     public float TotalWorkAmount { get; set; }
     public float CompletedWorkAmount { get; set; }
     public int TotalFingers { get; set; }
+}
+
+public class PrepareSchedule
+{
+    public int ScheduleId { get; set; }
+    public int TotalFingers { get; set; }
+    public int UploadedFingers { get; set; }
 }
 
 

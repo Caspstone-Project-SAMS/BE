@@ -40,6 +40,7 @@ public static class DependencyInjection
         services.AddScoped<ISystemService, SystemSevice>();
         services.AddScoped<IScriptService, ScriptService>();
         services.AddScoped<IStudentClassService, StudentClassService>();
+        services.AddScoped<ISlotTypeService, SlotTypeService>();
         #endregion
 
         #region Validation

@@ -77,7 +77,8 @@ internal class NotificationService : INotificationService
 
         var includes = new Expression<Func<Notification, object?>>[]
         {
-            n => n.NotificationType
+            n => n.NotificationType,
+            n => n.ModuleActivity
         };
 
         var notifications = await _unitOfWork.NotificationRepository
@@ -133,6 +134,30 @@ internal class NotificationService : INotificationService
             NotificationTypeID = newEntity.NotificationTypeID
         };
 
+        // Make a reference, but does not restrict it's creation if the referenced object not found
+        if(newEntity.ModuleActivityId is not null)
+        {
+            var checkModuleActivity = _unitOfWork.ModuleActivityRepository
+                .Get(a => a.ModuleActivityId == newEntity.ModuleActivityId)
+                .AsNoTracking()
+                .FirstOrDefault() is not null;
+            if (checkModuleActivity)
+            {
+                newNotification.ModuleActivityId = newEntity.ModuleActivityId;
+            }
+        }
+        else if(newEntity.ScheduleId is not null)
+        {
+            var checkSchedule = _unitOfWork.ScheduleRepository
+                .Get(s => s.ScheduleID == newEntity.ScheduleId)
+                .AsNoTracking()
+                .FirstOrDefault() is not null;
+            if (checkSchedule)
+            {
+                newNotification.ScheduleID = newEntity.ScheduleId;
+            }
+        }
+
         try
         {
             await _unitOfWork.NotificationRepository.AddAsync(newNotification);
@@ -175,5 +200,21 @@ internal class NotificationService : INotificationService
                 Errors = new string[2] { "The operation has been cancelled", ex.Message }
             };
         }
+    }
+
+    public async Task ReadNotifications(IEnumerable<int> notificationsIds)
+    {
+        var notifications = _unitOfWork.NotificationRepository
+            .Get(n => !n.IsDeleted && notificationsIds.Contains(n.NotificationID))
+            .ToList();
+        if(notifications.Count() <= 0)
+        {
+            return;
+        }
+        foreach (var notification in notifications)
+        {
+            notification.Read = true;
+        }
+        await _unitOfWork.SaveChangesAsync();
     }
 }

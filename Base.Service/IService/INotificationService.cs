@@ -14,4 +14,5 @@ public interface INotificationService
     Task<ServiceResponseVM<IEnumerable<Notification>>> GetAll(int startPage, int endPage, int quantity, bool? read, Guid? userId, int? notificationTypeId);
     Task<Notification?> GetById(int notificationId);
     Task<ServiceResponseVM<Notification>> Create(NotificationVM newEntity);
+    Task ReadNotifications(IEnumerable<int> notificationsIds);
 }

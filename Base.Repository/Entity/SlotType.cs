@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Base.Repository.Entity;
 
-public class SlotType : AuditableEntity
+public class SlotType : AuditableEntity, ICloneable
 {
     [Key]
     public int SlotTypeID { get; set; }
@@ -17,6 +17,11 @@ public class SlotType : AuditableEntity
     public int Status { get; set; }
     public int SessionCount { get; set; } = 3;
 
-    public IEnumerable<Slot> Slots { get; set; } = Enumerable.Empty<Slot>();
-    public IEnumerable<Class> Classes { get; set; } = Enumerable.Empty<Class>();
+    public IEnumerable<Slot> Slots { get; set; } = new List<Slot>();
+    public IEnumerable<Class> Classes { get; set; } = new List<Class>();
+
+    public object Clone()
+    {
+        return this.MemberwiseClone();
+    }
 }

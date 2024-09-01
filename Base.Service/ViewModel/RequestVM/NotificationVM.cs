@@ -18,4 +18,6 @@ public class NotificationVM
     public Guid UserID { get; set; }
     [Required]
     public int NotificationTypeID { get; set; }
+    public int? ScheduleId { get; set; }
+    public int? ModuleActivityId { get; set; }
 }

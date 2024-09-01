@@ -5,63 +5,95 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Base.API.Controllers
+namespace Base.API.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class SessionController : ControllerBase
 {
-    [Route("api/[controller]")]
-    [ApiController]
-    public class SessionController : ControllerBase
+    private readonly SessionManager _sessionManager;
+    private readonly ICurrentUserService _currentUserService;
+
+    public SessionController(SessionManager sessionManager, ICurrentUserService currentUserService)
     {
-        private readonly SessionManager _sessionManager;
-        private readonly ICurrentUserService _currentUserService;
+        _sessionManager = sessionManager;
+        _currentUserService = currentUserService;
+    }
 
-        public SessionController(SessionManager sessionManager, ICurrentUserService currentUserService)
+    [HttpGet("{id}")]
+    public IActionResult GetSessionById(int id)
+    {
+        var session = _sessionManager.GetSessionById(id);
+        if(session is null)
         {
-            _sessionManager = sessionManager;
-            _currentUserService = currentUserService;
+            return NotFound();
         }
+        return Ok(session);
+    }
 
-        [HttpGet("{id}")]
-        public IActionResult GetSessionById(int id)
+    [HttpGet]
+    public IActionResult GetSessions([FromQuery] Guid? userId, 
+        [FromQuery] int? category, 
+        [FromQuery] int? state,
+        [FromQuery] int? moduleId, 
+        [FromQuery] Guid? studentId)
+    {
+        return Ok(_sessionManager.GetSessions(userId, state, category, moduleId, studentId));
+    }
+
+    [Authorize(Policy = "Admin Lecturer")]
+    [HttpPost]
+    public async Task<IActionResult> SubmitSession(int sessionId)
+    {
+        Guid userId = new Guid();
+        var checkUserId =  Guid.TryParse(_currentUserService.UserId, out userId);
+        if (!checkUserId)
         {
-            var session = _sessionManager.GetSessionById(id);
-            if(session is null)
+            return BadRequest(new
             {
-                return NotFound();
-            }
-            return Ok(session);
+                Title = "Submit session failed",
+                Errors = new string[1] { "Invalid user information" }
+            });
+        }
+        var result = await _sessionManager.SubmitSession(sessionId, userId);
+        if (result.IsSuccess)
+        {
+            return Ok(result);
         }
 
-        [HttpGet]
-        public IActionResult GetSessions([FromQuery] Guid? userId, 
-            [FromQuery] int? category, 
-            [FromQuery] int? state,
-            [FromQuery] int? moduleId, 
-            [FromQuery] Guid? studentId)
-        {
-            return Ok(_sessionManager.GetSessions(userId, state, category, moduleId, studentId));
-        }
+        return BadRequest(result);
+    }
 
-        [Authorize(Policy = "Admin Lecturer")]
-        [HttpPost]
-        public async Task<IActionResult> SubmitSession(int sessionId)
+
+    [HttpPost("schedule-preparation/state-update")]
+    public IActionResult UpdateSchedulePreparationState([FromBody] SchedulePreparationState resource)
+    {
+        if (ModelState.IsValid)
         {
-            Guid userId = new Guid();
-            var checkUserId =  Guid.TryParse(_currentUserService.UserId, out userId);
-            if (!checkUserId)
+            var result = _sessionManager.UpdateSchedulePreparationResult(resource.SessionId, resource.UploadedFingerprints, resource.ScheduleId);
+            if (result)
             {
-                return BadRequest(new
+                return Ok(new
                 {
-                    Title = "Submit session failed",
-                    Errors = new string[1] { "Invalid user information" }
+                    Title = "Update state successfully"
                 });
             }
-            var result = await _sessionManager.SubmitSession(sessionId, userId);
-            if (result.IsSuccess)
+            return BadRequest(new
             {
-                return Ok(result);
-            }
-
-            return BadRequest(result);
+                Title = "Update state failed"
+            });
         }
+        return BadRequest(new
+        {
+            Title = "Update state failed",
+            Errors = new string[1] { "Invalid input" }
+        });
     }
+}
+
+public class SchedulePreparationState
+{
+    public int SessionId { get; set; }
+    public int UploadedFingerprints { get; set; }
+    public int ScheduleId { get; set; }
 }

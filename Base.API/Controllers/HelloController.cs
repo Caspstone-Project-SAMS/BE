@@ -240,6 +240,19 @@ public class HelloController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("test-prepare")]
+    public async Task<IActionResult> TestPrepareSchedules([FromBody] PrepareASchedules resource)
+    {
+        await _hangFireService.SetupPreparationForModule(resource.date, resource.moduleId);
+        return Ok();
+    }
+
+    public class PrepareASchedules
+    {
+        public DateOnly date { get; set; }
+        public int moduleId { get; set; }
+    }
+
     public class FingerprintTemplateTest
     {
         public string fingerprintTemplate { get; set; } = string.Empty;

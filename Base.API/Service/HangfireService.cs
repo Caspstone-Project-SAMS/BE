@@ -483,23 +483,18 @@ public class HangfireService : IHangfireService
         int totalWorkCount = 0;
         int totalFingers = 0;
         var classeIds = schedules.Select(s => s.ClassID);
-        var addedClassId = new List<int>();
         foreach (var item in classeIds)
         {
             var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, item);
             if (totalStudents is not null)
             {
                 totalWorkCount = totalWorkCount + totalStudents.Count();
-                if (!addedClassId.Contains(item))
-                {
-                    totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
-                    addedClassId.Add(item);
-                }
+                totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
             }
         }
 
-        var sessionResult = _sessionManager.CreatePrepareSchedulesSession(sessionId,
-                        preparedDate, schedules.Select(s => s.ScheduleID), totalWorkCount, totalFingers);
+        var sessionResult = await _sessionManager.CreatePrepareSchedulesSession(sessionId,
+                        preparedDate, schedules, totalWorkCount, totalFingers);
 
         if (!sessionResult)
         {
@@ -553,6 +548,7 @@ public class HangfireService : IHangfireService
         var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
         var _moduleActivityService = serviceScope.ServiceProvider.GetRequiredService<IModuleActivityService>();
+        var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
 
         var existedModule = _unitOfWork.ModuleRepository
             .Get(m => !m.IsDeleted && m.ModuleID == moduleId,
@@ -564,19 +560,31 @@ public class HangfireService : IHangfireService
             .FirstOrDefault();
         if (existedModule is null) return;
 
-        var scheduleIds = _unitOfWork.ScheduleRepository
+        var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == date && s.Class!.LecturerID == existedModule.Employee!.User!.Id)
             .AsNoTracking()
-            .Select(s => s.ScheduleID)
             .ToList();
 
-        var classCodeList = _scheduleService.GetClassCodeList(", ", scheduleIds);
+        var classCodeList = _scheduleService.GetClassCodeList(", ", schedules.Select(s => s.ScheduleID).ToList());
 
         // Create activity
+        var preparedSchedules = new List<PreparedScheduleVM>();
+        foreach ( var schedule in schedules)
+        {
+            var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, schedule.ClassID);
+            var preparedScheulde = new PreparedScheduleVM
+            {
+                ScheduleId = schedule.ScheduleID,
+                TotalFingers = totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count(),
+                UploadedFingers = 0
+            };
+            preparedSchedules.Add(preparedScheulde);
+        }
+
         var preparationTask = new PreparationTaskVM
         {
             Progress = 0,
-            PreparedScheduleIds = Enumerable.Empty<int>(),
+            PreparedSchedules = preparedSchedules,
             PreparedDate = date,
             UploadedFingers = 0,
             TotalFingers = 0
@@ -591,7 +599,7 @@ public class HangfireService : IHangfireService
             ModuleID = moduleId,
             Title = "Schedules preparation",
             Description = "Prepare attendance data for classes " + (classCodeList ?? "***")
-                    + " on " + date.ToString("yyyy-MM-dd") + " failed",
+                    + " on " + date.ToString("dd-MM-yyyy") + " failed",
             PreparationTaskVM = preparationTask
         };
 
@@ -619,6 +627,7 @@ public class HangfireService : IHangfireService
                 UserID = existedModule.Employee?.User?.Id ?? Guid.Empty,
             };
             newNotification.NotificationTypeID = errorType!.NotificationTypeID;
+            newNotification.ModuleActivityId = createNewActivityResult.Result?.ModuleActivityId;
             var notificationResult = await notificationService.Create(newNotification);
 
             // Notify the notification
