@@ -187,6 +187,7 @@ namespace Base.Service.Service
                 .Include(s => s.Class!.Semester)
                 .Include(s => s.Class!.Room)
                 .Include(s => s.Slot)
+                .Include(s => s.Attendances)
                 .Include(s => s.Class!.Subject).ToArrayAsync();
 
             if(semesterId.HasValue)
@@ -205,12 +206,19 @@ namespace Base.Service.Service
                 var endDateOnly = DateOnly.FromDateTime(endDate.Value);
                 query =  query.Where(s => s.Date <= endDateOnly).ToArray();
             }
-
+            
             var schedules = query
                 .OrderBy(s => s.Slot!.Order)
                 .Skip((startPage - 1) * quantityResult)
                 .Take((endPage - startPage + 1) * quantityResult);
+
+            foreach (var schedule in schedules)
+            {
+                var attendanceCount = schedule.Attendances.Count(a => a.AttendanceStatus == 1);
+                var attendancePerClass = _unitOfWork.AttendanceRepository.Get(a => a.ScheduleID == schedule.ScheduleID).Count();
                 
+                schedule.AttendStudent = attendanceCount.ToString() +"/"+ attendancePerClass.ToString();
+            }
 
             return schedules;
         }
