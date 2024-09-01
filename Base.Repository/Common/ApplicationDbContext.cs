@@ -276,3 +276,18 @@ public class DbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext
         return new ApplicationDbContext(optionsBuilder.Options);
     }
 }
+
+public class NewDbContext
+{
+    public ApplicationDbContext GetNewDbContext()
+    {
+        var configuration = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.Development.json")
+                .Build();
+
+        var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
+        optionsBuilder.UseSqlServer(configuration.GetConnectionString("MsSQLConnection")!);
+        return new ApplicationDbContext(optionsBuilder.Options);
+    }
+}

@@ -3,13 +3,19 @@ using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Repository.Identity;
 using Base.Service.Common;
+using Base.Service.IService;
 using Base.Service.Validation;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.ViewModel.ResponseVM;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -26,33 +32,51 @@ namespace Base.Service.Service
         private readonly UserManager<User> _userManager;
         private readonly IMailService _mailService;
         private readonly ICurrentUserService _currentUserService;
-        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet, UserManager<User> userManager, IMailService mailService, ICurrentUserService currentUserService)
+        private readonly IServiceScopeFactory _serviceScopeFactory;
+        public StudentService(IUnitOfWork unitOfWork, IValidateGet validateGet, UserManager<User> userManager, IMailService mailService, ICurrentUserService currentUserService, IServiceScopeFactory serviceScopeFactory)
         {
             _unitOfWork = unitOfWork;
             _validateGet = validateGet;
             _userManager = userManager;
             _mailService = mailService;
             _currentUserService = currentUserService;
+            _serviceScopeFactory = serviceScopeFactory;
         }
         public async Task<ServiceResponseVM<List<StudentVM>>> CreateStudent(List<StudentVM> newEntities)
         {
-            List<StudentVM> createdStudents = new List<StudentVM>();
-            List<string> errors = new List<string>();
+            ConcurrentBag<StudentVM> createdStudents = new ConcurrentBag<StudentVM>();
+            ConcurrentBag<string> errors = new ConcurrentBag<string>();
+            SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
-            foreach (var newEntity in newEntities)
+            DbContextFactory dbFactory = new DbContextFactory();
+
+            using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+
+            ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 2.0))};
+            Parallel.ForEach(newEntities, parallelOptions, async (newEntity, state) =>
             {
-                var existedStudent = await _unitOfWork.StudentRepository.Get(st => st.StudentCode.Equals(newEntity.StudentCode)).FirstOrDefaultAsync();
+                var dbContext = dbFactory.CreateDbContext(Array.Empty<string>());
+
+                var newUserManager = CreateUserManagerFromExisting(_userManager, dbContext, serviceScope.ServiceProvider);
+
+                var existedStudent = await dbContext.Set<Student>()
+                    .Where(st => st.StudentCode.Equals(newEntity.StudentCode))
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
                 if (existedStudent is not null)
                 {
                     errors.Add($"StudentCode {newEntity.StudentCode} is already taken");
-                    continue;
+                    return;
                 }
 
-                var existingUserEmail = await _unitOfWork.UserRepository.Get(u => u.Email == newEntity.Email).FirstOrDefaultAsync();
+                var existingUserEmail = await dbContext.Users
+                    .Where(u => u.Email == newEntity.Email)
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync();
                 if (existingUserEmail != null)
                 {
                     errors.Add($"User with email {newEntity.Email} already exists.");
-                    continue;
+                    return;
                 }
 
                 Student newStudent = new Student
@@ -64,9 +88,9 @@ namespace Base.Service.Service
 
                 try
                 {
-                    await _unitOfWork.StudentRepository.AddAsync(newStudent);
+                    await dbContext.Students.AddAsync(newStudent);
 
-                    var result = await _unitOfWork.SaveChangesAsync();
+                    var result = (await dbContext.SaveChangesAsync()) > 0;
 
                     if (result)
                     {
@@ -83,32 +107,40 @@ namespace Base.Service.Service
                             CreatedAt = ServerDateTime.GetVnDateTime(),
                         };
                         var password = GenerateRandomPassword(6);
-                        var identityResult = await _userManager.CreateAsync(newUser, password);
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            var identityResult = await newUserManager.CreateAsync(newUser, password);
 
-                        if (identityResult.Succeeded)
-                        {
-                            createdStudents.Add(newEntity);
-                            var emailMessage = new Message
+                            if (identityResult.Succeeded)
                             {
-                                To = newEntity.Email,
-                                Subject = "Your account has been created",
-                                Content = $@"<html>
-                                <body>
-                                <p>Dear Student,</p>
-                                <p>Your account has been created successfully. Here are your login details:</p>
-                                <ul>
-                                     <li><strong>Username:</strong> {newEntity.StudentCode}</li>
-                                     <li><strong>Password:</strong> {password}</li>
-                                </ul>
-                                <p>Best regards,<br>SAMS Team</p>
-                                </body>
-                                </html>"
-                            };
-                            await _mailService.SendMailAsync(emailMessage);
+                                createdStudents.Add(newEntity);
+                                var emailMessage = new Message
+                                {
+                                    To = newEntity.Email,
+                                    Subject = "Your account has been created",
+                                    Content = $@"<html>
+                                        <body>
+                                        <p>Dear Student,</p>
+                                        <p>Your account has been created successfully. Here are your login details:</p>
+                                        <ul>
+                                             <li><strong>Username:</strong> {newEntity.StudentCode}</li>
+                                             <li><strong>Password:</strong> {password}</li>
+                                        </ul>
+                                        <p>Best regards,<br>SAMS Team</p>
+                                        </body>
+                                        </html>"
+                                };
+                                _ = _mailService.SendMailAsync(emailMessage);
+                            }
+                            else
+                            {
+                                errors.Add($"Failed to create User for StudentCode {newEntity.StudentCode}");
+                            }
                         }
-                        else
+                        finally
                         {
-                            errors.Add($"Failed to create User for StudentCode {newEntity.StudentCode}");
+                            semaphore.Release();
                         }
                     }
                     else
@@ -124,13 +156,14 @@ namespace Base.Service.Service
                 {
                     errors.Add($"OperationCanceledException for StudentCode {newEntity.StudentCode}: {ex.Message}");
                 }
-            }
+
+            });
 
             return new ServiceResponseVM<List<StudentVM>>
             {
                 IsSuccess = createdStudents.Count > 0,
                 Title = createdStudents.Count > 0 ? "Create Students Result" : "Create Students failed",
-                Result = createdStudents,
+                Result = createdStudents.ToList(),
                 Errors = errors.ToArray()
             };
         }
@@ -441,6 +474,43 @@ namespace Base.Service.Service
             return result
                 .Skip((startPage - 1) * quantityResult)
                 .Take((endPage - startPage + 1) * quantityResult);
+        }
+
+        private UserManager<User> CreateUserManagerFromExisting(UserManager<User> existingUserManager, ApplicationDbContext newDbContext, IServiceProvider services)
+        {
+            // Create a new UserStore using the new DbContext
+            var newUserStore = new UserStore<User, IdentityRole<Guid>, ApplicationDbContext, Guid>(newDbContext);
+
+            // Retrieve dependencies from the existing UserManager
+            var options = Options.Create(existingUserManager.Options);
+            var passwordHasher = existingUserManager.PasswordHasher;
+            var userValidators = existingUserManager.UserValidators;
+            var passwordValidators = existingUserManager.PasswordValidators;
+            var keyNormalizer = existingUserManager.KeyNormalizer;
+            var errorDescriber = existingUserManager.ErrorDescriber;
+
+            var logger = existingUserManager.Logger as ILogger<UserManager<User>>;
+            if (logger == null)
+            {
+                // Create a logger if the existing one is not of the correct type
+                var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole()); // Customize the logger factory as needed
+                logger = loggerFactory.CreateLogger<UserManager<User>>();
+            }
+
+            // Create a new instance of UserManager using the new UserStore and existing dependencies
+            var newUserManager = new UserManager<User>(
+                newUserStore,
+                options,
+                passwordHasher,
+                userValidators,
+                passwordValidators,
+                keyNormalizer,
+                errorDescriber,
+                services,
+                logger
+            );
+
+            return newUserManager;
         }
     }
 }
