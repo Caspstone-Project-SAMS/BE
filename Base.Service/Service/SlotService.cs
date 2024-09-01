@@ -234,7 +234,7 @@ namespace Base.Service.Service
             if(updateEntity.SlotNumber is not null)
             {
                 var checkSlotNumber = _unitOfWork.SlotRepository
-                    .Get(s => !s.IsDeleted && s.SlotID != id && s.SlotNumber == updateEntity.SlotNumber)
+                    .Get(s => !s.IsDeleted && s.SlotID != id && s.SlotTypeId == existedSlot.SlotTypeId && s.SlotNumber == updateEntity.SlotNumber)
                     .Any();
                 if (checkSlotNumber)
                 {

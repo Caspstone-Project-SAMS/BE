@@ -28,6 +28,8 @@ public class ModuleActivity
     public int ModuleID { get; set; }
     public Module? Module { get; set; }
 
+    public Notification? Notification { get; set; }
+
     public IEnumerable<string> GetErrors()
     {
         return this.Errors?.Split(";") ?? new string[0];

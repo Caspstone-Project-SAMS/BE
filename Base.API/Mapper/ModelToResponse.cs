@@ -165,7 +165,8 @@ namespace Base.API.Mapper
             CreateMap<User, User_NotificationResponseVM>();
             CreateMap<Notification, NotificationResponseVM>()
                 .ForMember(dest => dest.NotificationType, opt => opt.MapFrom(src => src.NotificationType))
-                .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
+                .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User))
+                .ForMember(dest => dest.ModuleId, opt => opt.MapFrom<int?>(src => src.ModuleActivity != null ? src.ModuleActivity.ModuleID : null));
 
             // For notification type
             CreateMap<Notification, Notification_NotificationTypeResponseVM>();

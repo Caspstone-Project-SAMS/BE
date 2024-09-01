@@ -14,6 +14,9 @@ public class NotificationResponseVM
     public string? Description { get; set; }
     public DateTime? TimeStamp { get; set; }
     public bool? Read { get; set; }
+    public int? ModuleId { get; set; }
+    public int? ModuleActivityId { get; set; }
+    public int? ScheduleID { get; set; }
     public NotificationType_NotificationResponseVM? NotificationType { get; set; }
     public User_NotificationResponseVM? User { get; set; }
 }

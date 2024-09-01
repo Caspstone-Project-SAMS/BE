@@ -198,6 +198,7 @@ namespace Base.Service.Service
                 .Include(c => c.Room)
                 .Include(c => c.Subject)
                 .Include(c => c.Lecturer!.Employee)
+                .Include(c => c.SlotType)
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 

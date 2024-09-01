@@ -282,7 +282,7 @@ internal class SlotTypeService : ISlotTypeService
                     .Get(s => !s.IsDeleted && s.SlotTypeId == slotTypeId)
                     .AsNoTracking()
                     .Count() > 0;
-                if (checkSlotTypeAlreadyInUse)
+                if (checkSlotTypeAlreadyInUse && existedSlotType.SessionCount != resource.SessionCount)
                 {
                     errors.Add("Slot type is already in use, unable to update session count");
                 }

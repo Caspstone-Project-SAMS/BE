@@ -37,14 +37,17 @@ var builder = WebApplication.CreateBuilder(args);
 });*/
 
 
-/*builder.WebHost.ConfigureKestrel(serverOptions =>
+/*if (builder.Environment.IsProduction())
 {
-    serverOptions.ListenAnyIP(80);
-    serverOptions.ListenAnyIP(443, listenOptions =>
+    builder.WebHost.ConfigureKestrel(serverOptions =>
     {
-        listenOptions.UseHttps("/etc/ssl/certs/sams.pfx", "pa55w0rd!");
+        serverOptions.ListenAnyIP(80);
+        serverOptions.ListenAnyIP(443, listenOptions =>
+        {
+            listenOptions.UseHttps("/etc/ssl/certs/cert.pfx", "khoa");
+        });
     });
-});*/
+}*/
 
 var Configuration = builder.Configuration;
 
@@ -446,10 +449,3 @@ using (var scope = app.Services.CreateScope())
 
 
 app.Run();
-
-
-public static class HostConfig
-{
-    public static string CertPath { get; set; }
-    public static string CertPassword { get; set; }
-}

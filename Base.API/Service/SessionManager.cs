@@ -1,5 +1,6 @@
 ﻿using Base.API.Controllers;
 using Base.IService.IService;
+using Base.Repository.Common;
 using Base.Repository.Entity;
 using Base.Service.Common;
 using Base.Service.IService;
@@ -151,10 +152,14 @@ public class SessionManager
 
 
 
-    public bool CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount, int totalFingers)
+    public async Task<bool> CreatePrepareAScheduleSession(int sessionId, int scheduleId, int totalWorkAmount, int totalFingers)
     {
         var session = _sessions.FirstOrDefault(s => s.SessionId == sessionId);
         if (session is null) return false;
+
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
+        var existedScheudleTask = _scheduleService.GetByIdForModule(scheduleId);
 
         var prepareAttendance = new PrepareAttendance()
         {
@@ -168,6 +173,13 @@ public class SessionManager
         session.SessionState = 1;
         session.PrepareAttendance = prepareAttendance;
 
+        await Task.WhenAll(existedScheudleTask);
+        var schedule = existedScheudleTask.Result;
+        if(schedule is not null)
+        {
+            session.Title = "Prepare attendance data for class " + (schedule.Class?.ClassCode ?? "***") + " on " + schedule.Date.ToString("dd-MM-yyyy") + " at slot " + (schedule.Slot?.SlotNumber.ToString() ?? "***");
+        }
+
         return true;
     }
 
@@ -178,6 +190,7 @@ public class SessionManager
 
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
+        var _scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
 
         var preparedScheules = new List<PrepareSchedule>();
 
@@ -204,6 +217,9 @@ public class SessionManager
         session.Category = 3;
         session.SessionState = 1;
         session.PrepareAttendance = prepareAttendance;
+
+        var classCodeList = _scheduleService.GetClassCodeList(", ", schedules.Select(s => s.ScheduleID).ToList());
+        session.Title = "Prepare attendance data for classes " + (classCodeList ?? "***") + " on " + preparedDate.ToString("dd-MM-yyyy");
 
         return true;
     }
@@ -476,9 +492,9 @@ public class SessionManager
                 description = "Prepare attendance data for class " 
                     + (schedule.Class?.ClassCode ?? "***")
                     + " at " 
-                    + (schedule.Slot?.StartTime.ToString("hh:mm:ss") ?? "***")
-                    + " - " + (schedule.Slot?.Endtime.ToString("hh:mm:ss") ?? "***")
-                    + " on " + (schedule.Date.ToString("yyyy-MM-dd") ?? "***");
+                    + (schedule.Slot?.StartTime.ToString("HH:mm:ss") ?? "***")
+                    + " - " + (schedule.Slot?.Endtime.ToString("HH:mm:ss") ?? "***")
+                    + " on " + (schedule.Date.ToString("dd-MM-yyyy") ?? "***");
             }
         }
         else if (existedSession.Category == 3)
@@ -495,7 +511,7 @@ public class SessionManager
             }
             else
             {
-                description = description + preparedDate.Value.ToString("yyyy-MM-dd");
+                description = description + preparedDate.Value.ToString("dd-MM-yyyy");
             }
         }
         else if (existedSession.Category == 4)
@@ -581,6 +597,7 @@ public class SessionManager
         };
         if (isSucess) newNotification.NotificationTypeID = informationType!.NotificationTypeID;
         else newNotification.NotificationTypeID = errorType!.NotificationTypeID;
+        newNotification.ModuleActivityId = createNewActivityResult.Result?.ModuleActivityId;
         var notificationResult = await notificationService.Create(newNotification);
 
 
@@ -679,6 +696,7 @@ public class Session
     public int SessionState { get; set; }
     public int DurationInMin { get; set; }
     public int ModuleId { get; set; }
+    public string Title { get; set; } = string.Empty;
     public FingerRegistration? FingerRegistration { get; set; }
     public FingerUpdatate? FingerUpdate { get; set; }
     public PrepareAttendance? PrepareAttendance { get; set; }

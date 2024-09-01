@@ -325,7 +325,7 @@ public class ModuleController : ControllerBase
                         totalFingers = totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
                     }
 
-                    var sessionResultMode3 = _sessionManager.CreatePrepareAScheduleSession(activateModule.SessionId ?? 0,
+                    var sessionResultMode3 = await _sessionManager.CreatePrepareAScheduleSession(activateModule.SessionId ?? 0,
                         activateModule.PrepareAttendance.ScheduleID,
                         totalWorkAmount,
                         totalFingers);

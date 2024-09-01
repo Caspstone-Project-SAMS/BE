@@ -223,7 +223,7 @@ public class ImportService
 
     public async Task<Import_Result> ImportScheduleUsingImage(IFormFile imageResource, Guid lecturerId, int recommendationRate = 50)
     {
-        var credential = GoogleCredential.FromFile("keys/sams-capstone-project-f08e0cb36d56.json");
+        var credential = GoogleCredential.FromFile("keys/sams-capstone-project-4a8e2b6ee1aa.json");
         ImageAnnotatorClientBuilder imageAnnotatorClientBuilder = new ImageAnnotatorClientBuilder();
         imageAnnotatorClientBuilder.Credential = credential;
         var client = imageAnnotatorClientBuilder.Build();

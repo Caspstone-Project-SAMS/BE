@@ -483,18 +483,13 @@ public class HangfireService : IHangfireService
         int totalWorkCount = 0;
         int totalFingers = 0;
         var classeIds = schedules.Select(s => s.ClassID);
-        var addedClassId = new List<int>();
         foreach (var item in classeIds)
         {
             var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, item);
             if (totalStudents is not null)
             {
                 totalWorkCount = totalWorkCount + totalStudents.Count();
-                if (!addedClassId.Contains(item))
-                {
-                    totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
-                    addedClassId.Add(item);
-                }
+                totalFingers = totalFingers + totalStudents.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
             }
         }
 
@@ -604,7 +599,7 @@ public class HangfireService : IHangfireService
             ModuleID = moduleId,
             Title = "Schedules preparation",
             Description = "Prepare attendance data for classes " + (classCodeList ?? "***")
-                    + " on " + date.ToString("yyyy-MM-dd") + " failed",
+                    + " on " + date.ToString("dd-MM-yyyy") + " failed",
             PreparationTaskVM = preparationTask
         };
 
@@ -632,6 +627,7 @@ public class HangfireService : IHangfireService
                 UserID = existedModule.Employee?.User?.Id ?? Guid.Empty,
             };
             newNotification.NotificationTypeID = errorType!.NotificationTypeID;
+            newNotification.ModuleActivityId = createNewActivityResult.Result?.ModuleActivityId;
             var notificationResult = await notificationService.Create(newNotification);
 
             // Notify the notification

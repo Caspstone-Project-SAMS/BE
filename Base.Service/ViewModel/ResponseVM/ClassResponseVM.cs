@@ -96,6 +96,7 @@ public class Slot_ClassResponseVM
 
 public class SlotType_ClassResponseVM
 {
+    public int SlotTypeID { get; set; }
     public string? TypeName { get; set; }
     public string? Description { get; set; }
     public int? Status { get; set; }

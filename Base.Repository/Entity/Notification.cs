@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using Base.Repository.Common;
 using Base.Repository.Identity;
 
@@ -20,4 +21,10 @@ public class Notification : AuditableEntity
 
     public int NotificationTypeID { get; set; }
     public NotificationType? NotificationType { get; set; }
+
+    public int? ModuleActivityId { get; set; }
+    public ModuleActivity? ModuleActivity { get; set; }
+
+    public int? ScheduleID { get; set; }
+    public Schedule? Schedule { get; set; }
 }
