@@ -49,11 +49,13 @@ namespace Base.Service.Service
             SemaphoreSlim semaphore = new SemaphoreSlim(1, 1);
 
             DbContextFactory dbFactory = new DbContextFactory();
-
             using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
 
-            ParallelOptions parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.75) * 2.0))};
-            Parallel.ForEach(newEntities, parallelOptions, async (newEntity, state) =>
+            ParallelOptions parallelOptions = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.25) * 2.0))
+            };
+            await Parallel.ForEachAsync(newEntities, parallelOptions, async (newEntity, state) =>
             {
                 var dbContext = dbFactory.CreateDbContext(Array.Empty<string>());
 
@@ -107,19 +109,17 @@ namespace Base.Service.Service
                             CreatedAt = ServerDateTime.GetVnDateTime(),
                         };
                         var password = GenerateRandomPassword(6);
-                        await semaphore.WaitAsync();
-                        try
-                        {
-                            var identityResult = await newUserManager.CreateAsync(newUser, password);
 
-                            if (identityResult.Succeeded)
+                        var identityResult = await newUserManager.CreateAsync(newUser, password);
+
+                        if (identityResult.Succeeded)
+                        {
+                            createdStudents.Add(newEntity);
+                            var emailMessage = new Message
                             {
-                                createdStudents.Add(newEntity);
-                                var emailMessage = new Message
-                                {
-                                    To = newEntity.Email,
-                                    Subject = "Your account has been created",
-                                    Content = $@"<html>
+                                To = newEntity.Email,
+                                Subject = "Your account has been created",
+                                Content = $@"<html>
                                         <body>
                                         <p>Dear Student,</p>
                                         <p>Your account has been created successfully. Here are your login details:</p>
@@ -130,17 +130,12 @@ namespace Base.Service.Service
                                         <p>Best regards,<br>SAMS Team</p>
                                         </body>
                                         </html>"
-                                };
-                                _ = _mailService.SendMailAsync(emailMessage);
-                            }
-                            else
-                            {
-                                errors.Add($"Failed to create User for StudentCode {newEntity.StudentCode}");
-                            }
+                            };
+                            _ = _mailService.SendMailAsync(emailMessage);
                         }
-                        finally
+                        else
                         {
-                            semaphore.Release();
+                            errors.Add($"Failed to create User for StudentCode {newEntity.StudentCode}");
                         }
                     }
                     else
@@ -159,11 +154,12 @@ namespace Base.Service.Service
 
             });
 
+            var createdStudentsList = createdStudents.ToList();
             return new ServiceResponseVM<List<StudentVM>>
             {
-                IsSuccess = createdStudents.Count > 0,
-                Title = createdStudents.Count > 0 ? "Create Students Result" : "Create Students failed",
-                Result = createdStudents.ToList(),
+                IsSuccess = createdStudentsList.Count() > 0,
+                Title = createdStudentsList.Count() > 0 ? "Create Students Result" : "Create Students failed",
+                Result = createdStudentsList,
                 Errors = errors.ToArray()
             };
         }
