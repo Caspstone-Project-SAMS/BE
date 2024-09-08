@@ -90,7 +90,7 @@ namespace Base.API.Controllers
         {
             if (ModelState.IsValid)
             {
-                var result = await _userService.LoginWithGoogle(resource.AccessToken);
+                var result = await _userService.LoginWithGoogle(resource.AccessToken, resource.DeviceToken);
                 if (result.IsSuccess)
                 {
                     var tokenString = _jwtTokenService.CreateToken(result.LoginUser!, result.RoleNames);

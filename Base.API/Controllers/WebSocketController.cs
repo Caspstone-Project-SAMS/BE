@@ -470,11 +470,11 @@ public class WebSocketController : ControllerBase
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
 
-        await Task.Delay(TimeSpan.FromSeconds(10));
+        await Task.Delay(TimeSpan.FromSeconds(5));
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
 
         // Notify to update configurations
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        await Task.Delay(TimeSpan.FromSeconds(5));
         var message = new WebsocketMessage
         {
             Event = "ApplyConfigurations",

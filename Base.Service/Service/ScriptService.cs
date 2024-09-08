@@ -1,5 +1,6 @@
 ﻿using Base.Repository.Common;
 using Base.Repository.Entity;
+using Base.Repository.Identity;
 using Base.Service.Common;
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
@@ -10,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Base.Service.Service;
@@ -19,12 +21,20 @@ internal class ScriptService : IScriptService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IHangfireService _hangfireService;
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly IExpoPushNotification _expoPushNotification;
+    private readonly IWebSocketConnectionManager1 _webSocketConnectionManager;
 
-    public ScriptService(IUnitOfWork unitOfWork, IHangfireService hangfireService, IServiceScopeFactory serviceScopeFactory)
+    public ScriptService(IUnitOfWork unitOfWork, 
+        IHangfireService hangfireService, 
+        IServiceScopeFactory serviceScopeFactory, 
+        IExpoPushNotification expoPushNotification, 
+        IWebSocketConnectionManager1 webSocketConnectionManager)
     {
         _unitOfWork = unitOfWork;
         _hangfireService = hangfireService;
         _serviceScopeFactory = serviceScopeFactory;
+        _expoPushNotification = expoPushNotification;
+        _webSocketConnectionManager = webSocketConnectionManager;
     }
 
     public void ResetServerTime()
@@ -247,6 +257,7 @@ internal class ScriptService : IScriptService
                         if (pastSlot.PastFirst15Min)
                         {
                             // Check and remind lecturer to take attendance
+                            _ = RemindLecturerToCheckAttendanceAfterFirst15MinInMobile(pastDate.Date, pastSlot.SlotId);
                         }
                         if (pastSlot.PastLast15Min)
                         {
@@ -456,6 +467,98 @@ internal class ScriptService : IScriptService
         }
 
         await _unitOfWork.SaveChangesAsync();
+    }
+
+    private async Task RemindLecturerToCheckAttendanceAfterFirst15MinInMobile(DateOnly date, int slotId)
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var notificationTypeService = serviceScope.ServiceProvider.GetRequiredService<INotificationTypeService>();
+        var notificationService = serviceScope.ServiceProvider.GetRequiredService<INotificationService>();
+
+        var schedules = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Date == date && s.SlotID == slotId,
+            new System.Linq.Expressions.Expression<Func<Schedule, object?>>[]
+            {
+                s => s.Class,
+                s => s.Slot
+            })
+            .AsNoTracking()
+            .ToList();
+        foreach (var schedule in schedules)
+        {
+            // If lecturer does not check attendance, lets notify to mobile
+            if(schedule.Attended == 1)
+            {
+                var lecturerId = schedule.Class?.LecturerID;
+                if(lecturerId is not null)
+                {
+                    // Get device token of lecturer
+                    var getDeviceTokenTask = _unitOfWork.UserRepository
+                        .Get(u => !u.Deleted && u.Id == lecturerId).AsNoTracking()
+                        .Select(l => l.DeviceToken).FirstOrDefaultAsync();
+
+                    // Get notification type of warning
+                    var getNotificationTypeTask = _unitOfWork.NotificationTypeRepository
+                        .Get(n => !n.IsDeleted && n.TypeName.ToUpper() == "WARNING").AsNoTracking()
+                        .Select(n => n.NotificationTypeID).FirstOrDefaultAsync();
+
+                    await Task.WhenAll(getDeviceTokenTask, getNotificationTypeTask);
+
+                    // Create new notification
+                    var notificationTypeId = getNotificationTypeTask.Result;
+                    if (notificationTypeId <= 0)
+                    {
+                        // Create a warning notification type
+                        var warningType = (await notificationTypeService.Create(new NotificationTypeVM
+                        {
+                            TypeName = "Warning",
+                            TypeDescription = "Used to warning something that could cause error"
+                        })).Result;
+                        notificationTypeId = warningType?.NotificationTypeID ?? 0;
+                    }
+                    var newNotification = new NotificationVM
+                    {
+                        Title = "Don't forget to check attendance",
+                        Description = $"Class {schedule.Class?.ClassCode ?? "***"} on {schedule.Date.ToString("dd-MM-yyyy") ?? "***"} at {schedule.Slot?.StartTime.ToString("HH:mm:ss") ?? "***"} o'clock has past the first 15 minutes",
+                        Read = false,
+                        UserID = lecturerId.Value,
+                        ScheduleId = schedule.ScheduleID,
+                        NotificationTypeID = notificationTypeId
+                    };
+                    var createdNotification = await notificationService.Create(newNotification);
+
+                    // Notify to mobile
+                    var deviceToken = getDeviceTokenTask.Result;
+                    if(deviceToken is not null)
+                    {
+                        _ = _expoPushNotification.SendMessageToMobile(deviceToken, 
+                            "Don't forget to check attendance", "Remind attendance check", 
+                            $"The class {schedule.Class?.ClassCode ?? "***"} is on going",
+                            new
+                            {
+                                Event = "NewNotification",
+                                Data = new
+                                {
+                                    NotificationId = createdNotification.Result!.NotificationID
+                                }
+                            });
+                    }
+
+                    // Notify to web client
+                    var messageSend = new
+                    {
+                        Event = "NewNotification",
+                        Data = new
+                        {
+                            NotificationId = createdNotification.Result!.NotificationID
+                        }
+                    };
+                    var jsonPayload = JsonSerializer.Serialize(messageSend);
+                    _ = _webSocketConnectionManager.SendMessageToClient(jsonPayload, lecturerId.Value);
+                }
+            }
+        }
     }
 }
 

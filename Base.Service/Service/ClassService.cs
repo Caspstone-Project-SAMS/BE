@@ -188,6 +188,7 @@ namespace Base.Service.Service
                 .Where(s => !s.IsDeleted && s.ClassID == classId)
                 .Include(s => s.Slot)
                 .Include(s => s.Room)
+                .Include(s => s.Attendances)
                 .AsNoTracking()
                 .ToListAsync();
 

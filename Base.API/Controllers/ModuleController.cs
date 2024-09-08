@@ -196,9 +196,10 @@ public class ModuleController : ControllerBase
                         }
                     }
 
-                    // If a fingerprint registration session is cancelled, dont delete it
+                    // If a fingerprint registration session is cancelled, dont delete it (maybe just delete it)
                     // We dont record the activity of fingerprint registration
-                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not connected" });
+
 
                     if (websocketEventHandler is not null)
                     {
@@ -952,14 +953,14 @@ public class ModuleController : ControllerBase
 
                             return Ok(new
                             {
-                                Title = "Syncing data successfully"
+                                Title = $"Syncing data from module {activateModule.ModuleID} successfully"
                             });
                         }
                         if (failed)
                         {
                             return BadRequest(new
                             {
-                                Title = "Syncing data failed"
+                                Title = $"Syncing data from module {activateModule.ModuleID} failed"
                             });
                         }
                     }

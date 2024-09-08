@@ -449,7 +449,7 @@ namespace Base.Service.Service
 
             if(semesterStatus is not null)
             {
-                expressions.Add(Expression.Call(Expression.Property(pe, nameof(Semester.SemesterStatus)), containsMethod, Expression.Constant(semesterStatus)));
+                expressions.Add(Expression.Equal(Expression.Property(pe, nameof(Semester.SemesterStatus)), Expression.Constant(semesterStatus)));
             }
 
             if(startDate is not null)

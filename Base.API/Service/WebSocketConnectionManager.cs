@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using Base.Service.Common;
 
 namespace Base.API.Service;
 
@@ -152,7 +153,7 @@ public class WebSocketConnectionManager
     }
 }
 
-public class WebSocketConnectionManager1
+public class WebSocketConnectionManager1 : IWebSocketConnectionManager1
 {
     private IList<ModuleWebSocket> _moduleSockets = new List<ModuleWebSocket>();
     private IList<ClientWebSocket> _clientWebSocket = new List<ClientWebSocket>();

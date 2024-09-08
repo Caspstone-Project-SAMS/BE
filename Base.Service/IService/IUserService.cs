@@ -6,7 +6,7 @@ namespace Base.Service.IService;
 
 public interface IUserService
 {
-    Task<LoginUserManagement> LoginWithGoogle(string accessToken);
+    Task<LoginUserManagement> LoginWithGoogle(string accessToken, string? deviceToken);
     Task<LoginUserManagement> LoginUser(LoginUserVM resource);
     Task<ServiceResponseVM<User>> CreateNewUser(UserVM newEntity);
     Task<User?> GetUserById(Guid id);

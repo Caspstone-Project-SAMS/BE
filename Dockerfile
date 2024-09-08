@@ -13,6 +13,7 @@ WORKDIR /app
 EXPOSE 80
 EXPOSE 443
 EXPOSE 8080
+EXPOSE 8081
 COPY cert.pfx /etc/ssl/certs/
 COPY --from=build-env /app/out .
 ENTRYPOINT ["dotnet", "Base.API.dll"]

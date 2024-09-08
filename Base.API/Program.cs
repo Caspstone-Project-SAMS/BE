@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Mvc;
 using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Base.Repository.Entity;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,17 +38,24 @@ var builder = WebApplication.CreateBuilder(args);
 });*/
 
 
-/*if (builder.Environment.IsProduction())
+if (builder.Environment.IsProduction())
 {
     builder.WebHost.ConfigureKestrel(serverOptions =>
     {
         serverOptions.ListenAnyIP(80);
+        serverOptions.ListenAnyIP(8080);
+        serverOptions.ListenAnyIP(8081);
         serverOptions.ListenAnyIP(443, listenOptions =>
         {
             listenOptions.UseHttps("/etc/ssl/certs/cert.pfx", "khoa");
         });
+        serverOptions.ListenAnyIP(444, listenOptions =>
+        {
+            listenOptions.Protocols = HttpProtocols.Http1;
+            listenOptions.UseHttps("/etc/ssl/certs/cert.pfx", "khoa");
+        });
     });
-}*/
+}
 
 var Configuration = builder.Configuration;
 
@@ -82,6 +90,7 @@ builder.Services.AddScoped<IMailService, MailService>();
 #endregion
 
 builder.Services.AddSingleton<IPushNotificationService, PushNotificationService>();
+builder.Services.AddSingleton<IExpoPushNotification, ExpoPushNotification>();
 builder.Services.AddSingleton<IKeyManager, KeyManager>();
 
 //Add GoogleSheet Service
@@ -346,6 +355,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddSingleton<WebsocketEventManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager1>();
+builder.Services.AddSingleton<IWebSocketConnectionManager1, WebSocketConnectionManager1>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<HangfireService>();
@@ -371,6 +381,30 @@ else
     app.UseSwagger();
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Base.API v1"));
 }
+
+/*if (app.Environment.IsProduction())
+{
+    app.Use(async (context, next) =>
+    {
+        // Check if the request is over WS (not secure)
+        if (
+            ((context.Request.IsHttps == false) &&
+                (context.Connection.LocalPort == 8080 || 
+                context.Connection.LocalPort == 8081)) ||
+            context.Connection.LocalPort == 443
+           ) 
+        {
+            // Allow the request to proceed without redirection
+            await next();
+        }
+        else
+        {
+            // For all other requests, enforce HTTPS redirection
+            context.Response.StatusCode = StatusCodes.Status307TemporaryRedirect;
+            context.Response.Redirect($"https://{context.Request.Host}{context.Request.Path}{context.Request.QueryString}");
+        }
+    });
+}*/
 
 app.UseWebSockets(webSocketOptions);
 
@@ -404,8 +438,6 @@ app.UseStatusCodePages(async context =>
 });
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
-
-app.UseHttpsRedirection();
 
 app.UseHangfireDashboard("/hangfire");
 
