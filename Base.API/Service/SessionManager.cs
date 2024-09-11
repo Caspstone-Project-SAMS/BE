@@ -315,7 +315,7 @@ public class SessionManager
     // Submit session will apply what session did to the database, for fingerprint registration
     // Only submit when session is finshed
     // After submit successfully, the session will be deleted
-    public async Task<ServiceResponseVM> SubmitSession(int sessionId, Guid userId)
+    public async Task<ServiceResponseVM> SubmitSession(int sessionId, Guid userId, FingerprintDescription? fingerprintDescription)
     {
         var session = _sessions.FirstOrDefault(s => s.UserID == userId && s.SessionId == sessionId);
         if (session is null)
@@ -365,7 +365,9 @@ public class SessionManager
                         session.FingerRegistration.FingerprintTemplate1,
                         session.FingerRegistration.Finger1TimeStamp,
                         session.FingerRegistration.FingerprintTemplate2,
-                        session.FingerRegistration.Finger2TimeStamp);
+                        session.FingerRegistration.Finger2TimeStamp,
+                        fingerprintDescription?.fingerprint1Description,
+                        fingerprintDescription?.fingerprint2Description);
                 if (registerFingerResult.IsSuccess)
                 {
                     _sessions.Remove(session);
@@ -404,7 +406,9 @@ public class SessionManager
                         session.FingerUpdate.Finger1TimeStamp,
                         session.FingerUpdate.FingerprintTemplateId2,
                         session.FingerUpdate.FingerprintTemplate2,
-                        session.FingerUpdate.Finger2TimeStamp);
+                        session.FingerUpdate.Finger2TimeStamp,
+                        fingerprintDescription?.fingerprint1Description,
+                        fingerprintDescription?.fingerprint2Description);
                 if (updateFingerResult.IsSuccess)
                 {
                     _sessions.Remove(session);

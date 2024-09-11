@@ -187,14 +187,16 @@ public class HangfireService : IHangfireService
     {
         DateTime vnDateTime = ServerDateTime.GetVnDateTime();
         DateOnly date = DateOnly.FromDateTime(vnDateTime);
-        if (prepareTime.HasValue && prepareTime.Value >= new TimeOnly(19, 0) && prepareTime.Value < new TimeOnly(0, 0))
+
+        // Set up cho nó chuẩn bị data trong ngày luôn (an toàn khi demo)
+        /*if (prepareTime.HasValue && prepareTime.Value >= new TimeOnly(19, 0) && prepareTime.Value < new TimeOnly(0, 0))
         {
             date = DateOnly.FromDateTime(vnDateTime.AddDays(1));
         }
         else
         {
             date = DateOnly.FromDateTime(vnDateTime);
-        }
+        }*/
 
 
         var cronExpression = ConvertToCronExpression(prepareTime);
@@ -366,12 +368,20 @@ public class HangfireService : IHangfireService
 
     public async Task<string> SetupPreparationForModule(DateOnly date, int moduleId)
     {
-        var sessionId = await ConnectModule(moduleId);
+        // Lets check whether if is there any schedule on that day before preparing
+        // If the result of connect module is 0, means no schedule => do not prepare data
+
+        var sessionId = await ConnectModule(moduleId, date);
         if (sessionId is null)
         {
             // Should record failed case
             await RecordFailedModuleActivity(date, moduleId);
             return "Module not connected";
+        }
+
+        if(sessionId <= 0)
+        {
+            return "No schedule data for preparing";
         }
 
         var result = await StartPrepareSchedules(sessionId ?? 0, date);
@@ -408,15 +418,23 @@ public class HangfireService : IHangfireService
         }*/
     }
 
-    public async Task<int?> ConnectModule(int moduleId)
+    public async Task<int?> ConnectModule(int moduleId, DateOnly date)
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
         var moduleService = serviceScope.ServiceProvider.GetRequiredService<IModuleService>();
+        var scheduleService = serviceScope.ServiceProvider.GetRequiredService<IScheduleService>();
 
         var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(moduleId);
 
         var module = await moduleService.GetById(moduleId);
         var userId = module?.Employee?.User?.Id ?? Guid.Empty;
+
+        var getSchedulesResult = await scheduleService.GetAllSchedules(1, 100, 100, userId, null, date, date, Enumerable.Empty<int>());
+        if (getSchedulesResult.IsSuccess && getSchedulesResult.Result?.Count() <= 0)
+        {
+            // No schedule on the day
+            return 0;
+        }
 
         var sessionId = _sessionManager.CreateSession(moduleId, userId, 1);
         if (websocketEventHandler is not null)

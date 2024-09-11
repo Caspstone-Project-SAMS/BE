@@ -355,11 +355,11 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddSingleton<WebsocketEventManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddSingleton<WebSocketConnectionManager1>();
-builder.Services.AddSingleton<IWebSocketConnectionManager1, WebSocketConnectionManager1>();
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddScoped<HangfireService>();
 builder.Services.AddScoped<IHangfireService, HangfireService>();
+builder.Services.AddScoped<IWebsocketNotificationService, WebsocketNotificationService>();
 builder.Services.AddSingleton<HangfireServiceSingleton>();
 
 var app = builder.Build();

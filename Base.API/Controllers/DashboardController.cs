@@ -20,6 +20,12 @@ public class DashboardController : ControllerBase
         return Ok(_dashboardService.GetTotalStudents());
     }
 
+    [HttpGet("total-authenticated-students")]
+    public IActionResult GetTotalAuthenticatedStudents()
+    {
+        return Ok(_dashboardService.GetTotalAuthenticatedStudents());
+    }
+
     [HttpGet("total-lecturers")]
     public IActionResult GetTotalLecturers()
     {
@@ -41,5 +47,23 @@ public class DashboardController : ControllerBase
         [FromQuery] Guid? lecturerId)
     {
         return Ok(_dashboardService.GetTotalClass(classStatus, semesterId, roomId, subjectId, lecturerId));
+    }
+
+    [HttpGet("total-modules")]
+    public IActionResult GetTotalModules()
+    {
+        return Ok(_dashboardService.GetTotalModules());
+    }
+
+    [HttpGet("schedules-statistic")]
+    public IActionResult GetSchedulesStatistic([FromQuery] int semesterId)
+    {
+        return Ok(_dashboardService.GetScheduleStatistic(semesterId));
+    }
+
+    [HttpGet("module-activities-statistic")]
+    public IActionResult GetModuleActivitiesStatistic([FromQuery] int semesterId)
+    {
+        return Ok(_dashboardService.GetModuleActivityStatistic(semesterId));
     }
 }

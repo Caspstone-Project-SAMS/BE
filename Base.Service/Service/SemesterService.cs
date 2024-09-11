@@ -63,13 +63,17 @@ namespace Base.Service.Service
                 .FirstOrDefault()
                 ?.SemesterDurationInDays ?? 90;
             var difference = newEntity.EndDate.ToDateTime(TimeOnly.MinValue) - newEntity.StartDate.ToDateTime(TimeOnly.MinValue);
-            if (difference.Days != semesterDuration)
+            if (difference.Days < semesterDuration - 10 || difference.Days > semesterDuration + 10)
             {
                 return new ServiceResponseVM<Semester>
                 {
                     IsSuccess = false,
                     Title = "Create Semester failed",
-                    Errors = new string[2] { $"The total duration of the semester is {difference.Days} days", $"The total duration of a semester must be {semesterDuration} days" }
+                    Errors = new string[2] 
+                    { 
+                        $"The total duration of the semester is {difference.Days} days", 
+                        $"The total duration of a semester must be in range of {semesterDuration - 10} to {semesterDuration + 10} days" 
+                    }
                 };
             }
             //===========================

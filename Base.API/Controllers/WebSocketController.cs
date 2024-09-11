@@ -281,7 +281,7 @@ public class WebSocketController : ControllerBase
         var userId = _currentUserService.UserId;
         if(userId == "Undefined")
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
             return;
         }
         var currentUser = await _userService.GetUserById(new Guid(userId));
@@ -319,7 +319,7 @@ public class WebSocketController : ControllerBase
         }
         else
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         }
     }
 
@@ -379,7 +379,7 @@ public class WebSocketController : ControllerBase
                     webSocket.Abort();
                     webSocket.Dispose();
 
-                    await Task.Delay(TimeSpan.FromSeconds(4));
+                    //await Task.Delay(TimeSpan.FromSeconds(1));
 
                     // Notify to user that module is lost connected
                     _ = NotifyModuleLostConnected(moduleId);
@@ -387,12 +387,14 @@ public class WebSocketController : ControllerBase
                     // If the connection is lost, lets end/complete all ongoing session after 1 min
                     // For fingerprint registration, lets just end it
                     // For preparation, complete it
-                    _ = HandleSessionAfterConnectionLost(moduleId);
+
+                    // (For safety when demo, not execute it)
+                    //_ = HandleSessionAfterConnectionLost(moduleId);
 
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(6)); // Ping interval
+                await Task.Delay(TimeSpan.FromSeconds(5)); // Ping interval
             }
             catch (Exception ex)
             {

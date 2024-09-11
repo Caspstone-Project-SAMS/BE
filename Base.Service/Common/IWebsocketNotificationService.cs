@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Base.Service.Common;
 
-public interface IWebSocketConnectionManager1
+public interface IWebsocketNotificationService
 {
     Task<bool> SendMessageToClient(string message, Guid userId);
 }

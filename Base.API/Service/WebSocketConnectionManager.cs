@@ -153,7 +153,7 @@ public class WebSocketConnectionManager
     }
 }
 
-public class WebSocketConnectionManager1 : IWebSocketConnectionManager1
+public class WebSocketConnectionManager1
 {
     private IList<ModuleWebSocket> _moduleSockets = new List<ModuleWebSocket>();
     private IList<ClientWebSocket> _clientWebSocket = new List<ClientWebSocket>();

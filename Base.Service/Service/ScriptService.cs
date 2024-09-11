@@ -7,6 +7,7 @@ using Base.Service.ViewModel.RequestVM;
 using Hangfire;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,19 +23,22 @@ internal class ScriptService : IScriptService
     private readonly IHangfireService _hangfireService;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly IExpoPushNotification _expoPushNotification;
-    private readonly IWebSocketConnectionManager1 _webSocketConnectionManager;
+    private readonly IWebsocketNotificationService _webSocketConnectionManager;
+    private ILogger<ScriptService> _logger;
 
     public ScriptService(IUnitOfWork unitOfWork, 
         IHangfireService hangfireService, 
         IServiceScopeFactory serviceScopeFactory, 
-        IExpoPushNotification expoPushNotification, 
-        IWebSocketConnectionManager1 webSocketConnectionManager)
+        IExpoPushNotification expoPushNotification,
+        IWebsocketNotificationService webSocketConnectionManager,
+        ILogger<ScriptService> logger)
     {
         _unitOfWork = unitOfWork;
         _hangfireService = hangfireService;
         _serviceScopeFactory = serviceScopeFactory;
         _expoPushNotification = expoPushNotification;
         _webSocketConnectionManager = webSocketConnectionManager;
+        _logger = logger;
     }
 
     public void ResetServerTime()
@@ -241,6 +245,19 @@ internal class ScriptService : IScriptService
                 if (pastDate.Date != oldDateOnly && pastDate.Date != newDateOnly)
                 {
                     _ = SetSchedulesEnd(pastDate.Date);
+
+                    foreach (var pastSlot in pastDate.PastSlots)
+                    {
+                        if (pastSlot.PastFirst15Min)
+                        {
+                            // Check and remind lecturer to take attendance
+                            _ = RemindLecturerToCheckAttendanceAfterFirst15MinInMobile(pastDate.Date, pastSlot.SlotId);
+                        }
+                        if (pastSlot.PastLast15Min)
+                        {
+                            // Email students for double-check
+                        }
+                    }
                 }
                 else
                 {
@@ -494,19 +511,17 @@ internal class ScriptService : IScriptService
                 if(lecturerId is not null)
                 {
                     // Get device token of lecturer
-                    var getDeviceTokenTask = _unitOfWork.UserRepository
+                    var deviceToken = await _unitOfWork.UserRepository
                         .Get(u => !u.Deleted && u.Id == lecturerId).AsNoTracking()
                         .Select(l => l.DeviceToken).FirstOrDefaultAsync();
 
                     // Get notification type of warning
-                    var getNotificationTypeTask = _unitOfWork.NotificationTypeRepository
+                    var notificationTypeId = await _unitOfWork.NotificationTypeRepository
                         .Get(n => !n.IsDeleted && n.TypeName.ToUpper() == "WARNING").AsNoTracking()
                         .Select(n => n.NotificationTypeID).FirstOrDefaultAsync();
 
-                    await Task.WhenAll(getDeviceTokenTask, getNotificationTypeTask);
 
                     // Create new notification
-                    var notificationTypeId = getNotificationTypeTask.Result;
                     if (notificationTypeId <= 0)
                     {
                         // Create a warning notification type
@@ -529,11 +544,9 @@ internal class ScriptService : IScriptService
                     var createdNotification = await notificationService.Create(newNotification);
 
                     // Notify to mobile
-                    var deviceToken = getDeviceTokenTask.Result;
-                    if(deviceToken is not null)
-                    {
-                        _ = _expoPushNotification.SendMessageToMobile(deviceToken, 
-                            "Don't forget to check attendance", "Remind attendance check", 
+                    //deviceToken = null; //getDeviceTokenTask.Result;
+                    _ = _expoPushNotification.SendMessageToMobile(deviceToken ?? "",
+                            "Don't forget to check attendance", "Remind attendance check",
                             $"The class {schedule.Class?.ClassCode ?? "***"} is on going",
                             new
                             {
@@ -543,7 +556,6 @@ internal class ScriptService : IScriptService
                                     NotificationId = createdNotification.Result!.NotificationID
                                 }
                             });
-                    }
 
                     // Notify to web client
                     var messageSend = new

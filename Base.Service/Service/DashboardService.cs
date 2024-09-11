@@ -2,6 +2,7 @@
 using Base.Repository.Entity;
 using Base.Service.IService;
 using Base.Service.ViewModel.RequestVM;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,6 +26,19 @@ internal class DashboardService : IDashboardService
             .Get(u => !u.Deleted && 
                 u.Role != null && 
                 u.Role.NormalizedName.ToUpper() == "STUDENT")
+            .AsNoTracking()
+            .Count();
+    }
+
+    public int GetTotalAuthenticatedStudents()
+    {
+        return _unitOfWork.UserRepository
+            .Get(u => !u.Deleted &&
+                u.Role != null &&
+                u.Role.NormalizedName.ToUpper() == "STUDENT" &&
+                u.Student != null &&
+                u.Student.FingerprintTemplates.Any(f => !f.IsDeleted))
+            .AsNoTracking()
             .Count();
     }
 
@@ -34,6 +48,7 @@ internal class DashboardService : IDashboardService
             .Get(u => !u.Deleted &&
                 u.Role != null &&
                 u.Role.NormalizedName.ToUpper() == "LECTURER")
+            .AsNoTracking()
             .Count();
     }
 
@@ -41,6 +56,7 @@ internal class DashboardService : IDashboardService
     {
         return _unitOfWork.SubjectRepository
             .Get(s => !s.IsDeleted)
+            .AsNoTracking()
             .Count();
     }
 
@@ -81,6 +97,143 @@ internal class DashboardService : IDashboardService
 
         return _unitOfWork.ClassRepository
             .Get(where)
+            .AsNoTracking()
             .Count();
     }
+
+    public int GetTotalModules()
+    {
+        return _unitOfWork.ModuleRepository
+            .Get(m => !m.IsDeleted)
+            .AsNoTracking()
+            .Count();
+    }
+
+    public SchedulesStatistic GetScheduleStatistic(int semesterId)
+    {
+        var total = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Class != null && s.Class.SemesterID == semesterId)
+            .AsNoTracking()
+            .Count();
+
+        var notYetCount = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Class != null &&
+                s.Class.SemesterID == semesterId && s.Attended == 1)
+            .AsNoTracking()
+            .Count();
+
+        var attendedCount = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Class != null &&
+                s.Class.SemesterID == semesterId && s.Attended == 2)
+            .AsNoTracking()
+            .Count();
+
+        var absenceCount = _unitOfWork.ScheduleRepository
+            .Get(s => !s.IsDeleted && s.Class != null &&
+                s.Class.SemesterID == semesterId && s.Attended == 3)
+            .AsNoTracking()
+            .Count();
+
+        return new SchedulesStatistic
+        {
+            TotalSchedules = total,
+            NotYetCount = notYetCount,
+            AttendedCount = attendedCount,
+            AbsenceCount = absenceCount
+        };
+    }
+
+    public IEnumerable<ModuleActivityReport> GetModuleActivityReport(int semesterId)
+    {
+        var existedSemester = _unitOfWork.SemesterRepository
+            .Get(s => !s.IsDeleted && s.SemesterID == semesterId)
+            .AsNoTracking()
+            .FirstOrDefault();
+        if(existedSemester is null)
+        {
+            return Enumerable.Empty<ModuleActivityReport>();
+        }
+
+        var startDate = existedSemester.StartDate;
+        var endDate = existedSemester.EndDate;
+        var dateBuffer = startDate;
+
+        var statistics = new List<ModuleActivityReport>();
+        while (true)
+        {
+            if(dateBuffer > endDate)
+            {
+                break;
+            }
+
+            var dateString = dateBuffer.ToString("yyyy-MM-dd");
+            var activityCount = _unitOfWork.ModuleActivityRepository
+                .Get(m => m.StartTime.ToString("yyyy-MM-dd") == dateString)
+                .AsNoTracking()
+                .Count();
+            statistics.Add(new ModuleActivityReport
+            {
+                Date = dateBuffer,
+                TotalActivities = activityCount
+            });
+
+            dateBuffer.AddDays(1);
+        }
+
+        return statistics;
+    }
+
+    public ModuleActivityStatistic GetModuleActivityStatistic(int semesterId)
+    {
+        var existedSemester = _unitOfWork.SemesterRepository
+            .Get(s => !s.IsDeleted && s.SemesterID == semesterId)
+            .AsNoTracking()
+            .FirstOrDefault();
+        if (existedSemester is null)
+        {
+            return new ModuleActivityStatistic
+            {
+                SuccessCount = 0,
+                FailedCount = 0
+            };
+        }
+        var startDateTime = existedSemester.StartDate.ToDateTime(new TimeOnly(0, 0, 0));
+        var endDateTime = existedSemester.EndDate.ToDateTime(new TimeOnly(23, 59, 59));
+
+        var successCount = _unitOfWork.ModuleActivityRepository
+            .Get(m => startDateTime <= m.StartTime && m.StartTime <= endDateTime && m.IsSuccess)
+            .AsNoTracking()
+            .Count();
+
+        var failedCount = _unitOfWork.ModuleActivityRepository
+            .Get(m => startDateTime <= m.StartTime && m.StartTime <= endDateTime && !m.IsSuccess)
+            .AsNoTracking()
+            .Count();
+
+        return new ModuleActivityStatistic
+        {
+            SuccessCount = successCount,
+            FailedCount = failedCount
+        };
+    }
+}
+
+public class SchedulesStatistic
+{
+    public int TotalSchedules { get; set; }
+    public int NotYetCount { get; set; }
+    public int AttendedCount { get; set; }
+    public int AbsenceCount { get; set; }
+}
+
+public class ModuleActivityReport
+{
+    public DateOnly Date { get; set; }
+    public int TotalActivities { get; set; }
+}
+
+public class ModuleActivityStatistic
+{
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
 }

@@ -100,7 +100,7 @@ internal class FingerprintService : IFingerprintService
         }
     }
 
-    public async Task<ServiceResponseVM> RegisterFingerprintTemplate(Guid studentId, string? fingerprintTemplate1, DateTime? fingerprint1Timestamp, string? fingerprintTemplate2, DateTime? fingerprint2Timestamp)
+    public async Task<ServiceResponseVM> RegisterFingerprintTemplate(Guid studentId, string? fingerprintTemplate1, DateTime? fingerprint1Timestamp, string? fingerprintTemplate2, DateTime? fingerprint2Timestamp, string? fingerDescription1, string? fingerDescription2)
     {
         var includes = new Expression<Func<Student, object?>>[]
         {
@@ -136,6 +136,7 @@ internal class FingerprintService : IFingerprintService
                 Status = 1,
                 FingerprintTemplateData = fingerprintTemplate1,
                 CreatedAt = fingerprint1Timestamp ?? ServerDateTime.GetVnDateTime(),
+                Description = fingerDescription1 ?? ""
             };
             fingers.Add(newFinger1);
         }
@@ -146,6 +147,7 @@ internal class FingerprintService : IFingerprintService
                 Status = 1,
                 FingerprintTemplateData = fingerprintTemplate2,
                 CreatedAt = fingerprint2Timestamp ?? ServerDateTime.GetVnDateTime(),
+                Description = fingerDescription2 ?? ""
             };
             fingers.Add(newFinger2);
         }
@@ -199,7 +201,9 @@ internal class FingerprintService : IFingerprintService
         DateTime? fingerprint1Timestamp,
         int? FingerprintTemplateId2,
         string? fingerprintTemplate2, 
-        DateTime? fingerprint2Timestamp)
+        DateTime? fingerprint2Timestamp,
+        string? fingerDescription1, 
+        string? fingerDescription2)
     {
         var includes = new Expression<Func<Student, object?>>[]
         {
@@ -244,6 +248,7 @@ internal class FingerprintService : IFingerprintService
             }
             finger1.FingerprintTemplateData = fingerprintTemplate1;
             finger1.CreatedAt = fingerprint1Timestamp ?? ServerDateTime.GetVnDateTime();
+            finger1.Description = fingerDescription1 ?? "";
         }
 
         if(FingerprintTemplateId2 is not null)
@@ -263,6 +268,7 @@ internal class FingerprintService : IFingerprintService
             }
             finger2.FingerprintTemplateData = fingerprintTemplate2;
             finger2.CreatedAt = fingerprint2Timestamp ?? ServerDateTime.GetVnDateTime();
+            finger2.Description = fingerDescription2 ?? "";
         }
 
         try

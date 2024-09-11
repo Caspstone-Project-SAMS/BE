@@ -43,7 +43,7 @@ public class SessionController : ControllerBase
 
     [Authorize(Policy = "Admin Lecturer")]
     [HttpPost]
-    public async Task<IActionResult> SubmitSession(int sessionId)
+    public async Task<IActionResult> SubmitSession(int sessionId, [FromBody] FingerprintDescription? fingerprintDescription)
     {
         Guid userId = new Guid();
         var checkUserId =  Guid.TryParse(_currentUserService.UserId, out userId);
@@ -55,7 +55,7 @@ public class SessionController : ControllerBase
                 Errors = new string[1] { "Invalid user information" }
             });
         }
-        var result = await _sessionManager.SubmitSession(sessionId, userId);
+        var result = await _sessionManager.SubmitSession(sessionId, userId, fingerprintDescription);
         if (result.IsSuccess)
         {
             return Ok(result);
@@ -96,4 +96,10 @@ public class SchedulePreparationState
     public int SessionId { get; set; }
     public int UploadedFingerprints { get; set; }
     public int ScheduleId { get; set; }
+}
+
+public class FingerprintDescription
+{
+    public string? fingerprint1Description { get; set; }
+    public string? fingerprint2Description { get; set; }
 }
