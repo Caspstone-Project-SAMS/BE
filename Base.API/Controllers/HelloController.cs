@@ -232,10 +232,10 @@ public class HelloController : ControllerBase
         return Ok("Module check: " + _webSocketConnectionManager1.CheckModuleSocket(moduleId));
     }
 
-    [HttpGet("studentClass")]
-    public async Task<IActionResult> Test()
+    [HttpPost("studentClass")]
+    public async Task<IActionResult> Test([FromQuery] int slotId, [FromBody] DateOnly date)
     {
-        await _hangFireService.SendAbsenceEmails();
+         _hangFireService.SendEmailReCheckAttendance(slotId,date);
 
         return Ok();
     }
