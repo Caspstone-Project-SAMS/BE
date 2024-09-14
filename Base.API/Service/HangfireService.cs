@@ -18,9 +18,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using Base.Service.ViewModel.RequestVM;
 using Base.Service.Service;
-
-
-
 namespace Base.API.Service;
 
 public class HangfireService : IHangfireService
@@ -55,7 +52,7 @@ public class HangfireService : IHangfireService
     public void SetRecordIrreversible(int recordId, DateTime endTimeStamp)
     {
         var currentDateTime = ServerDateTime.GetVnDateTime();
-        if(endTimeStamp > currentDateTime)
+        if (endTimeStamp > currentDateTime)
         {
             var difference = endTimeStamp - currentDateTime;
             var delay = difference.TotalMinutes;
@@ -171,7 +168,7 @@ public class HangfireService : IHangfireService
                     </html>"
             };
             await mailService.SendMailAsync(emailMessage);
-            var update = _unitOfWork.StudentClassRepository.Get("StudentClass",s => s.StudentID.Equals(entity.ID) && s.ClassID == entity.ClassID && !s.IsDeleted).FirstOrDefault();
+            var update = _unitOfWork.StudentClassRepository.Get("StudentClass", s => s.StudentID.Equals(entity.ID) && s.ClassID == entity.ClassID && !s.IsDeleted).FirstOrDefault();
 
             if (update is null)
             {
@@ -180,7 +177,7 @@ public class HangfireService : IHangfireService
             update.IsSendEmail = true;
             _unitOfWork.StudentClassRepository.Update(update);
         }
-       await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync();
     }
 
     public void ConfigureRecurringJobsAsync(string jobName, TimeOnly? prepareTime, int moduleId)
@@ -230,9 +227,6 @@ public class HangfireService : IHangfireService
     }
 
 
-
-
-
     public async Task SetRecordReversibleStatus(bool status, int recordId)
     {
         using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
@@ -242,7 +236,7 @@ public class HangfireService : IHangfireService
             .Get(r => r.ImportSchedulesRecordID == recordId)
             .FirstOrDefault();
 
-        if(existedRecord is not null)
+        if (existedRecord is not null)
         {
             existedRecord.IsReversible = status;
             await _unitOfWork.SaveChangesAsync();
@@ -271,7 +265,7 @@ public class HangfireService : IHangfireService
             .Get(n => !n.IsDeleted && n.TimeStamp < timeline)
             .ToList();
 
-        if(outdatedNotification.Count() <= 0)
+        if (outdatedNotification.Count() <= 0)
         {
             return;
         }
@@ -302,7 +296,7 @@ public class HangfireService : IHangfireService
 
         if (schedules.Count() <= 0) return;
 
-        foreach(var schedule in schedules)
+        foreach (var schedule in schedules)
         {
             schedule.Attended = 3;
         }
@@ -324,12 +318,12 @@ public class HangfireService : IHangfireService
         {
             currentDate = DateOnly.FromDateTime(ServerDateTime.GetVnDateTime());
         }
-        
+
         var schedules = _unitOfWork.ScheduleRepository
             .Get(s => !s.IsDeleted && s.Date == currentDate && s.SlotID == slotId)
             .ToList();
 
-        foreach(var schedule in schedules)
+        foreach (var schedule in schedules)
         {
             schedule.ScheduleStatus = 2;
         }
@@ -467,7 +461,7 @@ public class HangfireService : IHangfireService
         var _studentService = serviceScope.ServiceProvider.GetRequiredService<IStudentService>();
 
         var session = _sessionManager.GetSessionById(sessionId);
-        if(session is null) return false;
+        if (session is null) return false;
 
         var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, session.UserID, null, preparedDate, preparedDate, Enumerable.Empty<int>());
         if (!getSchedulesResult.IsSuccess) return false;
@@ -569,7 +563,7 @@ public class HangfireService : IHangfireService
 
         // Create activity
         var preparedSchedules = new List<PreparedScheduleVM>();
-        foreach ( var schedule in schedules)
+        foreach (var schedule in schedules)
         {
             var totalStudents = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, schedule.ClassID);
             var preparedScheulde = new PreparedScheduleVM
@@ -703,7 +697,73 @@ public class HangfireService : IHangfireService
             websocketEventState.PreparedSchedules = true;
         }
     }
+    public async void SendEmailReCheckAttendance(int slotId, DateOnly date)
+    {
+        using IServiceScope serviceScope = _serviceScopeFactory.CreateScope();
+        var mailService = serviceScope.ServiceProvider.GetRequiredService<IMailService>();
+        var _unitOfWork = serviceScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        var schedules = await _unitOfWork.ScheduleRepository
+        .Get(s => s.SlotID == slotId && s.Date == date)
+        .Include(s => s.Slot)
+        .Include(s => s.Attendances)
+        .ThenInclude(sc => sc!.Student)
+        .Include(s => s.Class)
+        .AsNoTracking()
+        .ToListAsync();
+        ParallelOptions parallelOptions = new ParallelOptions
+        {
+            MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.25) * 2.0))
+        };
+
+        Parallel.ForEach(schedules, parallelOptions, (schedule, state) =>
+       {
+           if (schedule.Attendances.Count() >= 0)
+           {
+               foreach (var student in schedule.Attendances.Select(a => a.Student))
+               {
+                   if(student != null)
+                   {
+                       var studentEmail = student!.Email;
+                       var studentName = student.DisplayName;
+                       var className = schedule!.Class!.ClassCode;
+                       var status = schedule.Attendances.FirstOrDefault(a => a.StudentID == student.Id)?.AttendanceStatus ?? 0;
+                       var attendanceStatus = "Not Yet";
+                       if (status == 1)
+                       {
+                           attendanceStatus = "Attended";
+                       }
+                       else if (status == 2)
+                       {
+                           attendanceStatus = "Absence";
+                       }
+                       var emailMessage = new Message
+                       {
+                           To = student.Email,
+                           Subject = $"Recheck Attendance on SAMS Sytems",
+                           Content = $@"<html>
+                        <body>
+                        <p>Dear {studentName},</p>
+                        <p>Your attendance status for the following class is as follows:</p>
+                        <ul>
+                            <li><strong>Class:</strong> {className}</li>
+                            <li><strong>Slot:</strong> {schedule!.Slot!.SlotNumber}</li>
+                            <li><strong>Date:</strong> {schedule.Date.ToString("dd/MM/yyyy")}</li>
+                            <li><strong>Attendance Status:</strong> {attendanceStatus}</li>
+                        </ul>
+                        <p>If you believe this is an error, please contact your instructor or recheck your attendance record.</p>
+                        <p>Best regards,<br>SAMS Team</p>
+                        </body>
+                        </html>"
+                       };
+                       _ = mailService.SendMailAsync(emailMessage);
+                   }
+               }
+           }
+       });
+    }
 }
+
 
 public class WebsocketEventState
 {
