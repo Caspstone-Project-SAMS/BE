@@ -451,6 +451,7 @@ public class WebSocketController : ControllerBase
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+        _ = _websocketConnectionManager1.SendMessageToRootClient(jsonPayload, module.Employee.User.Id);
     }
 
     private async Task NotifyModuleConnected(int moduleId)
@@ -460,8 +461,7 @@ public class WebSocketController : ControllerBase
 
         var module = await moduleService.GetById(moduleId);
         if (module is null || module.Employee?.User is null) return;
-        var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
-        if (clientSocket is null) return;
+
         var messageSend = new WebsocketMessage
         {
             Event = "ModuleConnected",
@@ -472,11 +472,7 @@ public class WebSocketController : ControllerBase
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
 
-        await Task.Delay(TimeSpan.FromSeconds(5));
-        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
-
-        // Notify to update configurations
-        await Task.Delay(TimeSpan.FromSeconds(5));
+        // configuration
         var message = new WebsocketMessage
         {
             Event = "ApplyConfigurations",
@@ -491,6 +487,12 @@ public class WebSocketController : ControllerBase
             }
         };
         var jsonPayloadMode = JsonSerializer.Serialize(message);
+
+        await Task.Delay(TimeSpan.FromSeconds(4));
+        _ = _websocketConnectionManager1.SendMessageToRootClient(jsonPayload, module.Employee.User.Id);
+        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+
+        // Notify to update configurations
         _ = _websocketConnectionManager1.SendMesageToModule(jsonPayloadMode, module.ModuleID);
     }
 

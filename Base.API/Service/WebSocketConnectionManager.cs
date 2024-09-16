@@ -5,6 +5,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using Base.Service.Common;
+using Microsoft.Extensions.Logging;
 
 namespace Base.API.Service;
 
@@ -157,6 +158,7 @@ public class WebSocketConnectionManager1
 {
     private IList<ModuleWebSocket> _moduleSockets = new List<ModuleWebSocket>();
     private IList<ClientWebSocket> _clientWebSocket = new List<ClientWebSocket>();
+    //private ILogger<WebSocketConnectionManager1> logger;
 
     public bool CheckModuleSocket(int moduleId)
     {
@@ -177,9 +179,9 @@ public class WebSocketConnectionManager1
         return _moduleSockets.FirstOrDefault(m => m.ModuleID == moduleId)?.Socket;
     }
 
-    public WebSocket? GetClientSocket(Guid userId)
+    public ClientWebSocket? GetClientSocket(Guid userId)
     {
-        return _clientWebSocket.FirstOrDefault(c => c.UserID == userId)?.Socket;
+        return _clientWebSocket.FirstOrDefault(c => c.UserID == userId);
     }
 
     public void AddModuleSocket(WebSocket socket, int moduleId)

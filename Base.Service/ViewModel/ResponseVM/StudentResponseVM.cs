@@ -25,6 +25,7 @@ public class FingerprintTemplate_StudentResponseVM
 {
     public int FingerprintTemplateID { get; set; }
     public int? Status { get; set; }
+    public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
