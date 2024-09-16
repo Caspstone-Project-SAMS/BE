@@ -91,6 +91,8 @@ internal class ImportSchedulesRecordService : IImportSchedulesRecordService
                 i => i.ImportedSchedules
             })
             .Include(nameof(ImportSchedulesRecord.ImportedSchedules) + "." + nameof(Schedule.Attendances))
+            .Include(nameof(ImportSchedulesRecord.ImportedSchedules) + "." + nameof(Schedule.PreparedSchedules))
+            .Include(nameof(ImportSchedulesRecord.ImportedSchedules) + "." + nameof(Schedule.SubstituteTeaching))
             .FirstOrDefault();
 
         if(existedRecord is null)
@@ -133,12 +135,15 @@ internal class ImportSchedulesRecordService : IImportSchedulesRecordService
                 Errors = new string[1] { "Record does not have any schedule" }
             };
         }
-
+        // Chưa check notification
         // Lets revert record
         foreach(var schedule in existedRecord.ImportedSchedules)
-        {
-            _unitOfWork.AttendanceRepository.RemoveRange(schedule.Attendances);
-            _unitOfWork.ScheduleRepository.Remove(schedule);
+        { 
+            if(schedule.SubstituteTeaching is null && schedule.PreparedSchedules.Count() <= 0)
+            {
+                _unitOfWork.AttendanceRepository.RemoveRange(schedule.Attendances);
+                _unitOfWork.ScheduleRepository.Remove(schedule);
+            }
         }
 
         existedRecord.ImportReverted = true;

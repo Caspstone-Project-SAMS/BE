@@ -13,6 +13,7 @@
     <PackageReference Include="ClosedXML" Version="0.102.2" />
     <PackageReference Include="Duende.IdentityServer" Version="6.3.10" />
     <PackageReference Include="EPPlus" Version="7.2.2" />
+    <PackageReference Include="Expo.Server.SDK" Version="1.0.2" />
     <PackageReference Include="Google.Apis" Version="1.68.0" />
     <PackageReference Include="Google.Apis.Sheets.v4" Version="1.68.0.3407" />
     <PackageReference Include="Google.Cloud.Vision.V1" Version="3.7.0" />

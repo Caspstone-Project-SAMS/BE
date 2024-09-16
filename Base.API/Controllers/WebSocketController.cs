@@ -281,7 +281,7 @@ public class WebSocketController : ControllerBase
         var userId = _currentUserService.UserId;
         if(userId == "Undefined")
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
             return;
         }
         var currentUser = await _userService.GetUserById(new Guid(userId));
@@ -319,7 +319,7 @@ public class WebSocketController : ControllerBase
         }
         else
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
+            HttpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         }
     }
 
@@ -379,7 +379,7 @@ public class WebSocketController : ControllerBase
                     webSocket.Abort();
                     webSocket.Dispose();
 
-                    await Task.Delay(TimeSpan.FromSeconds(4));
+                    //await Task.Delay(TimeSpan.FromSeconds(1));
 
                     // Notify to user that module is lost connected
                     _ = NotifyModuleLostConnected(moduleId);
@@ -387,12 +387,14 @@ public class WebSocketController : ControllerBase
                     // If the connection is lost, lets end/complete all ongoing session after 1 min
                     // For fingerprint registration, lets just end it
                     // For preparation, complete it
-                    _ = HandleSessionAfterConnectionLost(moduleId);
+
+                    // (For safety when demo, not execute it)
+                    //_ = HandleSessionAfterConnectionLost(moduleId);
 
                     break;
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(6)); // Ping interval
+                await Task.Delay(TimeSpan.FromSeconds(5)); // Ping interval
             }
             catch (Exception ex)
             {
@@ -449,6 +451,7 @@ public class WebSocketController : ControllerBase
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
         _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+        _ = _websocketConnectionManager1.SendMessageToRootClient(jsonPayload, module.Employee.User.Id);
     }
 
     private async Task NotifyModuleConnected(int moduleId)
@@ -458,8 +461,7 @@ public class WebSocketController : ControllerBase
 
         var module = await moduleService.GetById(moduleId);
         if (module is null || module.Employee?.User is null) return;
-        var clientSocket = _websocketConnectionManager1.GetClientSocket(module.Employee.User.Id);
-        if (clientSocket is null) return;
+
         var messageSend = new WebsocketMessage
         {
             Event = "ModuleConnected",
@@ -470,11 +472,7 @@ public class WebSocketController : ControllerBase
         };
         var jsonPayload = JsonSerializer.Serialize(messageSend);
 
-        await Task.Delay(TimeSpan.FromSeconds(10));
-        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
-
-        // Notify to update configurations
-        await Task.Delay(TimeSpan.FromSeconds(2));
+        // configuration
         var message = new WebsocketMessage
         {
             Event = "ApplyConfigurations",
@@ -489,6 +487,12 @@ public class WebSocketController : ControllerBase
             }
         };
         var jsonPayloadMode = JsonSerializer.Serialize(message);
+
+        await Task.Delay(TimeSpan.FromSeconds(4));
+        _ = _websocketConnectionManager1.SendMessageToRootClient(jsonPayload, module.Employee.User.Id);
+        _ = _websocketConnectionManager1.SendMessageToClient(jsonPayload, module.Employee.User.Id);
+
+        // Notify to update configurations
         _ = _websocketConnectionManager1.SendMesageToModule(jsonPayloadMode, module.ModuleID);
     }
 

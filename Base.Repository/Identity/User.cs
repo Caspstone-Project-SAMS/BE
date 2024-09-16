@@ -22,6 +22,7 @@ public class User : IdentityUser<Guid>, ICloneable
     public string? LastName { get; set; }
     public string CreatedBy { get; set; } = "Undefined";
     public DateTime CreatedAt { get; set; }
+    public string? DeviceToken { get; set; }
 
 
     // =======================Role=====================//

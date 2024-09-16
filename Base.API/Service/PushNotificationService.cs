@@ -20,7 +20,7 @@ public class PushNotificationService : IPushNotificationService
         {
             FirebaseApp.Create(new AppOptions()
             {
-                Credential = GoogleCredential.FromFile("keys/mobileServiceAccountKey.json"),
+                Credential = GoogleCredential.FromFile("keys/sams-notifications-44a797299532.json"),
             }, "pushNotificationInstance");
         }
         FirebaseApp app = FirebaseApp.GetInstance("pushNotificationInstance");
@@ -43,6 +43,15 @@ public class PushNotificationService : IPushNotificationService
             };
 
             var response = await _firebaseMessaging.SendMulticastAsync(message);
+            var test = await _firebaseMessaging.SendAsync(new Message
+            {
+                Token = tokens.FirstOrDefault(),
+                Notification = new Notification
+                {
+                    Title = title,
+                    Body = content
+                }
+            });
 
             Console.WriteLine("Send notification: " + response.SuccessCount + "/" + tokens.Count() + " success");
             logger.LogInformation("Send notification: " + response.SuccessCount + "/" + tokens.Count() + " success");

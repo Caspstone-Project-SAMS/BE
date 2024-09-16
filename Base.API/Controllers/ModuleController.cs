@@ -196,9 +196,10 @@ public class ModuleController : ControllerBase
                         }
                     }
 
-                    // If a fingerprint registration session is cancelled, dont delete it
+                    // If a fingerprint registration session is cancelled, dont delete it (maybe just delete it)
                     // We dont record the activity of fingerprint registration
-                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not connected" });
+
 
                     if (websocketEventHandler is not null)
                     {
@@ -481,7 +482,131 @@ public class ModuleController : ControllerBase
 
                 // Mode 5 - prepare attendances for a day
                 case 5:
-                    break;
+                    if(activateModule.PrepareSchedules is null || activateModule.SessionId is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Invalid input" }
+                        });
+                    }
+
+                    var existedSessionMode5 = _sessionManager.GetSessionById(activateModule.SessionId ?? 0);
+                    if(existedSessionMode5 is null)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Session is not started" }
+                        });
+                    }
+
+                    var getSchedulesResult = await _scheduleService.GetAllSchedules(1, 100, 100, existedSessionMode5.UserID, null, activateModule.PrepareSchedules.preparedDate, activateModule.PrepareSchedules.preparedDate, Enumerable.Empty<int>());
+                    if (!getSchedulesResult.IsSuccess)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Prepare data failed",
+                            Errors = new string[1] { "Loading schedules failed" }
+                        });
+                    }
+
+                    var schedules = getSchedulesResult.Result;
+                    if (schedules is null || schedules.Count() == 0)
+                    {
+                        return Ok(new
+                        {
+                            Title = "No schedules data to prepare",
+                        });
+                    }
+
+                    if (schedules.Count() > 4)
+                    {
+                        schedules = schedules.Take(4);
+                    }
+
+                    // Count total work amount
+                    int totalWorkCountMode5 = 0;
+                    int totalFingersMode5 = 0;
+                    var classeIds = schedules.Select(s => s.ClassID);
+                    foreach (var item in classeIds)
+                    {
+                        var totalStudentsMode5 = await _studentService.GetStudentsByClassIdv2(1, 100, 50, null, item);
+                        if (totalStudentsMode5 is not null)
+                        {
+                            totalWorkCountMode5 = totalWorkCountMode5 + totalStudentsMode5.Count();
+                            totalFingersMode5 = totalFingersMode5 + totalStudentsMode5.SelectMany(s => s.FingerprintTemplates).Where(f => f.Status == 1).Count();
+                        }
+                    }
+
+                    var sessionResultMode5 = await _sessionManager.CreatePrepareSchedulesSession(activateModule.SessionId ?? 0,
+                        activateModule.PrepareSchedules.preparedDate, schedules, totalWorkCountMode5, totalFingersMode5);
+
+                    if (!sessionResultMode5)
+                    {
+                        return BadRequest(new
+                        {
+                            Title = "Activate module failed",
+                            Errors = new string[1] { "Session is not started" }
+                        });
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.PrepareSchedules += OnModuleMode5EventHandler;
+                    }
+                    websocketEventState.SessionId = activateModule.SessionId ?? 0;
+
+
+                    var messageSendMode5 = new WebsocketMessage
+                    {
+                        Event = "PrepareSchedules",
+                        Data = new
+                        {
+                            SessionID = activateModule.SessionId,
+                            PrepareDate = activateModule.PrepareSchedules.preparedDate.ToString("yyyy-MM-dd")
+                        },
+                    };
+                    var jsonPayloadMode5 = JsonSerializer.Serialize(messageSendMode5);
+
+                    var resultMode5 = await _websocketConnectionManager.SendMesageToModule(jsonPayloadMode5, activateModule.ModuleID);
+                    if (resultMode5)
+                    {
+                        cts.CancelAfter(TimeSpan.FromSeconds(10));
+                        if (WaitForModuleMode5(cts.Token))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.PrepareSchedules -= OnModuleMode5EventHandler;
+                            }
+
+                            // Notify the action is started
+                            if (existedSessionMode5 is not null)
+                            {
+                                _ = _sessionManager.NotifyPreparationProgress(existedSessionMode5.SessionId, 0, existedSessionMode5.UserID);
+                            }
+
+                            return Ok(new
+                            {
+                                Title = "Activate module successfully",
+                            });
+                        }
+                    }
+
+                    // Session got error -> lets complete it, record its activity and delete it.
+                    _sessionManager.SessionError(activateModule.SessionId ?? 0, new List<string>() { "Module is not being connected" });
+                    _ = _sessionManager.CompleteSession(activateModule.SessionId ?? 0, false);
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.PrepareSchedules -= OnModuleMode5EventHandler;
+                    }
+
+                    return BadRequest(new
+                    {
+                        Title = "Activate module failed",
+                        Errors = new string[1] { "Module is not being connected" }
+                    });
 
 
                 // Mode 6 - connect module
@@ -952,14 +1077,14 @@ public class ModuleController : ControllerBase
 
                             return Ok(new
                             {
-                                Title = "Syncing data successfully"
+                                Title = $"Syncing data from module {activateModule.ModuleID} successfully"
                             });
                         }
                         if (failed)
                         {
                             return BadRequest(new
                             {
-                                Title = "Syncing data failed"
+                                Title = $"Syncing data from module {activateModule.ModuleID} failed"
                             });
                         }
                     }
@@ -1194,6 +1319,24 @@ public class ModuleController : ControllerBase
         return false;
     }
 
+    private bool WaitForModuleMode5(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.ModuleMode5)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
     private bool WaitForModuleMode8(CancellationToken cancellationToken)
     {
         try
@@ -1361,6 +1504,14 @@ public class ModuleController : ControllerBase
         }
     }
 
+    private void OnModuleMode5EventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event == ("Prepare schedules " + websocketEventState.SessionId))
+        {
+            websocketEventState.ModuleMode5 = true;
+        }
+    }
+
     private void OnModuleMode8EventHandler(object? sender, WebsocketEventArgs e)
     {
         if (e.Event == ("Update fingerprint " + websocketEventState.SessionId))
@@ -1450,6 +1601,7 @@ public class WebsocketEventState
     public bool ModuleMode2 { get; set; } = false;
     public bool ModuleMode3 { get; set; } = false;
     public bool ModuleMode4 { get; set; } = false;
+    public bool ModuleMode5 { get; set; } = false;
     public bool ModuleMode8 { get; set; } = false;
     public bool ModuleMode9 { get; set; } = false;
     public int SessionIdMode9 { get; set; } = 0;
@@ -1472,6 +1624,7 @@ public class ActivateModule
     public RegisterMode? RegisterMode { get; set; }
     public UpdateMode? UpdateMode { get; set; }
     public PrepareAttendance? PrepareAttendance { get; set; }
+    public PrepareSchedules? PrepareSchedules { get; set; }
     public StopAttendance? StopAttendance { get; set; }
     public StartAttendance? StartAttendance { get; set; }
     public CheckSchedule? CheckSchedule { get; set; }
@@ -1499,6 +1652,11 @@ public class CancelRegisterMode
 public class PrepareAttendance
 {
     public int ScheduleID { get; set; }
+}
+
+public class PrepareSchedules
+{
+    public DateOnly preparedDate { get; set; }
 }
 
 public class StopAttendance

@@ -24,6 +24,8 @@ public class HelloController : ControllerBase
     private readonly IStudentService _studentService;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly HangfireService _hangFireService;
+    private readonly IPushNotificationService _pushNotificationService;
+    private readonly IExpoPushNotification _expoPushNotification;
 
     public HelloController(WebSocketConnectionManager webSocketConnectionManager, 
         WebSocketConnectionManager1 webSocketConnectionManager1,
@@ -31,7 +33,9 @@ public class HelloController : ControllerBase
         IUnitOfWork unitOfWork,
         IStudentService studentService,
         IServiceScopeFactory serviceScopeFactory,
-        HangfireService hangFireService)
+        HangfireService hangFireService,
+        IPushNotificationService pushNotificationService,
+        IExpoPushNotification expoPushNotification)
     {
         _webSocketConnectionManager = webSocketConnectionManager;
         _webSocketConnectionManager1 = webSocketConnectionManager1;
@@ -40,6 +44,8 @@ public class HelloController : ControllerBase
         _studentService = studentService;
         _serviceScopeFactory = serviceScopeFactory;
         _hangFireService = hangFireService;
+        _pushNotificationService = pushNotificationService;
+        _expoPushNotification = expoPushNotification;
     }
 
     private static IList<FingerprintTemplate> fingerprintTemplates = new List<FingerprintTemplate>();
@@ -244,6 +250,22 @@ public class HelloController : ControllerBase
     public async Task<IActionResult> TestPrepareSchedules([FromBody] PrepareASchedules resource)
     {
         await _hangFireService.SetupPreparationForModule(resource.date, resource.moduleId);
+        return Ok();
+    }
+
+
+    [HttpPost("push-notification")]
+    public async Task<IActionResult> TestPushNotification([FromQuery] string title, [FromQuery] string body, [FromQuery] string deviceToken)
+    {
+        await _pushNotificationService.SendNotifications(title, body, new List<string>() { deviceToken });
+        return Ok();
+    }
+
+
+    [HttpPost("expo-push-notification")]
+    public async Task<IActionResult> ExpoPushNotification([FromQuery] string expoToken, [FromQuery] string title, [FromQuery] string subTitle, [FromQuery] string body)
+    {
+        await _expoPushNotification.Test(expoToken, title, subTitle, body);
         return Ok();
     }
 

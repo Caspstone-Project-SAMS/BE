@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Hangfire.Common;
+using Duende.IdentityServer.Models;
 
 namespace Base.Service.Service;
 
@@ -388,6 +389,17 @@ public class UserService : IUserService
             {
                 existedUser.Role = role;
             }
+            // Setup device token if it exists
+            if(resource.DeviceToken is not null)
+            {
+                var loginUser = _unitOfWork.UserRepository.Get(u => !u.Deleted && u.Id == existedUser.Id).FirstOrDefault();
+                if(loginUser is not null)
+                {
+                    loginUser.DeviceToken = resource.DeviceToken;
+                    await _unitOfWork.SaveChangesAsync();
+                    _unitOfWork.Dispose();
+                }
+            }
             return new LoginUserManagement
             {
                 Title = "Login Successfully",
@@ -399,7 +411,7 @@ public class UserService : IUserService
 
     }
 
-    public async Task<LoginUserManagement> LoginWithGoogle(string accessToken)
+    public async Task<LoginUserManagement> LoginWithGoogle(string accessToken, string? deviceToken)
     {
         /*var handler = new JwtSecurityTokenHandler();
         var jwtSecurityToken = handler.ReadJwtToken(idToken);
@@ -482,6 +494,19 @@ public class UserService : IUserService
         {
             existedUser.Role = role;
         }
+
+        // Setup device token if it exists
+        if (deviceToken is not null)
+        {
+            var loginUser = _unitOfWork.UserRepository.Get(u => !u.Deleted && u.Id == existedUser.Id).FirstOrDefault();
+            if (loginUser is not null)
+            {
+                loginUser.DeviceToken = deviceToken;
+                await _unitOfWork.SaveChangesAsync();
+                _unitOfWork.Dispose();
+            }
+        }
+
         return new LoginUserManagement
         {
             IsSuccess = true,
