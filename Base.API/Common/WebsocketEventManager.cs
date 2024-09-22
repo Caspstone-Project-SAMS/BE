@@ -40,6 +40,7 @@ public class WebsocketEventHandler
     public event EventHandler<WebsocketEventArgs>? CheckUploadedScheduleEvent;
     public event EventHandler<WebsocketEventArgs>? SyncingAttendanceData;
     public event EventHandler<WebsocketEventArgs>? ApplyConfigurationsEvent;
+    public event EventHandler<WebsocketEventArgs>? CheckInUseEvent;
 
     public void OnConnectModuleEvent(string receivedEvent)
     {
@@ -132,6 +133,14 @@ public class WebsocketEventHandler
     public void OnApplyConfigurationEvent(string receivedEvent)
     {
         ApplyConfigurationsEvent?.Invoke(this, new WebsocketEventArgs
+        {
+            Event = receivedEvent
+        });
+    }
+
+    public void OnCheckInUseEvent(string receivedEvent)
+    {
+        CheckInUseEvent?.Invoke(this, new WebsocketEventArgs
         {
             Event = receivedEvent
         });

@@ -30,6 +30,7 @@ public class HangfireService : IHangfireService
     private readonly WebsocketEventManager _websocketEventManager;
     private readonly WebsocketEventState websocketEventState = new WebsocketEventState();
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly ILogger<HangfireService> _logger;
 
     public HangfireService(IBackgroundJobClient backgroundJobClient,
                            IRecurringJobManager recurringJobManager,
@@ -37,7 +38,8 @@ public class HangfireService : IHangfireService
                            SessionManager sessionManager,
                            ICurrentUserService currentUserService,
                            WebsocketEventManager websocketEventManager,
-                           IServiceScopeFactory serviceScopeFactory)
+                           IServiceScopeFactory serviceScopeFactory,
+                           ILogger<HangfireService> logger)
     {
         _backgroundJobClient = backgroundJobClient;
         _recurringJobManager = recurringJobManager;
@@ -46,6 +48,7 @@ public class HangfireService : IHangfireService
         _currentUserService = currentUserService;
         _websocketEventManager = websocketEventManager;
         _serviceScopeFactory = serviceScopeFactory;
+        _logger = logger;
     }
 
 
@@ -729,13 +732,14 @@ public class HangfireService : IHangfireService
         .Include(s => s.Class)
         .AsNoTracking()
         .ToListAsync();
-        ParallelOptions parallelOptions = new ParallelOptions
+        /*ParallelOptions parallelOptions = new ParallelOptions
         {
             MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling((Environment.ProcessorCount * 0.25) * 2.0))
-        };
+        };*/
 
-        Parallel.ForEach(schedules, parallelOptions, (schedule, state) =>
-       {
+        // Dont use parallel for mail service (it can not handle multiple thread)
+        foreach(var schedule in schedules)
+        {
            if (schedule.Attendances.Count() >= 0)
            {
                foreach (var student in schedule.Attendances.Select(a => a.Student))
@@ -774,11 +778,11 @@ public class HangfireService : IHangfireService
                         </body>
                         </html>"
                        };
-                       _ = mailService.SendMailAsync(emailMessage);
+                       await mailService.SendMailAsync(emailMessage);
                    }
                }
            }
-       });
+       };
     }
 }
 

@@ -15,6 +15,7 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using Base.API.Common;
+using System.Linq;
 
 namespace Base.API.Controllers;
 
@@ -62,10 +63,61 @@ public class ModuleController : ControllerBase
             var result = await _moduleService.Get(startPage, endPage, quantity, mode, status, key, employeeId);
             if (result.IsSuccess)
             {
+                // Should check whether if modules are already in use
+                var finalResult = _mapper.Map<IEnumerable<ModuleResponseVM>>(result.Result);
+                var parallelOptions = new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = Convert.ToInt32(Math.Ceiling(Environment.ProcessorCount * 0.4 * 2))
+                };
+                await Parallel.ForEachAsync(finalResult, parallelOptions, async (module, state) =>
+                {
+                    var websocketEventHandler = _websocketEventManager.GetHandlerByModuleID(module.ModuleID);
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.CheckInUseEvent += OnModuleCheckInUseEventHandler;
+                    }
+
+                    var messageSend = new WebsocketMessage
+                    {
+                        Event = "CheckInUse",
+                    };
+                    var jsonPayload = JsonSerializer.Serialize(messageSend);
+                    var resultCheck = await _websocketConnectionManager.SendMesageToModule(jsonPayload, module.ModuleID);
+                    if (resultCheck)
+                    {
+                        var cts = new CancellationTokenSource();
+                        cts.CancelAfter(TimeSpan.FromSeconds(2));
+                        if (WaitForCheckInUse(cts.Token))
+                        {
+                            if (websocketEventState.InUse)
+                            {
+                                module.Using = 1;
+                            }
+                            else
+                            {
+                                module.Using = 2;
+                            }
+                        }
+                        else
+                        {
+                            module.Using = 2;
+                        }
+                    }
+                    else
+                    {
+                        module.Using = 2;
+                    }
+
+                    if (websocketEventHandler is not null)
+                    {
+                        websocketEventHandler.CheckInUseEvent -= OnModuleCheckInUseEventHandler;
+                    }
+                });
+
                 return Ok(new
                 {
                     Title = result.Title,
-                    Result = _mapper.Map<IEnumerable<ModuleResponseVM>>(result.Result)
+                    Result = finalResult
                 });
             }
             return BadRequest(new
@@ -1457,6 +1509,24 @@ public class ModuleController : ControllerBase
         return false;
     }
 
+    private bool WaitForCheckInUse(CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                if (websocketEventState.CheckInUseResposne)
+                {
+                    return true;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        return false;
+    }
+
 
 
     private void OnModuleConnectingEventHandler(object? sender, WebsocketEventArgs e)
@@ -1588,6 +1658,22 @@ public class ModuleController : ControllerBase
             websocketEventState.ModuleMode13 = true;
         }
     }
+
+    private void OnModuleCheckInUseEventHandler(object? sender, WebsocketEventArgs e)
+    {
+        if (e.Event.Contains("CheckInUse"))
+        {
+            websocketEventState.CheckInUseResposne = true;
+            if (e.Event.Contains("true"))
+            {
+                websocketEventState.InUse = true;
+            }
+            else
+            {
+                websocketEventState.InUse = false;
+            }
+        }
+    }
 }
 
 
@@ -1612,6 +1698,8 @@ public class WebsocketEventState
     public bool ModuleMode12 { get; set; } = false;
     public bool ModuleMode12Failed { get; set; } = false;
     public bool ModuleMode13 { get; set; } = false;
+    public bool InUse { get; set; } = false;
+    public bool CheckInUseResposne { get; set; } = false;
 }
 
 public class ActivateModule

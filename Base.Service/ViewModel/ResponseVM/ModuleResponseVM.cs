@@ -20,6 +20,7 @@ public class ModuleResponseVM
     public int? ConnectionSoundDurationMs { get; set; }
     public bool? AttendanceSound { get; set; }
     public int? AttendanceSoundDurationMs { get; set; }
+    public int? Using { get; set; }
     public Employee_ModuleResponseVM? Employee { get; set; }
     public IEnumerable<ModuleActivity_ModuleResponseVM> ModuleActivities { get; set; } = new List<ModuleActivity_ModuleResponseVM>();
 }

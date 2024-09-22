@@ -56,6 +56,7 @@ namespace Base.Service.Service
         {
             var existedAttendance = await _unitOfWork.AttendanceRepository
                 .Get(a => a.ScheduleID == scheduleID && a.StudentID.Equals(studentID) && !a.IsDeleted)
+                .Include(a => a.Schedule!.Slot)
                 .FirstOrDefaultAsync();
             if (existedAttendance is null)
             {
@@ -64,6 +65,20 @@ namespace Base.Service.Service
                     IsSuccess = false,
                     Title = "Update Attendance failed",
                     Errors = new string[1] { "Attandace not found" }
+                };
+            }
+
+            // Only update attendance status within the time frame allowed (int the end of next day, not before the schedule started)
+            var currentDateTime = ServerDateTime.GetVnDateTime();
+
+            var deadline = existedAttendance.Schedule?.Date.AddDays(1).ToDateTime(new TimeOnly(23, 59, 0));
+            if (currentDateTime > deadline)
+            {
+                return new ServiceResponseVM<Attendance>
+                {
+                    IsSuccess = false,
+                    Title = "Update Attendance failed",
+                    Errors = new string[1] { "The modify time has ended" }
                 };
             }
 
@@ -106,76 +121,90 @@ namespace Base.Service.Service
 
         public async Task<ServiceResponseVM<List<StudentListUpdateVM>>> UpdateListStudentStatus(StudentListUpdateVM[] studentArr)
         {
-           
-                var responseList = new List<StudentListUpdateVM>();
-                var errors = new List<string>();
 
-                foreach (var student in studentArr)
+            var responseList = new List<StudentListUpdateVM>();
+            var errors = new List<string>();
+
+            // Only update attendance status within the time frame allowed (int the end of next day, not before the schedule started)
+            var currentDateTime = ServerDateTime.GetVnDateTime();
+
+
+            foreach (var student in studentArr)
+            {
+                try
                 {
-                    try
+                    var existedAttendance = await _unitOfWork.AttendanceRepository
+                        .Get(a => a.ScheduleID == student.ScheduleID && a.StudentID == student.StudentID)
+                        .Include(a => a.Schedule!.Slot)
+                        .FirstOrDefaultAsync();
+
+                    if (existedAttendance == null)
                     {
-                        var existedAttendance = await _unitOfWork.AttendanceRepository
-                            .Get(a => a.ScheduleID == student.ScheduleID && a.StudentID == student.StudentID)
-                            .FirstOrDefaultAsync();
-
-                        if (existedAttendance == null)
-                        {
-                            errors.Add($"Attendance not found for student ID {student.StudentID} in schedule ID {student.ScheduleID}");
-                            continue;
-                        }
-
-                        existedAttendance.AttendanceStatus = student.AttendanceStatus;
-                        existedAttendance.AttendanceTime = student.AttendanceTime ?? ServerDateTime.GetVnDateTime();
-                        existedAttendance.Comments = student.Comments;
-
-                        _unitOfWork.AttendanceRepository.Update(existedAttendance);
-                    }
-                    catch (Exception ex)
-                    {
-                        errors.Add($"Error updating attendance for student ID {student.StudentID} in schedule ID {student.ScheduleID}: {ex.Message}");
+                        errors.Add($"Attendance not found for student ID {student.StudentID} in schedule ID {student.ScheduleID}");
                         continue;
                     }
-                }
 
-                var scheduleIds = studentArr.Select(a => a.ScheduleID).Distinct().ToArray();
-                if(scheduleIds.Count() > 0)
-                {
-                    foreach(int scheduleId in scheduleIds)
+                    var deadline = existedAttendance.Schedule?.Date.AddDays(1).ToDateTime(new TimeOnly(23, 59, 0));
+                    if (currentDateTime > deadline)
                     {
-                        var existedSchedule = _unitOfWork.ScheduleRepository
-                            .Get(s => s.ScheduleID == scheduleId)
-                            .FirstOrDefault();
-                        if (existedSchedule is not null)
+                        errors.Add("The modify time has ended.");
+                        continue;
+                    }
+
+                    existedAttendance.AttendanceStatus = student.AttendanceStatus;
+                    existedAttendance.AttendanceTime = student.AttendanceTime ?? ServerDateTime.GetVnDateTime();
+                    existedAttendance.Comments = student.Comments;
+
+                    _unitOfWork.AttendanceRepository.Update(existedAttendance);
+                    responseList.Add(student);
+                }
+                catch (Exception ex)
+                {
+                    errors.Add($"Error updating attendance for student ID {student.StudentID} in schedule ID {student.ScheduleID}: {ex.Message}");
+                    continue;
+                }
+            }
+
+            var scheduleIds = studentArr.Select(a => a.ScheduleID).Distinct().ToArray();
+            if (scheduleIds.Count() > 0)
+            {
+                foreach (int scheduleId in scheduleIds)
+                {
+                    var existedSchedule = _unitOfWork.ScheduleRepository
+                        .Get(s => s.ScheduleID == scheduleId)
+                        .FirstOrDefault();
+
+                    if (existedSchedule is not null)
+                    {
+                        if (existedSchedule.Attended == 1)
                         {
-                            if (existedSchedule.Attended == 1)
-                            {
-                                existedSchedule.Attended = 2;
-                            }
+                            existedSchedule.Attended = 2;
                         }
                     }
                 }
+            }
 
-                var result = await _unitOfWork.SaveChangesAsync();
+            var result = await _unitOfWork.SaveChangesAsync();
 
-                if (result)
+            if (result)
+            {
+                return new ServiceResponseVM<List<StudentListUpdateVM>>
                 {
-                    return new ServiceResponseVM<List<StudentListUpdateVM>>
-                    {
-                        IsSuccess = true,
-                        Title = "Update Status successfully",
-                        Result = responseList
-                    };
-                }
-                else
+                    IsSuccess = true,
+                    Title = "Update Status successfully",
+                    Result = responseList
+                };
+            }
+            else
+            {
+                return new ServiceResponseVM<List<StudentListUpdateVM>>
                 {
-                    return new ServiceResponseVM<List<StudentListUpdateVM>>
-                    {
-                        IsSuccess = false,
-                        Title = "Update Status failed",
-                        Errors = errors.ToArray()
-                    };
-                }
-            
+                    IsSuccess = false,
+                    Title = "Update Status failed",
+                    Errors = errors.ToArray()
+                };
+            }
+
 
         }
 

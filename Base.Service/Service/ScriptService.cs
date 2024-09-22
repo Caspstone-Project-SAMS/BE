@@ -256,6 +256,8 @@ internal class ScriptService : IScriptService
                         if (pastSlot.PastLast15Min)
                         {
                             // Email students for double-check
+                            _ = SendEmailCheckAttendanceToStudents(pastSlot.SlotId, pastDate.Date);
+                            Task.Delay(TimeSpan.FromSeconds(1));
                         }
                     }
                 }
@@ -279,6 +281,8 @@ internal class ScriptService : IScriptService
                         if (pastSlot.PastLast15Min)
                         {
                             // Email students for double-check
+                            _ = SendEmailCheckAttendanceToStudents(pastSlot.SlotId, pastDate.Date);
+                            Task.Delay(TimeSpan.FromSeconds(1));
                         }
                     }
                 }
@@ -571,6 +575,14 @@ internal class ScriptService : IScriptService
                 }
             }
         }
+    }
+
+    private Task SendEmailCheckAttendanceToStudents(int slotId, DateOnly date)
+    {
+        return Task.Run(() =>
+        {
+            _hangfireService.SendEmailReCheckAttendance(slotId, date);
+        });
     }
 }
 

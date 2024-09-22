@@ -205,6 +205,13 @@ public class WebSocketController : ControllerBase
                                 websocketEventHandler.OnApplyConfigurationEvent(receiveData);
                             }
                         }
+                        else if (receiveData.Contains("CheckInUse"))
+                        {
+                            if (websocketEventHandler is not null)
+                            {
+                                websocketEventHandler.OnCheckInUseEvent(receiveData);
+                            }
+                        }
                         else if (receiveData.Contains("Check current session"))
                         {
                             currentSessionID = int.Parse(receiveData.Split(" ").LastOrDefault() ?? "0");

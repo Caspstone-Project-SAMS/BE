@@ -172,7 +172,7 @@ namespace Base.Service.Service
                 return new ServiceResponseVM
                 {
                     IsSuccess = false,
-                    Title = "Delete slot failes",
+                    Title = "Delete slot failed",
                     Errors = new string[2] { "Cannot delete this slot", "Slot is already in use" }
                 };
             }
