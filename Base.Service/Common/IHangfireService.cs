@@ -11,4 +11,5 @@ public interface IHangfireService
     Task SetSlotStart(int slotId, DateOnly? date);
     Task SetSlotEnd(int slotId, DateOnly? date);
     void SetRecordIrreversible(int recordId, DateTime endTimeStamp);
+    void SendEmailReCheckAttendance(int slotId, DateOnly date);
 }

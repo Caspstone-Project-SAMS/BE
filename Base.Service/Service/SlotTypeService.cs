@@ -89,7 +89,7 @@ internal class SlotTypeService : ISlotTypeService
                 .Get(where, 
                 new Expression<Func<SlotType, object?>>[]
                 {
-                    s => s.Slots
+                    s => s.Slots.Where(s => !s.IsDeleted)
                 })
                 .AsNoTracking()
                 .Skip((startPage - 1) * quantityResult)
@@ -318,7 +318,7 @@ internal class SlotTypeService : ISlotTypeService
             {
                 result.IsSuccess = true;
                 result.Result = existedSlotType;
-                result.Title = "Update class successfully";
+                result.Title = "Update slot type successfully";
                 return result;
             }
 
