@@ -59,14 +59,34 @@ namespace Base.Service.Service
                         continue;
                     }
 
-                    var existedSlot = await _unitOfWork.SlotRepository.Get(s => s.SlotNumber == newEntity.SlotNumber && !s.IsDeleted).FirstOrDefaultAsync();
+                    var existedSlot = await _unitOfWork.SlotRepository.Get(s => s.SlotNumber == newEntity.SlotNumber && s.SlotTypeId == existedClass.SlotTypeId && !s.IsDeleted).FirstOrDefaultAsync();
                     if( existedSlot is null)
                     {
                         errors.Add($"Slot {newEntity.SlotNumber} not existed");
                         continue;
                     }
 
-                    var existedSchedule = await _unitOfWork.ScheduleRepository.Get(
+                TimeOnly newSlotStartTime = existedSlot.StartTime;
+                TimeOnly newSlotEndTime = existedSlot.Endtime;
+                var overlappingSchedules = await _unitOfWork.ScheduleRepository.Get(
+                                s => s.Date == newEntity.Date
+                                     && s.SlotID != existedSlot.SlotID
+                                     && s.Class!.RoomID != existedClass.RoomID
+                                     && !s.IsDeleted)
+                                .Include(s => s.Slot) 
+                                .ToArrayAsync();
+
+                foreach (var schedule in overlappingSchedules)
+                {
+                    TimeOnly existingSlotStartTime = schedule!.Slot!.StartTime;
+                    TimeOnly existingSlotEndTime = schedule!.Slot.Endtime;
+                    if (newSlotStartTime < existingSlotEndTime && newSlotEndTime > existingSlotStartTime)
+                    {
+                        errors.Add($"Slot {newEntity.SlotNumber} overlaps with another class in room {existedClass.ClassCode} on {newEntity.Date}");
+                        continue;
+                    }
+                }
+                var existedSchedule = await _unitOfWork.ScheduleRepository.Get(
                                                                                 s => s.Date == newEntity.Date 
                                                                                 && s.SlotID == existedSlot.SlotID 
                                                                                 && s.ClassID == existedClass.ClassID 
