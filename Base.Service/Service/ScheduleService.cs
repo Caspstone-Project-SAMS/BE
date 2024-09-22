@@ -12,6 +12,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -82,7 +83,7 @@ namespace Base.Service.Service
                     TimeOnly existingSlotEndTime = schedule!.Slot.Endtime;
                     if (newSlotStartTime < existingSlotEndTime && newSlotEndTime > existingSlotStartTime)
                     {
-                        errors.Add($"Slot {newEntity.SlotNumber} overlaps with another class in room {existedClass.ClassCode} on {newEntity.Date}");
+                        errors.Add($"Class with class code: {existedClass.ClassCode} at Slot {newEntity.SlotNumber} overlaps with another class on {newEntity.Date.ToString("dd-MM-yyyy")}");
                         continue;
                     }
                 }
@@ -93,8 +94,10 @@ namespace Base.Service.Service
                                                                                 && !s.IsDeleted).FirstOrDefaultAsync();
                     if(existedSchedule is not null)
                     {
-                        errors.Add($"A schedule already exists for class {newEntity.ClassCode} at slot {newEntity.SlotNumber} on date {newEntity.Date}");
-                        continue;
+
+                    errors.Add($"Class with class code: {existedClass.ClassCode} at Slot {newEntity.SlotNumber} overlaps with another class on {newEntity.Date.ToString("dd-MM-yyyy")}");
+
+                    continue;
                     }
 
                     var conflictingSchedule = await _unitOfWork.ScheduleRepository.Get(
@@ -105,7 +108,7 @@ namespace Base.Service.Service
                                                                             && !s.IsDeleted).ToArrayAsync();
                     if( conflictingSchedule.Count() > 0)
                     {
-                        errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date}'.");
+                        errors.Add($"Another class is scheduled with the same room, slot on date '{newEntity.Date.ToString("dd-MM-yyyy")}'.");
                         continue;
                     }
 
