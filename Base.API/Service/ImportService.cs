@@ -299,15 +299,19 @@ public class ImportService
         Parallel.ForEach(sortedTextBlocks, parallelOption, (textBlock, state) =>
         {
             var upperText = textBlock.Text.ToUpper();
-            if (upperText.Contains("(NOTYET)") || upperText.Contains("(ATTENDED)"))
+            // Remove word edunext, notyet and attended
+            if (upperText.Contains("NOTYET") || upperText.Contains("ATTENDED") || upperText.Contains("EDUNEXT"))
             {
                 var newParagraphs = new List<Paragraph>();
-                // Remove word '(', ')', notyet and attended
                 foreach (var paragraph in textBlock.Paragraphs)
                 {
+                    // Only get valid paragraph in the text block
                     paragraph.Words = paragraph.Words
-                        .Where(p => p.Text != "(" && p.Text != ")" &&
-                            !p.Text.ToUpper().Contains("NOTYET") && !p.Text.ToUpper().Contains("ATTENDED"));
+                        .Where(p => p.Text != "(" && 
+                            p.Text != ")" &&
+                            !p.Text.ToUpper().Contains("NOTYET") && 
+                            !p.Text.ToUpper().Contains("ATTENDED") && 
+                            !p.Text.ToUpper().Contains("EDUNEXT"));
                     if(paragraph.Words.Count() > 0)
                     {
                         paragraph.Text = string.Join("", paragraph.Words.Select(w => w.Text));
@@ -366,7 +370,7 @@ public class ImportService
         DateOnly testDate;
         var dateBlock = new List<TextBlock>();
         int dateBlockIndex = 0;
-        var dateBlockIndexs = new List<int>();
+        var dateBlockIndexs = new HashSet<int>();
         foreach (var block in adjustedTextBlocks)
         {
             if (block.Paragraphs.Any(p => !p.Words.Any(w => w.Text.ToUpper() == "SLOT") && p.Words.Any(w => DateOnly.TryParseExact(w.Text, "dd/MM", out testDate))))
@@ -376,8 +380,8 @@ public class ImportService
             }
             ++dateBlockIndex;
         }
-        dateBlockIndexs.Reverse();
-        foreach (int index in dateBlockIndexs)
+        var usingDateBlockIndexs = dateBlockIndexs.OrderByDescending(x => x);
+        foreach (int index in usingDateBlockIndexs)
         {
             adjustedTextBlocks.RemoveAt(index);
         }
@@ -387,17 +391,25 @@ public class ImportService
             DateOnly date;
             foreach (var paragraph in block.Paragraphs)
             {
+                var numberOfWord = paragraph.Words.Count();
+                var startX = block.StartGeometricCoordinates.Vertex_X;
+                var endX = block.EndGeometricCoordinates.Vertex_X;
+                int count = 0;
                 foreach(var word in paragraph.Words)
                 {
                     if (DateOnly.TryParseExact(word.Text, "dd/MM", out date))
                     {
+                        // Should identify the vertext X if there are 2 days are combined
+                        float rate = (float)count / numberOfWord;
+                        var finalX = startX + (int)((endX - startX) * rate);
                         weeklyDates.Add(new Import_Date
                         {
                             DateString = word.Text,
                             Date = date,
-                            Vertex_X = block.StartGeometricCoordinates.Vertex_X
+                            Vertex_X = finalX
                         });
                     }
+                    count++;
                 }
             }
         }
@@ -406,16 +418,17 @@ public class ImportService
         // Get TextBlock of slot
         var slotBlock = new List<TextBlock>();
         int slotBlockIndex = 0;
-        var slotBlockIndexs = new List<int>();
+        var slotBlockIndexs = new HashSet<int>();
         foreach (var block in adjustedTextBlocks)
         {
+            // Handle the case that a block have multiple paragraphs of slot
             if (block.Paragraphs.Any(p => p.Words.Any(w => w.Text.ToUpper().Contains("SLOT"))))
             {
                 var words = block.Paragraphs.SelectMany(p => p.Words);
                 var slotWordsCount = words.Where(w => w.Text.ToUpper().Contains("SLOT")).Count();
                 if (slotWordsCount > 1)
                 {
-                    int slotWordNumber = 1;
+                    int slotWordNumber = 0;
                     for(int i = 0; i < words.Count() - 1; i++)
                     {
                         var word = words.ElementAtOrDefault(i);
@@ -439,7 +452,7 @@ public class ImportService
                                 Words = newWords
                             });
 
-                            float rate = slotWordNumber / slotWordsCount;
+                            float rate = (float)slotWordNumber / slotWordsCount;
                             var newVertexY = block.StartGeometricCoordinates.Vertex_Y + (int)Math.Round((block.ModifyGeometricCoordinates.Vertex_Y - block.StartGeometricCoordinates.Vertex_Y) * rate, 0);
                             var newGeometricCoordinates = new GeometricCoordinates(block.StartGeometricCoordinates.Vertex_X, newVertexY);
 
@@ -476,8 +489,8 @@ public class ImportService
             }
             ++slotBlockIndex;
         }
-        slotBlockIndexs.Reverse();
-        foreach (var index in slotBlockIndexs)
+        var usedSlotBlockIndexs = slotBlockIndexs.OrderByDescending(x => x);
+        foreach (var index in usedSlotBlockIndexs)
         {
             adjustedTextBlocks.RemoveAt(index);
         }
@@ -500,6 +513,24 @@ public class ImportService
                     SlotNumber = slotNumber,
                     Vertex_Y = block.StartGeometricCoordinates.Vertex_Y
                 };
+            }
+            else
+            {
+                // Hanlde the case that the slot information may stored in 2 blocks next to each other
+                var searchTextBlock = adjustedTextBlocks
+                    .Where(b => (b.StartGeometricCoordinates.Vertex_Y - 5) <= block.StartGeometricCoordinates.Vertex_Y && 
+                                block.StartGeometricCoordinates.Vertex_Y <= (b.StartGeometricCoordinates.Vertex_Y + 5) &&
+                                b.StartGeometricCoordinates.Vertex_X <= (block.StartGeometricCoordinates.Vertex_X + 40))
+                    .FirstOrDefault();
+                // slot => y trong khoảng 2, x trong khoảng 10
+                if (IdentifySlot($"{block.Text}{searchTextBlock?.Text}", out slotNumber))
+                {
+                    importedSlot = new Import_Slot
+                    {
+                        SlotNumber = slotNumber,
+                        Vertex_Y = block.StartGeometricCoordinates.Vertex_Y
+                    };
+                }
             }
 
             if(importedSlot is not null)
@@ -645,12 +676,19 @@ public class ImportService
         }
 
 
+        // No test yet=======================================================
+        // Sort for splitting purpose
+        weeklyDates = weeklyDates.OrderBy(s => s.Vertex_X).ToList();
+        slots = slots.OrderBy(s => s.Vertex_Y).ToList();
+
+
         // Lets split a single textBlock contains 2 or more schedules to many textBlocks
         var datesVertex_x_List = weeklyDates.Select(d => d.Vertex_X);
         var copyAdjustedTextBlocks = adjustedTextBlocks.ToList();
         foreach (var block in copyAdjustedTextBlocks)
         {
             var containedDateVertex_x = new List<int>();
+
             foreach(var vertex_x in datesVertex_x_List)
             {
                 if((block.StartGeometricCoordinates.Vertex_X <= vertex_x && vertex_x <= block.EndGeometricCoordinates.Vertex_X) ||
@@ -662,7 +700,7 @@ public class ImportService
             }
             if(containedDateVertex_x.Count > 1)
             {
-                containedDateVertex_x.Reverse();
+                //containedDateVertex_x.Reverse();
                 var classCode = block.Text.Split(";;;");
                 if (classCode.Length == 0) continue;
 
@@ -693,6 +731,64 @@ public class ImportService
             }
         }
 
+
+        // Lets split a single textBlock contains 2 or more schedules to many textBlocks (but compare to slot -> vertex y)
+        var slotVertex_y_list = slots.Select(s => s.Vertex_Y);
+        var copyAdjustedTextBlocksForCheckSlot = adjustedTextBlocks.ToList();
+        foreach(var block in copyAdjustedTextBlocksForCheckSlot)
+        {
+            var containedSlotVertex_y = new List<int>();
+
+            foreach(var vertex_y in slotVertex_y_list)
+            {
+                if ((block.StartGeometricCoordinates.Vertex_Y <= vertex_y && vertex_y <= block.ModifyGeometricCoordinates.Vertex_Y) ||
+                    ((block.StartGeometricCoordinates.Vertex_Y - 10) <= vertex_y && vertex_y <= (block.StartGeometricCoordinates.Vertex_Y + 10)) ||
+                    ((block.ModifyGeometricCoordinates.Vertex_Y - 10) <= vertex_y && vertex_y <= (block.ModifyGeometricCoordinates.Vertex_Y + 10)))
+                {
+                    containedSlotVertex_y.Add(vertex_y);
+                }
+            }
+
+            if (containedSlotVertex_y.Count > 1)
+            {
+                //IsInValidParagraph
+                var validParagraphs = block.Paragraphs.Where(p => !IsInValidParagraph(p.Text)).ToArray();
+                int index = 0;
+                foreach (var vertex_y in containedSlotVertex_y)
+                {
+                    if (index > validParagraphs.Length - 1)
+                    {
+                        break;
+                    }
+                    adjustedTextBlocks.Add(new TextBlock
+                    {
+                        Text = validParagraphs[index].Text,
+                        StartGeometricCoordinates = new GeometricCoordinates(block.StartGeometricCoordinates.Vertex_X, vertex_y),
+                        Paragraphs = new List<Paragraph> { validParagraphs[index] }
+                    });
+                    index++;
+                }
+                adjustedTextBlocks.Remove(block);
+            }
+            else
+            {
+                var checkVertex_y = containedSlotVertex_y.FirstOrDefault();
+                if(checkVertex_y != 0)
+                {
+                    if (block.StartGeometricCoordinates.Vertex_Y < checkVertex_y && checkVertex_y < block.ModifyGeometricCoordinates.Vertex_Y)
+                    {
+                        var validParagraphs = block.Paragraphs.Where(p => !IsInValidParagraph(p.Text)).ToArray();
+                        adjustedTextBlocks.Add(new TextBlock
+                        {
+                            Text = string.Concat(validParagraphs.Select(p => p.Text)),
+                            StartGeometricCoordinates = new GeometricCoordinates(block.StartGeometricCoordinates.Vertex_X, checkVertex_y),
+                            Paragraphs = validParagraphs
+                        });
+                        adjustedTextBlocks.Remove(block);
+                    }
+                }
+            }
+        }
 
 
         // Before remove seperator word ";;;"
@@ -753,11 +849,6 @@ public class ImportService
         }
 
 
-        // Sort
-        weeklyDates = weeklyDates.OrderBy(s => s.Date).ToList();
-        slots = slots.OrderBy(s => s.SlotOrder).ToList();
-
-
         // Adjust class slot data of each slot
         var weeklyDatesPosition = weeklyDates.Select(d => d.Vertex_X);
         int totalDates = weeklyDates.Count();
@@ -777,6 +868,9 @@ public class ImportService
             slot.ClassSlots = Enumerable.Empty<Import_Class>().ToList();
         });
 
+        // Sort
+        weeklyDates = weeklyDates.OrderBy(s => s.Date).ToList();
+        slots = slots.OrderBy(s => s.SlotNumber).ToList();
 
         return new Import_Result
         {
@@ -958,6 +1052,18 @@ public class ImportService
 
         // Check if the input matches the pattern
         return regex.IsMatch(input);
+    }
+
+    private bool IsInValidParagraph(string input)
+    {
+        string result = input.Replace("(", "").Replace(")", "");
+        result = result.ToUpper().Replace("NOTYET", "").Trim();
+        if(result == "")
+        {
+            return true;
+        }
+        string pattern = @"^([0-9]|1[0-9]|2[0-3]):[0-5][0-9]-([0-9]|1[0-9]|2[0-3]):[0-5][0-9]$";
+        return Regex.IsMatch(result, pattern);
     }
 }
 
