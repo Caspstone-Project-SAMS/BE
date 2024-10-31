@@ -20,5 +20,5 @@ The server plays a crucial role in managing tasks, interacting with other platfo
 
 ## Diagram
 ### Context Diagram
-![File Structure](https://drive.google.com/file/d/1uvEIpc8LQbT0_GXLnYHTpAITz9xZ9Qq3/view?usp=sharing)
+![File Structure](https://github.com/khoaLe12/Public-Image/blob/main/Context_Diagram.png)
 
