@@ -3,7 +3,7 @@ This is a part of Capstone Project, the goal of this project is to create a Web 
 
 ## Contributer
 * Le Dang Khoa  - <a href="https://github.com/khoaLe12">GitHub</a>
-* Tran Thai Quoc - <a href="https://github.com/Toannd832">GitHub</a>
+* Tran Thai Quoc - <a href="https://github.com/thaiquoc-se">GitHub</a>
 
 ## Tech Stack
 * Framework: ASP.NET Core API, EF Core
