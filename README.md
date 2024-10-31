@@ -22,3 +22,12 @@ The server plays a crucial role in managing tasks, interacting with other platfo
 ### Context Diagram
 ![File Structure](https://github.com/khoaLe12/Public-Image/blob/main/Context_Diagram.png)
 
+
+### System Overview
+![File Structure](https://github.com/khoaLe12/Public-Image/blob/main/System_Overview.png)
+
+
+
+### System Architecture
+![File Structure](https://github.com/khoaLe12/Public-Image/blob/main/System_Architecture.png)
+
