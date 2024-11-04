@@ -36,7 +36,7 @@ namespace Base.API.Controllers
                 {
                     return Ok(_mapper.Map<IEnumerable<StudentModuleResponse>>(students));
                 }
-                return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students));
+                return Ok(_mapper.Map<IEnumerable<StudentResponse>>(students.OrderByDescending(s => s.User?.CreatedAt)));
             }
             
             return BadRequest(new

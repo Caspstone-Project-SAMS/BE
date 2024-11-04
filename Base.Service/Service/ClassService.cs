@@ -394,7 +394,7 @@ namespace Base.Service.Service
 
             var copyClass = (Class)existedClass.Clone();
 
-            if(resource.SemesterId is not null)
+            if(resource.SemesterId is not null && resource.SemesterId != existedClass.SemesterID)
             {
                 var checkExistedSemester = _unitOfWork.SemesterRepository
                     .Get(s => !s.IsDeleted && s.SemesterID == resource.SemesterId)
@@ -406,7 +406,19 @@ namespace Base.Service.Service
                 }
                 else
                 {
-                    existedClass.SemesterID = (int)resource.SemesterId;
+                    // Check whether if semester of the class can be updated or not
+                    var schedulesCount = _unitOfWork.ScheduleRepository
+                        .Get(s => !s.IsDeleted && s.ClassID == existedClass.ClassID)
+                        .AsNoTracking()
+                        .Count();
+                    if(schedulesCount > 0)
+                    {
+                        errors.Add("Can not update semester, remove all schedules of the class first");
+                    }
+                    else
+                    {
+                        existedClass.SemesterID = (int)resource.SemesterId;
+                    }
                 }
             }
 

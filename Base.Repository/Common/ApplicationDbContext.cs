@@ -280,7 +280,7 @@ public class DbContextFactory : IDesignTimeDbContextFactory<ApplicationDbContext
     {
         var configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.Development.json")
+            .AddJsonFile("appsettings.Production.json")
             .Build();
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();

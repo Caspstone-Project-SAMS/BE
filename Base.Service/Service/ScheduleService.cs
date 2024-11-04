@@ -125,10 +125,19 @@ namespace Base.Service.Service
                     }
 
                     DayOfWeek dayOfWeek = newEntity.Date.DayOfWeek;
+                    int numberDateOfWeek = (int)dayOfWeek;
+                    if (numberDateOfWeek == 0)
+                    {
+                        numberDateOfWeek = 8;
+                    }
+                    else
+                    {
+                        numberDateOfWeek++;
+                    }
                     Schedule newSchedule = new Schedule()
                     {
                         Date = newEntity.Date,
-                        DateOfWeek =(int)dayOfWeek,
+                        DateOfWeek = numberDateOfWeek,
                         ScheduleStatus = 1,
                         SlotID = existedSlot.SlotID,
                         ClassID = existedClass.ClassID,
@@ -543,8 +552,17 @@ namespace Base.Service.Service
                     }
                     else
                     {
+                        int dateOfWeek = (int)date.DayOfWeek;
+                        if(dateOfWeek == 0)
+                        {
+                            dateOfWeek = 8;
+                        }
+                        else
+                        {
+                            dateOfWeek++;
+                        }
                         copySchedule.Date = date;
-                        copySchedule.DateOfWeek = (int)date.DayOfWeek;
+                        copySchedule.DateOfWeek = dateOfWeek;
                         importedSchedules.Add(copySchedule);
                     }
                 }
@@ -573,8 +591,17 @@ namespace Base.Service.Service
                     }
                     else
                     {
+                        int dateOfWeek = (int)date.DayOfWeek;
+                        if (dateOfWeek == 0)
+                        {
+                            dateOfWeek = 8;
+                        }
+                        else
+                        {
+                            dateOfWeek++;
+                        }
                         copySchedule.Date = date;
-                        copySchedule.DateOfWeek = (int)date.DayOfWeek;
+                        copySchedule.DateOfWeek = dateOfWeek;
                         importedSchedules.Add(copySchedule);
                     }
                 }
@@ -981,10 +1008,19 @@ namespace Base.Service.Service
                 }
             }
 
+            int dateOfWeek = (int)resource.Date.DayOfWeek;
+            if (dateOfWeek == 0)
+            {
+                dateOfWeek = 8;
+            }
+            else
+            {
+                dateOfWeek++;
+            }
             var createdSchedule = new Schedule
             {
                 Date = resource.Date,
-                DateOfWeek = (int)resource.Date.DayOfWeek,
+                DateOfWeek = dateOfWeek,
                 SlotID = resource.SlotId,
                 ClassID = resource.ClassId,
                 RoomID = resource.RoomId

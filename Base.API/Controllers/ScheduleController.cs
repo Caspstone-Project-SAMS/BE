@@ -190,10 +190,19 @@ namespace Base.API.Controllers
                     {
                         if(importedClass is not null)
                         {
+                            int dateOfWeek = (int)importedDates.ElementAt(indexCount).DayOfWeek;
+                            if (dateOfWeek == 0)
+                            {
+                                dateOfWeek = 8;
+                            }
+                            else
+                            {
+                                dateOfWeek++;
+                            }
                             var schedule = new Schedule
                             {
                                 Date = importedDates.ElementAt(indexCount),
-                                DateOfWeek = (int)importedDates.ElementAt(indexCount).DayOfWeek,
+                                DateOfWeek = dateOfWeek,
                                 Class = new Class
                                 {
                                     ClassCode = importedClass?.ClassCode ?? string.Empty

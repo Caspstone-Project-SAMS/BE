@@ -859,7 +859,7 @@ public class ImportService
         Parallel.ForEach(slots, parallelOptions, (slot, state) =>
         {
             var adjustedClassSlots = new Import_Class?[totalDates];
-            for (int i = 0; i < totalDates - 1; i++)
+            for (int i = 0; i <= totalDates - 1; i++)
             {
                 var acceptedClassSlot = slot.ClassSlots.Where(c => c != null && c.CheckVertex_X(weeklyDatesPosition.ElementAt(i), 30)).FirstOrDefault();
                 adjustedClassSlots[i] = acceptedClassSlot;

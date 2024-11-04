@@ -42,7 +42,7 @@ public class Schedule : AuditableEntity, ICloneable
 
     public string? GetAttendanceRate()
     {
-        var attended = this.Attendances.Where(a => a.AttendanceStatus == 2).Count();
+        var attended = this.Attendances.Where(a => a.AttendanceStatus == 1).Count();
         return $"{attended}/{this.Attendances.Count()}";
     }
 }
