@@ -1,3 +1,5 @@
+[![Build, test, containerize and publish image](https://github.com/Caspstone-Project-SAMS/BE/actions/workflows/deploy-docker.yaml/badge.svg?branch=main)](https://github.com/Caspstone-Project-SAMS/BE/actions/workflows/deploy-docker.yaml)
+
 # Student Attendance Management System (SAMS) - .NET Web API Project
 This is a part of Capstone Project, the goal of this project is to create a Web API Server which is responsible to manage resources, handle requests and execute business logic.
 
