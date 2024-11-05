@@ -31,3 +31,8 @@ jobs:
           docker build -t khoale111/sams-project:latest11 .
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push khoale111/sams-project:latest11
+
+      - name: Start CD pipeline on host machine with Jenkins
+        run: |
+          curl -X POST "${{ secrets.JENKINS_SERVER }}" \
+          --user "${{ secrets.JENKINS_USERNAME}}:${{ secrets.JENKINS_PASSWORD }}"
